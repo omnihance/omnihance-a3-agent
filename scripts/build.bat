@@ -2,7 +2,6 @@
 
 REM Set the input name for the server and strip quotes
 set SERVER_NAME=%1
-set SERVER_NAME=%SERVER_NAME:"=%
 if "%SERVER_NAME%"=="" set SERVER_NAME=omnihance-a3-agent
 
 REM Set version (default to dev if not provided)
