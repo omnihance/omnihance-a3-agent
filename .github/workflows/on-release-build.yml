@@ -51,3 +51,4 @@ jobs:
           project_path: ./cmd/omnihance-a3-agent
           binary_name: "omnihance-a3-agent"
           ldflags: "-w -s -X main.version=${{ steps.version.outputs.version }}"
+          extra_files: LICENSE README.md
