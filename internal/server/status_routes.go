@@ -13,10 +13,7 @@ func (s *Server) InitializeStatusRoutes(r *chi.Mux) {
 
 func (s *Server) statusHandler(w http.ResponseWriter, r *http.Request) {
 	adminUserCount, _ := s.internalDB.GetAdminUserCount()
-	setUpDone := false
-	if adminUserCount > 0 {
-		setUpDone = true
-	}
+	setUpDone := adminUserCount > 0
 
 	_ = utils.WriteJSONResponse(w, StatusResponse{
 		Name:                "omnihance-a3-agent",

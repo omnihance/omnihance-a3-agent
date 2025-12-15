@@ -64,13 +64,17 @@ func (s *Server) FrontendHandler() http.Handler {
 				return
 			}
 
-			defer indexFile.Close()
+			defer func() {
+				_ = indexFile.Close()
+			}()
 			stat, _ := indexFile.Stat()
 			http.ServeContent(w, r, "index.html", stat.ModTime(), indexFile.(io.ReadSeeker))
 			return
 		}
 
-		defer file.Close()
+		defer func() {
+			_ = file.Close()
+		}()
 		stat, _ := file.Stat()
 		if stat.IsDir() {
 			http.NotFound(w, r)
