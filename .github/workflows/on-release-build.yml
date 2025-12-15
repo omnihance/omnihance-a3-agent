@@ -1,0 +1,53 @@
+name: Generate Release Artifacts
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  releases-matrix:
+    name: Release Omnihance A3 Agent Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: ["386", amd64, arm64]
+        exclude:
+          - goarch: "386"
+            goos: darwin
+          - goarch: arm64
+            goos: windows
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Build UI
+        working-directory: ./cmd/omnihance-a3-agent/omnihance-a3-agent-ui
+        run: |
+          pnpm install
+          pnpm run build
+      - name: Extract version from release tag
+        id: version
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - uses: wangyoucao577/go-release-action@v1
+        id: build
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          project_path: ./cmd/omnihance-a3-agent
+          binary_name: "omnihance-a3-agent"
+          ldflags: "-w -s -X main.version=${{ steps.version.outputs.version }}"

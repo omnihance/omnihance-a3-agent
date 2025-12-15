@@ -1,0 +1,583 @@
+import axios from 'axios';
+import type { AxiosError } from 'axios';
+import type { EChartsOption } from 'echarts';
+import { z } from 'zod';
+
+export const API_ROUTES = {
+  AUTH_SIGN_IN: '/api/auth/sign-in',
+  AUTH_SIGN_UP: '/api/auth/sign-up',
+  SESSION: '/api/session',
+  SESSION_SIGN_OUT: '/api/session/sign-out',
+  STATUS: '/api/status',
+  FILE_TREE: '/api/file-tree',
+  NPC_FILE: '/api/file-tree/npc-file',
+  TEXT_FILE: '/api/file-tree/text-file',
+  REVERT_FILE: '/api/file-tree/revert-file',
+  REVISION_COUNT: '/api/file-tree/revision-summary',
+  SETTINGS: '/api/settings',
+  SETTING: (key: string) => `/api/settings/${key}`,
+  METRICS_SUMMARY: '/api/metrics/summary',
+  METRICS_CHARTS: '/api/metrics/charts',
+} as const;
+
+export class APIError extends Error {
+  status: number;
+  errorCode?: string;
+  context?: string;
+  errors?: string[];
+  data?: ErrorResponse;
+
+  constructor(message: string, status: number, data?: ErrorResponse) {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+    this.errorCode = data?.errorCode;
+    this.context = data?.context;
+    this.errors = data?.errors;
+    this.data = data;
+  }
+
+  getErrorMessage(): string {
+    if (this.errors && this.errors.length > 0) {
+      return this.errors[0];
+    }
+
+    return this.message;
+  }
+
+  getAllErrorMessages(): string[] {
+    return this.errors || [this.message];
+  }
+}
+
+export class APIValidationError extends Error {
+  zodError: z.ZodError;
+  responseData: unknown;
+
+  constructor(message: string, zodError: z.ZodError, responseData: unknown) {
+    super(message);
+    this.name = 'APIValidationError';
+    this.zodError = zodError;
+    this.responseData = responseData;
+  }
+
+  getValidationErrors(): string[] {
+    return this.zodError.issues.map((err: z.ZodIssue) => {
+      const path = err.path.join('.');
+      return path ? `${path}: ${err.message}` : err.message;
+    });
+  }
+}
+
+const ErrorResponseSchema = z.object({
+  errorCode: z.string(),
+  context: z.string(),
+  errors: z.array(z.string()),
+});
+
+export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+const AuthRequestSchema = z.object({
+  email: z.email(),
+  password: z.string().min(6),
+});
+
+export type AuthRequest = z.infer<typeof AuthRequestSchema>;
+
+const AuthResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
+const GetSessionResponseSchema = z.object({
+  session_id: z.string(),
+  user_id: z.number().int(),
+  email: z.email(),
+  roles: z.array(z.string()),
+  created_at: z.string(),
+  expires_at: z.string(),
+});
+
+export type GetSessionResponse = z.infer<typeof GetSessionResponseSchema>;
+
+const SignOutResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type SignOutResponse = z.infer<typeof SignOutResponseSchema>;
+
+const StatusResponseSchema = z.object({
+  name: z.string(),
+  version: z.string(),
+  setup_done: z.boolean(),
+  new_version_available: z.boolean(),
+  metrics_enabled: z.boolean(),
+});
+
+export type StatusResponse = z.infer<typeof StatusResponseSchema>;
+
+export interface SetupResponse {
+  access_token: string;
+}
+
+const SettingsSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  updated_at: z.string(),
+});
+
+export type Settings = z.infer<typeof SettingsSchema>;
+
+const UpsertSettingRequestSchema = z.object({
+  value: z.string(),
+});
+
+export type UpsertSettingRequest = z.infer<typeof UpsertSettingRequestSchema>;
+
+const NPCAttackSchema = z.object({
+  range: z.number().int().nonnegative(),
+  area: z.number().int().nonnegative(),
+  damage: z.number().int().nonnegative(),
+  additional_damage: z.number().int().nonnegative(),
+});
+
+export type NPCAttack = z.infer<typeof NPCAttackSchema>;
+
+const NPCFileAPIDataSchema = z.object({
+  name: z.string(),
+  id: z.number().int().nonnegative(),
+  respawn_rate: z.number().int().nonnegative(),
+  attack_type_info: z.number().int().min(0).max(255),
+  target_selection_info: z.number().int().min(0).max(255),
+  defense: z.number().int().min(0).max(255),
+  additional_defense: z.number().int().min(0).max(255),
+  attacks: z.array(NPCAttackSchema).length(3),
+  attack_speed_low: z.number().int().nonnegative(),
+  attack_speed_high: z.number().int().nonnegative(),
+  movement_speed: z.number().int().nonnegative(),
+  level: z.number().int().min(0).max(255),
+  player_exp: z.number().int().nonnegative(),
+  appearance: z.number().int().min(0).max(255),
+  hp: z.number().int().nonnegative(),
+  blue_attack_defense: z.number().int().nonnegative(),
+  red_attack_defense: z.number().int().nonnegative(),
+  grey_attack_defense: z.number().int().nonnegative(),
+  mercenary_exp: z.number().int().nonnegative(),
+});
+
+export type NPCFileAPIData = z.infer<typeof NPCFileAPIDataSchema>;
+
+type FileNode = {
+  id: string;
+  name: string;
+  kind: 'directory' | 'file';
+  depth: number;
+  last_modified?: string;
+  permissions?: string;
+  file_size?: number;
+  file_extension?: string;
+  mime_type?: string;
+  file_type?:
+    | 'a3_npc_file'
+    | 'a3_drop_file'
+    | 'a3_map_file'
+    | 'a3_unknown_file'
+    | 'text_file';
+  is_editable: boolean;
+  is_viewable: boolean;
+  api_endpoint?: string;
+  children?: FileNode[];
+};
+
+const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    kind: z.enum(['directory', 'file']),
+    depth: z.number().int(),
+    last_modified: z.string().optional(),
+    permissions: z.string().optional(),
+    file_size: z.number().int().nonnegative().optional(),
+    file_extension: z.string().optional(),
+    mime_type: z.string().optional(),
+    file_type: z
+      .enum([
+        'a3_npc_file',
+        'a3_drop_file',
+        'a3_map_file',
+        'a3_unknown_file',
+        'text_file',
+      ])
+      .optional(),
+    is_editable: z.boolean(),
+    is_viewable: z.boolean(),
+    api_endpoint: z.string().optional(),
+    children: z.array(FileNodeSchema).optional(),
+  }),
+);
+
+export type { FileNode };
+
+const FileTreeResponseSchema = z.object({
+  os: z.string(),
+  file_tree: FileNodeSchema,
+});
+
+export type FileTreeResponse = z.infer<typeof FileTreeResponseSchema>;
+
+export interface GetFileTreeParams {
+  path?: string;
+  show_dotfiles?: boolean;
+}
+
+export interface GetNPCFileParams {
+  path: string;
+}
+
+export interface GetTextFileParams {
+  path: string;
+}
+
+const UpdateFileResponseSchema = z.object({
+  message: z.string(),
+  revision_id: z.number().int(),
+});
+
+export type UpdateFileResponse = z.infer<typeof UpdateFileResponseSchema>;
+
+const RevisionSummaryResponseSchema = z.object({
+  count: z.number().int().nonnegative(),
+  last_revision_at: z.number().int().nullable().optional(),
+});
+
+export type RevisionSummaryResponse = z.infer<
+  typeof RevisionSummaryResponseSchema
+>;
+
+const TextFileAPIDataSchema = z.object({
+  content: z.string(),
+});
+
+export type TextFileAPIData = z.infer<typeof TextFileAPIDataSchema>;
+
+const MetricCardSchema = z.object({
+  name: z.string(),
+  metric_name: z.string(),
+  description: z.string(),
+  value: z.number(),
+  display_value: z.string(),
+});
+
+export type MetricCard = z.infer<typeof MetricCardSchema>;
+
+const MetricsSummaryResponseSchema = z.object({
+  cards: z.array(MetricCardSchema),
+});
+
+export type MetricsSummaryResponse = z.infer<
+  typeof MetricsSummaryResponseSchema
+>;
+
+const TimeRangeFilterSchema = z.object({
+  key: z.string(),
+  available_values: z.array(z.string()),
+  default_value: z.string(),
+});
+
+export type TimeRangeFilter = z.infer<typeof TimeRangeFilterSchema>;
+
+const ChartDataSchema = z.object({
+  title: z.string(),
+  metric_name: z.string(),
+  options: z.any() as z.ZodType<EChartsOption>,
+  filters: z.array(TimeRangeFilterSchema).optional(),
+});
+
+export type ChartData = z.infer<typeof ChartDataSchema>;
+
+const MetricsChartsResponseSchema = z.object({
+  charts: z.array(ChartDataSchema),
+});
+
+export type MetricsChartsResponse = z.infer<typeof MetricsChartsResponseSchema>;
+
+const axiosInstance = axios.create({
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+});
+
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<unknown>) => {
+    if (error.response) {
+      const status = error.response.status;
+      const errorData = error.response.data;
+
+      const parsedError = ErrorResponseSchema.safeParse(errorData);
+
+      if (parsedError.success) {
+        const errorMessage =
+          parsedError.data.errors?.[0] ||
+          parsedError.data.errorCode ||
+          error.message ||
+          `Request failed with status ${status}`;
+
+        return Promise.reject(
+          new APIError(errorMessage, status, parsedError.data),
+        );
+      }
+
+      const errorMessage =
+        error.message || `Request failed with status ${status}`;
+
+      return Promise.reject(new APIError(errorMessage, status));
+    }
+
+    if (error.request) {
+      return Promise.reject(
+        new APIError('Network error: Unable to reach the server', 0),
+      );
+    }
+
+    return Promise.reject(
+      new APIError(error.message || 'An unexpected error occurred', 0),
+    );
+  },
+);
+
+function validateResponse<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown,
+  endpoint: string,
+): T {
+  const result = schema.safeParse(data);
+
+  if (!result.success) {
+    console.log(result.error);
+    throw new APIValidationError(
+      `Response validation failed for ${endpoint}`,
+      result.error,
+      data,
+    );
+  }
+
+  return result.data;
+}
+
+export async function signIn(data: AuthRequest): Promise<AuthResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.AUTH_SIGN_IN,
+    AuthRequestSchema.parse(data),
+  );
+  return validateResponse(
+    AuthResponseSchema,
+    response.data,
+    API_ROUTES.AUTH_SIGN_IN,
+  );
+}
+
+export async function signUp(data: AuthRequest): Promise<AuthResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.AUTH_SIGN_UP,
+    AuthRequestSchema.parse(data),
+  );
+  return validateResponse(
+    AuthResponseSchema,
+    response.data,
+    API_ROUTES.AUTH_SIGN_UP,
+  );
+}
+
+export async function getSession(): Promise<GetSessionResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SESSION);
+  return validateResponse(
+    GetSessionResponseSchema,
+    response.data,
+    API_ROUTES.SESSION,
+  );
+}
+
+export async function signOut(): Promise<SignOutResponse> {
+  const response = await axiosInstance.delete<unknown>(
+    API_ROUTES.SESSION_SIGN_OUT,
+  );
+  return validateResponse(
+    SignOutResponseSchema,
+    response.data,
+    API_ROUTES.SESSION_SIGN_OUT,
+  );
+}
+
+export async function getStatus(): Promise<StatusResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.STATUS);
+  return validateResponse(
+    StatusResponseSchema,
+    response.data,
+    API_ROUTES.STATUS,
+  );
+}
+
+export async function getFileTree(
+  params?: GetFileTreeParams,
+): Promise<FileTreeResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.FILE_TREE, {
+    params,
+  });
+  return validateResponse(
+    FileTreeResponseSchema,
+    response.data,
+    API_ROUTES.FILE_TREE,
+  );
+}
+
+export async function getNPCFile(
+  params: GetNPCFileParams,
+): Promise<NPCFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.NPC_FILE, {
+    params,
+  });
+  return validateResponse(
+    NPCFileAPIDataSchema,
+    response.data,
+    API_ROUTES.NPC_FILE,
+  );
+}
+
+export async function updateNPCFile(
+  params: GetNPCFileParams,
+  data: NPCFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.NPC_FILE,
+    NPCFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.NPC_FILE,
+  );
+}
+
+export async function getTextFile(
+  params: GetTextFileParams,
+): Promise<TextFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.TEXT_FILE, {
+    params,
+  });
+  return validateResponse(
+    TextFileAPIDataSchema,
+    response.data,
+    API_ROUTES.TEXT_FILE,
+  );
+}
+
+export async function updateTextFile(
+  params: GetTextFileParams,
+  data: TextFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.TEXT_FILE,
+    TextFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.TEXT_FILE,
+  );
+}
+
+export async function revertFile(
+  params: GetTextFileParams,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.REVERT_FILE,
+    undefined,
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.REVERT_FILE,
+  );
+}
+
+export async function getRevisionSummary(
+  params: GetTextFileParams,
+): Promise<RevisionSummaryResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.REVISION_COUNT, {
+    params,
+  });
+  return validateResponse(
+    RevisionSummaryResponseSchema,
+    response.data,
+    API_ROUTES.REVISION_COUNT,
+  );
+}
+
+export async function getAllSettings(): Promise<Settings[]> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTINGS);
+  return validateResponse(
+    z.array(SettingsSchema),
+    response.data,
+    API_ROUTES.SETTINGS,
+  );
+}
+
+export async function getSetting(key: string): Promise<Settings> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTING(key));
+  return validateResponse(
+    SettingsSchema,
+    response.data,
+    API_ROUTES.SETTING(key),
+  );
+}
+
+export async function upsertSetting(
+  key: string,
+  data: UpsertSettingRequest,
+): Promise<Settings> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.SETTING(key),
+    UpsertSettingRequestSchema.parse(data),
+  );
+  return validateResponse(
+    SettingsSchema,
+    response.data,
+    API_ROUTES.SETTING(key),
+  );
+}
+
+export async function getMetricsSummary(): Promise<MetricsSummaryResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.METRICS_SUMMARY);
+  return validateResponse(
+    MetricsSummaryResponseSchema,
+    response.data,
+    API_ROUTES.METRICS_SUMMARY,
+  );
+}
+
+export async function getMetricsCharts(params?: {
+  range?: '1h' | '6h' | '1d' | '7d';
+}): Promise<MetricsChartsResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.METRICS_CHARTS, {
+    params,
+  });
+  return validateResponse(
+    MetricsChartsResponseSchema,
+    response.data,
+    API_ROUTES.METRICS_CHARTS,
+  );
+}

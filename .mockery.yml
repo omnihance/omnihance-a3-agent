@@ -1,0 +1,24 @@
+all: false
+dir: "{{.InterfaceDir}}"
+filename: mock_{{.InterfaceName}}.go
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+structname: "{{.Mock}}{{.InterfaceName}}"
+pkgname: "{{.SrcPackageName}}"
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: "{{.Template}}.schema.json"
+packages:
+  github.com/omnihance/omnihance-a3-agent/internal/logger:
+    config:
+      all: true
+  github.com/omnihance/omnihance-a3-agent/internal/db:
+    config:
+      all: true
+  github.com/omnihance/omnihance-a3-agent/internal/services:
+    config:
+      all: true

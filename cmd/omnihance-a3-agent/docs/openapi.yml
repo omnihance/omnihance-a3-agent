@@ -1,0 +1,1113 @@
+openapi: 3.1.0
+servers:
+  - url: http://localhost:8080
+info:
+  title: Omnihance A3 Agent API
+  version: 1.0.0
+  description: Omnihance A3 Agent API
+tags:
+  - description: Authentication operations
+    name: auth
+  - description: Session management
+    name: session
+  - description: Server status
+    name: status
+  - description: File system operations
+    name: file-system
+  - description: Server metrics
+    name: metrics
+
+paths:
+  /api/auth/sign-in:
+    post:
+      tags:
+        - auth
+      summary: Sign in user
+      description: Authenticates a user with email and password. Creates a session and sets an HTTP-only cookie. Returns success message on successful authentication.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Sign in successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad Request - Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Invalid email or password, or account is not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/sign-up:
+    post:
+      tags:
+        - auth
+      summary: Sign up new user
+      description: Creates a new user account. If no admin users exist, the first user becomes a super admin with active status. Otherwise, new users are created as regular users with pending status requiring admin approval.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Sign up successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad Request - Invalid request body, validation failed, or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/session:
+    get:
+      tags:
+        - session
+      summary: Get current session
+      description: Returns the current authenticated session information including user ID, email, roles, and session expiration.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Session information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSessionResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/session/sign-out:
+    delete:
+      tags:
+        - session
+      summary: Sign out user
+      description: Signs out the current user by deleting the session and clearing the authentication cookie.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Sign out successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Signed out successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/status:
+    get:
+      tags:
+        - status
+      summary: Get server status
+      description: Returns the current server status including name, version, setup status, and new version availability.
+      responses:
+        '200':
+          description: Server status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree:
+    get:
+      tags:
+        - file-system
+      summary: Get file system tree
+      description: Returns details of the file system. Can introspect a specific directory if 'path' is provided.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          description: The path to introspect. If not provided, returns system roots (drives on Windows, root on Linux).
+        - in: query
+          name: show_dotfiles
+          schema:
+            type: boolean
+            default: false
+          description: If true, includes files and directories that start with a dot (hidden files). Defaults to false.
+      responses:
+        '200':
+          description: File system tree with OS information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileTreeResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/npc-file:
+    get:
+      tags:
+        - file-system
+      summary: Get NPC file data
+      description: Reads and parses an A3 Online NPC file, returning its binary data as structured JSON. Only NPC files are supported. Returns an error if the path is a directory, file is not an NPC file, or cannot be read/parsed.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the NPC file to read and parse.
+      responses:
+        '200':
+          description: NPC file data retrieved and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NPCFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not an NPC file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read/parse error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update NPC file
+      description: Updates an NPC file with new data. Creates a revision entry in the database, saves the previous file copy, and writes the new data. All fields are required. Returns an error if the path is a directory, file is not an NPC file, file is not editable, or any operation fails.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the NPC file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NPCFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File updated successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not an NPC file, file is not editable, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/text-file:
+    get:
+      tags:
+        - file-system
+      summary: Get text file data
+      description: Reads a text file and returns its content as a string. Only text files (files with MIME type starting with "text/") are supported. Returns an error if the path is a directory, file is not a text file, or cannot be read.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the text file to read.
+      responses:
+        '200':
+          description: Text file data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not a text file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update text file
+      description: Updates a text file with new content. Creates a revision entry in the database, saves the previous file copy, and writes the new content. All fields are required. Returns an error if the path is a directory, file is not a text file, file is not editable, or any operation fails.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the text file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File updated successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not a text file, file is not editable, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/revert-file:
+    post:
+      tags:
+        - file-system
+      summary: Revert file to last completed revision
+      description: Reverts a file to its last completed revision. Finds the most recent completed revision, checks if the revision file exists, and copies it back to the original location. If the revision file is missing, marks the revision as corrupted. Returns an error if no completed revisions are found.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the file to revert.
+      responses:
+        '200':
+          description: File reverted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File reverted successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the revision that was reverted
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, path parameter is missing, or revision file is corrupted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found or no completed revisions found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - File is currently being edited by another process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/revision-summary:
+    get:
+      tags:
+        - file-system
+      summary: Get revision summary for a file
+      description: Returns a summary of completed revisions for a given file, including the count and the timestamp of the last revision. This can be used by the frontend to determine whether to show or hide the revert button and display when the file was last modified.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the file to get revision summary for.
+      responses:
+        '200':
+          description: Revision summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionSummary'
+        '400':
+          description: Bad Request - Path is a directory or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/metrics/summary:
+    get:
+      tags:
+        - metrics
+      summary: Get server metrics summary
+      description: Returns a summary of server metrics including CPU and RAM usage percentages. Returns an object containing an array of metric cards with current values.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cards:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MetricCard'
+              example:
+                cards:
+                  - name: "CPU"
+                    metric_name: "cpu_usage_percentage"
+                    description: "Usage Percentage"
+                    value: 15.56
+                    display_value: "15.56%"
+                  - name: "RAM"
+                    metric_name: "memory_usage_percentage"
+                    description: "Usage Percentage"
+                    value: 45.23
+                    display_value: "45.23%"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/metrics/charts:
+    get:
+      tags:
+        - metrics
+      summary: Get metrics charts configuration
+      description: Returns ECharts configuration options for CPU and RAM usage line charts. Includes chart data for the specified time range and available time range filters for the frontend. The endpoint accepts an optional time range query parameter (defaults to 1h).
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: range
+          schema:
+            type: string
+            default: "1h"
+            enum: ["1h", "6h", "1d", "7d"]
+          description: Time range for the chart data. Supported values: 1h (1 hour), 6h (6 hours), 1d (1 day), 7d (7 days). Defaults to 1h.
+      responses:
+        '200':
+          description: Charts configuration with ECharts options
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChartsResponse'
+              example:
+                charts:
+                  - title: "CPU Usage"
+                    metric_name: "cpu_usage_percentage"
+                    options:
+                      title:
+                        text: "CPU Usage"
+                        subtext: "Usage Percentage Over Time"
+                        left: "center"
+                      tooltip:
+                        trigger: "axis"
+                        axisPointer:
+                          type: "cross"
+                      legend:
+                        show: true
+                        top: "10%"
+                      grid:
+                        left: "3%"
+                        right: "4%"
+                        bottom: "3%"
+                        containLabel: true
+                      xAxis:
+                        - type: "time"
+                      yAxis:
+                        - type: "value"
+                          name: "Usage (%)"
+                          min: 0
+                          max: 100
+                          axisLabel:
+                            formatter: "{value}%"
+                      series:
+                        - name: "CPU Usage"
+                          type: "line"
+                          data: [[1609459200000, 15.5], [1609462800000, 18.2], [1609466400000, 16.8]]
+                          smooth: true
+                    filters:
+                      - key: "cpu_usage_percentage_range"
+                        available_values: ["1h", "6h", "1d", "7d"]
+                        default_value: "1h"
+                  - title: "RAM Usage"
+                    metric_name: "memory_usage_percentage"
+                    options:
+                      title:
+                        text: "RAM Usage"
+                        subtext: "Usage Percentage Over Time"
+                        left: "center"
+                      tooltip:
+                        trigger: "axis"
+                        axisPointer:
+                          type: "cross"
+                      legend:
+                        show: true
+                        top: "10%"
+                      grid:
+                        left: "3%"
+                        right: "4%"
+                        bottom: "3%"
+                        containLabel: true
+                      xAxis:
+                        - type: "time"
+                      yAxis:
+                        - type: "value"
+                          name: "Usage (%)"
+                          min: 0
+                          max: 100
+                          axisLabel:
+                            formatter: "{value}%"
+                      series:
+                        - name: "RAM Usage"
+                          type: "line"
+                          data: [[1609459200000, 45.2], [1609462800000, 47.1], [1609466400000, 46.5]]
+                          smooth: true
+                    filters:
+                      - key: "memory_usage_percentage_range"
+                        available_values: ["1h", "6h", "1d", "7d"]
+                        default_value: "1h"
+        '400':
+          description: Bad Request - Invalid time range format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: cookie
+      name: omnihance_a3_agent_session
+      description: Session cookie for authentication. The cookie is set automatically on sign-in and must be included in subsequent requests.
+  schemas:
+    AuthRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 6
+          description: User password (minimum 6 characters)
+          example: "password123"
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the operation was successful
+          example: true
+        message:
+          type: string
+          description: Response message
+          example: "Signed in successfully"
+    GetSessionResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+          description: Session identifier
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        user_id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        roles:
+          type: array
+          items:
+            type: string
+          description: User roles
+          example: ["super_admin"]
+        created_at:
+          type: string
+          format: date-time
+          description: Session creation timestamp
+        expires_at:
+          type: string
+          format: date-time
+          description: Session expiration timestamp
+    StatusResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Server name
+          example: "omnihance-a3-agent"
+        version:
+          type: string
+          description: Server version
+          example: "1.0.0"
+        setup_done:
+          type: boolean
+          description: Whether the initial setup has been completed
+          example: true
+        new_version_available:
+          type: boolean
+          description: Whether a new version is available
+          example: false
+        metrics_enabled:
+          type: boolean
+          description: Whether metrics collection is enabled
+          example: true
+    ErrorResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Error code identifier
+          example: "SETUP_ALREADY_DONE"
+        context:
+          type: string
+          description: Context where the error occurred
+          example: "setup"
+        errors:
+          type: array
+          items:
+            type: string
+          description: Array of error messages
+          example: ["Setup has already been done"]
+    FileNode:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the file/directory (MD5 hash of path)
+        name:
+          type: string
+          description: Name of the file or directory
+        kind:
+          type: string
+          description: Type of the node (directory or file)
+          enum: [directory, file]
+        depth:
+          type: integer
+          description: Depth of the node relative to the requested root
+        last_modified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        permissions:
+          type: string
+          description: File permissions
+        file_size:
+          type: integer
+          format: int64
+          description: Size of the file in bytes
+        file_extension:
+          type: string
+          description: File extension
+        mime_type:
+          type: string
+          description: MIME type of the file
+        file_type:
+          type: string
+          description: Type of the file as determined by the file editor service
+          enum: [a3_npc_file, a3_drop_file, a3_map_file, a3_unknown_file, text_file]
+        is_editable:
+          type: boolean
+          description: Whether the file can be edited
+        is_viewable:
+          type: boolean
+          description: Whether the file can be viewed (currently only NPC files are viewable)
+        api_endpoint:
+          type: string
+          description: API endpoint to access file data (only populated for files that have an associated endpoint, e.g., NPC files)
+          example: "/api/file-tree/npc-file"
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileNode'
+          description: List of child nodes (only populated for directories)
+    FileTreeResponse:
+      type: object
+      description: Response containing the file system tree and OS information
+      properties:
+        os:
+          type: string
+          description: Operating system the agent is running on (e.g., "windows", "linux", "darwin")
+          example: "windows"
+        file_tree:
+          $ref: '#/components/schemas/FileNode'
+          description: The file system tree structure
+    NPCFileAPIData:
+      type: object
+      description: Parsed binary data from an NPC file (API request/response format). All fields are required when used as a request body.
+      required:
+        - name
+        - id
+        - respawn_rate
+        - attack_type_info
+        - target_selection_info
+        - defense
+        - additional_defense
+        - attacks
+        - attack_speed_low
+        - attack_speed_high
+        - movement_speed
+        - level
+        - player_exp
+        - appearance
+        - hp
+        - blue_attack_defense
+        - red_attack_defense
+        - grey_attack_defense
+        - mercenary_exp
+      properties:
+        name:
+          type: string
+          description: NPC name (converted from binary, null-terminated)
+        id:
+          type: integer
+          format: uint16
+          description: NPC ID
+        respawn_rate:
+          type: integer
+          format: uint16
+          description: Respawn rate
+        attack_type_info:
+          type: integer
+          format: byte
+          description: Attack type information
+        target_selection_info:
+          type: integer
+          format: byte
+          description: Target selection information
+        defense:
+          type: integer
+          format: byte
+          description: Defense value
+        additional_defense:
+          type: integer
+          format: byte
+          description: Additional defense value
+        attacks:
+          type: array
+          items:
+            $ref: '#/components/schemas/NPCAttack'
+          maxItems: 3
+          description: Array of 3 NPC attacks
+        attack_speed_low:
+          type: integer
+          format: uint16
+          description: Low attack speed value
+        attack_speed_high:
+          type: integer
+          format: uint16
+          description: High attack speed value
+        movement_speed:
+          type: integer
+          format: uint32
+          description: Movement speed
+        level:
+          type: integer
+          format: byte
+          description: NPC level
+        player_exp:
+          type: integer
+          format: uint16
+          description: Experience given to player
+        appearance:
+          type: integer
+          format: byte
+          description: NPC appearance
+        hp:
+          type: integer
+          format: uint32
+          description: Hit points
+        blue_attack_defense:
+          type: integer
+          format: uint16
+          description: Blue attack defense
+        red_attack_defense:
+          type: integer
+          format: uint16
+          description: Red attack defense
+        grey_attack_defense:
+          type: integer
+          format: uint16
+          description: Grey attack defense
+        mercenary_exp:
+          type: integer
+          format: uint16
+          description: Experience given to mercenary
+    NPCAttack:
+      type: object
+      description: NPC attack information
+      properties:
+        range:
+          type: integer
+          format: uint16
+          description: Attack range
+        area:
+          type: integer
+          format: uint16
+          description: Attack area
+        damage:
+          type: integer
+          format: uint16
+          description: Attack damage
+        additional_damage:
+          type: integer
+          format: uint16
+          description: Additional attack damage
+    TextFileAPIData:
+      type: object
+      description: Text file content (API request/response format). All fields are required when used as a request body.
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: The text content of the file
+          example: "Hello, World!\nThis is a text file."
+    MetricCard:
+      type: object
+      description: A metric card containing metric information for display
+      properties:
+        name:
+          type: string
+          description: Display name of the metric
+          example: "CPU"
+        metric_name:
+          type: string
+          description: The name of the metric
+          example: "CPU"
+        description:
+          type: string
+          description: Description of what the metric represents
+          example: "Usage Percentage"
+        value:
+          type: number
+          format: double
+          description: The current value of the metric
+          example: 15.56
+        display_value:
+          type: string
+          description: Formatted display value with 2 decimal places and percentage symbol
+          example: "15.56%"
+    ChartsResponse:
+      type: object
+      description: Response containing chart configurations with ECharts options
+      properties:
+        charts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChartConfig'
+          description: Array of chart configurations
+    ChartConfig:
+      type: object
+      description: Configuration for a single chart with ECharts options
+      properties:
+        title:
+          type: string
+          description: Display title of the chart
+          example: "CPU Usage"
+        metric_name:
+          type: string
+          description: The metric name identifier
+          example: "cpu_usage_percentage"
+        options:
+          type: object
+          description: ECharts configuration options object. This is a complete ECharts option object that can be directly used with ECharts library in the frontend.
+          additionalProperties: true
+          example:
+            title:
+              text: "CPU Usage"
+              subtext: "Usage Percentage Over Time"
+              left: "center"
+            tooltip:
+              trigger: "axis"
+              axisPointer:
+                type: "cross"
+            legend:
+              show: true
+              top: "10%"
+            grid:
+              left: "3%"
+              right: "4%"
+              bottom: "3%"
+              containLabel: true
+            xAxis:
+              - type: "time"
+            yAxis:
+              - type: "value"
+                name: "Usage (%)"
+                min: 0
+                max: 100
+                axisLabel:
+                  formatter: "{value}%"
+            series:
+              - name: "CPU Usage"
+                type: "line"
+                data: [[1609459200000, 15.5], [1609462800000, 18.2]]
+                smooth: true
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeRangeFilter'
+          description: Available time range filters for this chart
+    TimeRangeFilter:
+      type: object
+      description: Time range filter configuration
+      properties:
+        key:
+          type: string
+          description: The filter key identifier
+          example: "cpu_usage_percentage_range"
+        available_values:
+          type: array
+          items:
+            type: string
+          description: List of available time range values
+          example: ["1h", "6h", "1d", "7d"]
+        default_value:
+          type: string
+          description: Default time range value
+          example: "1h"
+    RevisionSummary:
+      type: object
+      description: Summary of completed revisions for a file
+      properties:
+        count:
+          type: integer
+          format: int64
+          description: The number of completed revisions for the file
+          example: 5
+        last_revision_at:
+          type: integer
+          format: int64
+          nullable: true
+          description: Unix timestamp of the last completed revision. Null if no revisions exist.
+          example: 1609459200

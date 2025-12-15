@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Omnihance A3 Agent API Documentation</title>
+    <!-- Embed elements Elements via Web Component -->
+    <script src="https://unpkg.com/@stoplight/elements/web-components.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@stoplight/elements/styles.min.css"
+    />
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        // Get the path up to /docs/
+        const path = window.location.pathname;
+        const docsIndex = path.indexOf("/docs");
+        const basePath = path.substring(0, docsIndex);
+
+        // Create the elements-api element
+        const apiElement = document.createElement("elements-api");
+        apiElement.setAttribute("router", "hash");
+        apiElement.setAttribute("layout", "sidebar");
+        apiElement.setAttribute(
+          "apiDescriptionUrl",
+          `${basePath}/docs/openapi.yml`
+        );
+
+        // Add it to the body
+        document.body.appendChild(apiElement);
+      });
+    </script>
+  </head>
+  <body>
+    <!-- The elements-api element will be created dynamically -->
+  </body>
+</html>
