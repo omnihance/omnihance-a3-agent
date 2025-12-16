@@ -327,6 +327,68 @@ func (_c *MockFileEditorService_ReadNPCFileData_Call) RunAndReturn(run func(path
 	return _c
 }
 
+// ReadSpawnFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadSpawnFileData(path string) ([]NPCSpawnData, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadSpawnFileData")
+	}
+
+	var r0 []NPCSpawnData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]NPCSpawnData, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []NPCSpawnData); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]NPCSpawnData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadSpawnFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadSpawnFileData'
+type MockFileEditorService_ReadSpawnFileData_Call struct {
+	*mock.Call
+}
+
+// ReadSpawnFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadSpawnFileData(path interface{}) *MockFileEditorService_ReadSpawnFileData_Call {
+	return &MockFileEditorService_ReadSpawnFileData_Call{Call: _e.mock.On("ReadSpawnFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadSpawnFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadSpawnFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadSpawnFileData_Call) Return(nPCSpawnDatas []NPCSpawnData, err error) *MockFileEditorService_ReadSpawnFileData_Call {
+	_c.Call.Return(nPCSpawnDatas, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadSpawnFileData_Call) RunAndReturn(run func(path string) ([]NPCSpawnData, error)) *MockFileEditorService_ReadSpawnFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WriteNPCFileData provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) WriteNPCFileData(path string, data *NPCFileData) error {
 	ret := _mock.Called(path, data)
@@ -380,6 +442,63 @@ func (_c *MockFileEditorService_WriteNPCFileData_Call) Return(err error) *MockFi
 }
 
 func (_c *MockFileEditorService_WriteNPCFileData_Call) RunAndReturn(run func(path string, data *NPCFileData) error) *MockFileEditorService_WriteNPCFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteSpawnFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteSpawnFileData(path string, data []NPCSpawnData) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteSpawnFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, []NPCSpawnData) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteSpawnFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteSpawnFileData'
+type MockFileEditorService_WriteSpawnFileData_Call struct {
+	*mock.Call
+}
+
+// WriteSpawnFileData is a helper method to define mock.On call
+//   - path string
+//   - data []NPCSpawnData
+func (_e *MockFileEditorService_Expecter) WriteSpawnFileData(path interface{}, data interface{}) *MockFileEditorService_WriteSpawnFileData_Call {
+	return &MockFileEditorService_WriteSpawnFileData_Call{Call: _e.mock.On("WriteSpawnFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteSpawnFileData_Call) Run(run func(path string, data []NPCSpawnData)) *MockFileEditorService_WriteSpawnFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 []NPCSpawnData
+		if args[1] != nil {
+			arg1 = args[1].([]NPCSpawnData)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteSpawnFileData_Call) Return(err error) *MockFileEditorService_WriteSpawnFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteSpawnFileData_Call) RunAndReturn(run func(path string, data []NPCSpawnData) error) *MockFileEditorService_WriteSpawnFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }

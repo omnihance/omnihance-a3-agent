@@ -27,10 +27,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Cross-Platform Support**: Works on Windows (drive letters) and Unix-like systems
 - **File Type Detection**: Automatic detection of A3-specific file types:
   - NPC files (78-byte binary files)
+  - Spawn files (.n_ndt)
   - Drop files (.itm)
   - Map files (.map)
   - Text files (MIME type detection)
-- **File Viewing**: View NPC files and text files in the browser
+- **File Viewing**: View NPC files, spawn files, and text files in the browser
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -39,6 +40,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Movement and attack speeds
     - HP, Level, Experience values
     - Appearance and other attributes
+  - **Spawn File Editor**: Edit NPC spawn point configurations:
+    - Add, remove, and modify spawn points
+    - Configure NPC ID, X/Y coordinates, orientation
+    - Set spawn step and other spawn properties
+    - Table-based interface for managing multiple spawn points
   - **Text File Editor**: Edit text-based configuration files
 - **File Locking**: Prevents concurrent editing conflicts
 - **File Revisions**: Automatic version control for all file edits
@@ -128,6 +134,9 @@ omnihance-a3-agent-ui/
   │   │   ├── file-edit.tsx
   │   │   ├── file-view.tsx
   │   │   ├── npc-file-edit.tsx
+  │   │   ├── npc-file-view.tsx
+  │   │   ├── spawn-file-edit.tsx
+  │   │   ├── spawn-file-view.tsx
   │   │   ├── text-file-edit.tsx
   │   │   ├── metric-chart.tsx
   │   │   └── ui/              # shadcn/ui components
@@ -265,6 +274,8 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/file-tree` - Get file tree for a path
 - `GET /api/file-tree/npc-file` - Read NPC file data
 - `PUT /api/file-tree/npc-file` - Update NPC file
+- `GET /api/file-tree/spawn-file` - Read spawn file data
+- `PUT /api/file-tree/spawn-file` - Update spawn file
 - `GET /api/file-tree/text-file` - Read text file content
 - `PUT /api/file-tree/text-file` - Update text file
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
@@ -302,7 +313,7 @@ The application uses SQLite with the following main tables:
 
 4. **Navigate Files**: Use the file tree sidebar to browse your server's file system.
 
-5. **Edit Files**: Click on editable files (NPC files or text files) to view and edit them.
+5. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them.
 
 6. **Monitor Metrics**: View system metrics on the dashboard with real-time charts.
 

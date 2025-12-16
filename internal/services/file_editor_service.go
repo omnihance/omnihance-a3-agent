@@ -18,6 +18,7 @@ const (
 	FileTypeDrop    FileType = "a3_drop_file"
 	FileTypeMap     FileType = "a3_map_file"
 	FileTypeUnknown FileType = "a3_unknown_file"
+	FileTypeSpawn   FileType = "a3_spawn_file"
 	FileTypeText    FileType = "text_file"
 )
 
@@ -26,8 +27,9 @@ const (
 )
 
 const (
-	DropFileExtension = ".itm"
-	MapFileExtension  = ".map"
+	DropFileExtension  = ".itm"
+	MapFileExtension   = ".map"
+	SpawnFileExtension = ".n_ndt"
 )
 
 type FileEditorService interface {
@@ -38,6 +40,8 @@ type FileEditorService interface {
 	ReadNPCFileData(path string) (*NPCFileData, error)
 	WriteNPCFileData(path string, data *NPCFileData) error
 	WriteTextFileData(path string, content string) error
+	ReadSpawnFileData(path string) ([]NPCSpawnData, error)
+	WriteSpawnFileData(path string, data []NPCSpawnData) error
 }
 
 type fileEditorService struct {
@@ -54,6 +58,8 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeText:
 		return true
+	case FileTypeSpawn:
+		return true
 	default:
 		return false
 	}
@@ -66,6 +72,8 @@ func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) Fil
 		return FileTypeDrop
 	case MapFileExtension:
 		return FileTypeMap
+	case SpawnFileExtension:
+		return FileTypeSpawn
 	default:
 		if fileInfo.Size() == NPCFileSize {
 			return FileTypeNPC
@@ -86,6 +94,8 @@ func (fes *fileEditorService) IsFileViewable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeText:
 		return true
+	case FileTypeSpawn:
+		return true
 	default:
 		return false
 	}
@@ -97,6 +107,8 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 		return "/file-tree/npc-file"
 	case FileTypeText:
 		return "/file-tree/text-file"
+	case FileTypeSpawn:
+		return "/file-tree/spawn-file"
 	default:
 		return ""
 	}
@@ -119,29 +131,6 @@ func (fes *fileEditorService) ReadNPCFileData(path string) (*NPCFileData, error)
 	}
 
 	return &npcData, nil
-}
-
-type NPCFileData struct {
-	Name                [0x14]byte     `json:"name"`
-	Id                  uint16         `json:"id"`
-	RespawnRate         uint16         `json:"respawn_rate"`
-	AttackTypeInfo      byte           `json:"attack_type_info"`
-	TargetSelectionInfo byte           `json:"target_selection_info"`
-	Defense             byte           `json:"defense"`
-	AdditionalDefense   byte           `json:"additional_defense"`
-	Attacks             [0x3]NPCAttack `json:"attacks"`
-	AttackSpeedLow      uint16         `json:"attack_speed_low"`
-	AttackSpeedHigh     uint16         `json:"attack_speed_high"`
-	MovementSpeed       uint32         `json:"movement_speed"`
-	Level               byte           `json:"level"`
-	PlayerExp           uint16         `json:"player_exp"`
-	Appearance          byte           `json:"appearance"`
-	HP                  uint32         `json:"hp"`
-	BlueAttackDefense   uint16         `json:"blue_attack_defense"`
-	RedAttackDefense    uint16         `json:"red_attack_defense"`
-	GreyAttackDefense   uint16         `json:"grey_attack_defense"`
-	MercenaryExp        uint16         `json:"mercenary_exp"`
-	Unknown             uint16         `json:"unknown"`
 }
 
 func (fes *fileEditorService) WriteNPCFileData(path string, data *NPCFileData) error {
@@ -167,9 +156,90 @@ func (fes *fileEditorService) WriteTextFileData(path string, content string) err
 	return os.WriteFile(path, []byte(content), 0644)
 }
 
+func (fes *fileEditorService) ReadSpawnFileData(path string) ([]NPCSpawnData, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	spawnFileStat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	totalSpawns := spawnFileStat.Size() / 8
+	spawnData := make([]NPCSpawnData, totalSpawns)
+	for i := range spawnData {
+		spawnData[i] = NPCSpawnData{}
+		err = binary.Read(file, binary.LittleEndian, &spawnData[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return spawnData, nil
+}
+
+func (fes *fileEditorService) WriteSpawnFileData(path string, data []NPCSpawnData) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	if err := binary.Write(file, binary.LittleEndian, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type NPCFileData struct {
+	Name                [0x14]byte     `json:"name"`
+	Id                  uint16         `json:"id"`
+	RespawnRate         uint16         `json:"respawn_rate"`
+	AttackTypeInfo      byte           `json:"attack_type_info"`
+	TargetSelectionInfo byte           `json:"target_selection_info"`
+	Defense             byte           `json:"defense"`
+	AdditionalDefense   byte           `json:"additional_defense"`
+	Attacks             [0x3]NPCAttack `json:"attacks"`
+	AttackSpeedLow      uint16         `json:"attack_speed_low"`
+	AttackSpeedHigh     uint16         `json:"attack_speed_high"`
+	MovementSpeed       uint32         `json:"movement_speed"`
+	Level               byte           `json:"level"`
+	PlayerExp           uint16         `json:"player_exp"`
+	Appearance          byte           `json:"appearance"`
+	HP                  uint32         `json:"hp"`
+	BlueAttackDefense   uint16         `json:"blue_attack_defense"`
+	RedAttackDefense    uint16         `json:"red_attack_defense"`
+	GreyAttackDefense   uint16         `json:"grey_attack_defense"`
+	MercenaryExp        uint16         `json:"mercenary_exp"`
+	Unknown             uint16         `json:"unknown"`
+}
+
 type NPCAttack struct {
 	Range            uint16 `json:"range"`
 	Area             uint16 `json:"area"`
 	Damage           uint16 `json:"damage"`
 	AdditionalDamage uint16 `json:"additional_damage"`
+}
+
+type NPCSpawnData struct {
+	Id          uint16
+	X           byte
+	Y           byte
+	Unknown1    uint16
+	Orientation byte
+	SpwanStep   byte
 }

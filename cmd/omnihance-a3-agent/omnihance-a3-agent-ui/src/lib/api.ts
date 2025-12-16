@@ -13,6 +13,7 @@ export const API_ROUTES = {
   FILE_TREE: '/api/file-tree',
   NPC_FILE: '/api/file-tree/npc-file',
   TEXT_FILE: '/api/file-tree/text-file',
+  SPAWN_FILE: '/api/file-tree/spawn-file',
   REVERT_FILE: '/api/file-tree/revert-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
   SETTINGS: '/api/settings',
@@ -201,6 +202,7 @@ type FileNode = {
     | 'a3_npc_file'
     | 'a3_drop_file'
     | 'a3_map_file'
+    | 'a3_spawn_file'
     | 'a3_unknown_file'
     | 'text_file';
   is_editable: boolean;
@@ -225,6 +227,7 @@ const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
         'a3_npc_file',
         'a3_drop_file',
         'a3_map_file',
+        'a3_spawn_file',
         'a3_unknown_file',
         'text_file',
       ])
@@ -258,6 +261,10 @@ export interface GetTextFileParams {
   path: string;
 }
 
+export interface GetSpawnFileParams {
+  path: string;
+}
+
 const UpdateFileResponseSchema = z.object({
   message: z.string(),
   revision_id: z.number().int(),
@@ -279,6 +286,23 @@ const TextFileAPIDataSchema = z.object({
 });
 
 export type TextFileAPIData = z.infer<typeof TextFileAPIDataSchema>;
+
+const NPCSpawnAPIDataSchema = z.object({
+  id: z.number().int().nonnegative(),
+  x: z.number().int().min(0).max(255),
+  y: z.number().int().min(0).max(255),
+  unknown1: z.number().int().nonnegative(),
+  orientation: z.number().int().min(0).max(255),
+  spwan_step: z.number().int().min(0).max(255),
+});
+
+export type NPCSpawnAPIData = z.infer<typeof NPCSpawnAPIDataSchema>;
+
+const SpawnFileAPIDataSchema = z.object({
+  spawns: z.array(NPCSpawnAPIDataSchema),
+});
+
+export type SpawnFileAPIData = z.infer<typeof SpawnFileAPIDataSchema>;
 
 const MetricCardSchema = z.object({
   name: z.string(),
@@ -525,6 +549,37 @@ export async function updateTextFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.TEXT_FILE,
+  );
+}
+
+export async function getSpawnFile(
+  params: GetSpawnFileParams,
+): Promise<SpawnFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SPAWN_FILE, {
+    params,
+  });
+  return validateResponse(
+    SpawnFileAPIDataSchema,
+    response.data,
+    API_ROUTES.SPAWN_FILE,
+  );
+}
+
+export async function updateSpawnFile(
+  params: GetSpawnFileParams,
+  data: SpawnFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.SPAWN_FILE,
+    SpawnFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.SPAWN_FILE,
   );
 }
 

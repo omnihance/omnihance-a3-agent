@@ -32,12 +32,14 @@ import {
   getFileTree,
   getTextFile,
   getNPCFile,
+  getSpawnFile,
   getRevisionSummary,
   revertFile,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/utils';
 import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
+import { SpawnFileView } from '@/components/spawn-file-view';
 import { toast } from 'sonner';
 
 interface FileViewProps {
@@ -85,6 +87,18 @@ export function FileView({ filePath }: FileViewProps) {
     enabled: !!filePath && fileType === 'a3_npc_file',
   });
 
+  const {
+    data: spawnFileData,
+    isLoading: spawnFileLoading,
+    error: spawnFileError,
+  } = useQuery({
+    queryKey: ['spawn-file', filePath],
+    queryFn: () => {
+      return getSpawnFile({ path: filePath });
+    },
+    enabled: !!filePath && fileType === 'a3_spawn_file',
+  });
+
   const { data: revisionSummary, isLoading: revisionSummaryLoading } = useQuery(
     {
       queryKey: ['revision-summary', filePath],
@@ -108,6 +122,9 @@ export function FileView({ filePath }: FileViewProps) {
       });
       queryClient.invalidateQueries({
         queryKey: ['npc-file', filePath],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['spawn-file', filePath],
       });
       queryClient.invalidateQueries({
         queryKey: ['file-tree', filePath],
@@ -141,11 +158,15 @@ export function FileView({ filePath }: FileViewProps) {
       ? textFileError.getErrorMessage()
       : npcFileError instanceof APIError
         ? npcFileError.getErrorMessage()
-        : textFileError instanceof Error
-          ? textFileError.message
-          : npcFileError instanceof Error
-            ? npcFileError.message
-            : 'Failed to load file content';
+        : spawnFileError instanceof APIError
+          ? spawnFileError.getErrorMessage()
+          : textFileError instanceof Error
+            ? textFileError.message
+            : npcFileError instanceof Error
+              ? npcFileError.message
+              : spawnFileError instanceof Error
+                ? spawnFileError.message
+                : 'Failed to load file content';
 
   const getDirectoryPath = (filePath: string): string => {
     const isWindowsPath = /^[A-Za-z]:/.test(filePath);
@@ -219,7 +240,7 @@ export function FileView({ filePath }: FileViewProps) {
       )}
 
       {/* File Content Error */}
-      {(textFileError || npcFileError) && (
+      {(textFileError || npcFileError || spawnFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
@@ -370,11 +391,29 @@ export function FileView({ filePath }: FileViewProps) {
             </>
           )}
 
+          {fileType === 'a3_spawn_file' && (
+            <>
+              {spawnFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {spawnFileData && !spawnFileError && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Spawn Data</h2>
+                  <SpawnFileView data={spawnFileData} />
+                </div>
+              )}
+            </>
+          )}
+
           {fileType &&
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
+            fileType !== 'a3_spawn_file' &&
             !textFileLoading &&
-            !npcFileLoading && (
+            !npcFileLoading &&
+            !spawnFileLoading && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   File type &quot;{fileType}&quot; is not yet supported for

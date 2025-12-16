@@ -469,6 +469,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/spawn-file:
+    get:
+      tags:
+        - file-system
+      summary: Get spawn file data
+      description: Reads and parses an A3 Online spawn file (.n_ndt), returning its binary data as structured JSON. Only spawn files are supported. Returns an error if the path is a directory, file is not a spawn file, or cannot be read/parsed.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the spawn file to read and parse.
+      responses:
+        '200':
+          description: Spawn file data retrieved and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpawnFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not a spawn file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read/parse error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update spawn file
+      description: Updates a spawn file with new data. Creates a revision entry in the database, saves the previous file copy, and writes the new data. All fields are required. Returns an error if the path is a directory, file is not a spawn file, file is not editable, or any operation fails.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the spawn file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpawnFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File updated successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not a spawn file, file is not editable, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/revert-file:
     post:
       tags:
@@ -895,7 +1001,7 @@ components:
         file_type:
           type: string
           description: Type of the file as determined by the file editor service
-          enum: [a3_npc_file, a3_drop_file, a3_map_file, a3_unknown_file, text_file]
+          enum: [a3_npc_file, a3_drop_file, a3_map_file, a3_spawn_file, a3_unknown_file, text_file]
         is_editable:
           type: boolean
           description: Whether the file can be edited
@@ -1053,6 +1159,52 @@ components:
           type: string
           description: The text content of the file
           example: "Hello, World!\nThis is a text file."
+    SpawnFileAPIData:
+      type: object
+      description: Parsed binary data from a spawn file (API request/response format). All fields are required when used as a request body.
+      required:
+        - spawns
+      properties:
+        spawns:
+          type: array
+          items:
+            $ref: '#/components/schemas/NPCSpawnAPIData'
+          description: Array of NPC spawn entries
+    NPCSpawnAPIData:
+      type: object
+      description: NPC spawn entry information
+      required:
+        - id
+        - x
+        - y
+        - unknown1
+        - orientation
+        - spwan_step
+      properties:
+        id:
+          type: integer
+          format: uint16
+          description: NPC ID
+        x:
+          type: integer
+          format: byte
+          description: X coordinate
+        y:
+          type: integer
+          format: byte
+          description: Y coordinate
+        unknown1:
+          type: integer
+          format: uint16
+          description: Unknown field 1
+        orientation:
+          type: integer
+          format: byte
+          description: NPC orientation
+        spwan_step:
+          type: integer
+          format: byte
+          description: Spawn step
     MetricCard:
       type: object
       description: A metric card containing metric information for display

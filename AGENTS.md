@@ -52,6 +52,7 @@ This project has Omnihance A3 Agent Go code along with Omnihance A3 Agent UI whi
 - Leave a blank line after closing curly braces of conditions, loop, switch cases etc.
 - Be concise. Minimize any other prose.
 - Use early returns whenever possible to make the code more readable.
+- In go file try to keep miscellaneous helper type definitions at the bottom of the file. Keep only interface and it's struct definition of top.
 - In Omnihance A3 Agent UI always use Tailwind classes for styling HTML elements; avoid using CSS or tags.
 - In Omnihance A3 Agent UI implement accessibility features on elements. For example, a tag should have a tabindex=“0”, aria-label, on:click, and on:keydown, and similar attributes.
 - In Omnihance A3 Agent UI always use curly braces even for single line conditions and loops.
