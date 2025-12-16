@@ -16,6 +16,7 @@ import dashboardRoute from './routes/dashboard';
 import fileRoute from './routes/file';
 import fileViewRoute from './routes/file-view';
 import fileEditRoute from './routes/file-edit';
+import settingsRoute from './routes/settings';
 import reportWebVitals from './reportWebVitals.ts';
 
 const rootRoute = createRootRoute({
@@ -35,6 +36,7 @@ const routeTree = rootRoute.addChildren([
   fileRoute(rootRoute),
   fileViewRoute(rootRoute),
   fileEditRoute(rootRoute),
+  settingsRoute(rootRoute),
 ]);
 
 const TanStackQueryProviderContext = TanStackQueryProvider.getContext();

@@ -140,6 +140,26 @@ func (s *sqliteInternalDB) DeleteUserSessions(userID int64) error {
 	return nil
 }
 
+func (s *sqliteInternalDB) DeleteUserSessionsExcept(userID int64, exceptSessionID string) error {
+	_, err := s.goqu.Delete("sessions").
+		Prepared(true).
+		Where(goqu.Ex{"user_id": userID}).
+		Where(goqu.C("session_id").Neq(exceptSessionID)).
+		Executor().
+		Exec()
+	if err != nil {
+		s.logger.Error(
+			"failed to delete user sessions except current",
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "except_session_id", Value: exceptSessionID},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to delete user sessions except current: %w", err)
+	}
+
+	return nil
+}
+
 func (s *sqliteInternalDB) DeleteExpiredSessions() error {
 	_, err := s.goqu.Delete("sessions").
 		Prepared(true).

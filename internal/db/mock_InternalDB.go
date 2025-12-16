@@ -828,6 +828,63 @@ func (_c *MockInternalDB_DeleteUserSessions_Call) RunAndReturn(run func(userID i
 	return _c
 }
 
+// DeleteUserSessionsExcept provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) DeleteUserSessionsExcept(userID int64, exceptSessionID string) error {
+	ret := _mock.Called(userID, exceptSessionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteUserSessionsExcept")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string) error); ok {
+		r0 = returnFunc(userID, exceptSessionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_DeleteUserSessionsExcept_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteUserSessionsExcept'
+type MockInternalDB_DeleteUserSessionsExcept_Call struct {
+	*mock.Call
+}
+
+// DeleteUserSessionsExcept is a helper method to define mock.On call
+//   - userID int64
+//   - exceptSessionID string
+func (_e *MockInternalDB_Expecter) DeleteUserSessionsExcept(userID interface{}, exceptSessionID interface{}) *MockInternalDB_DeleteUserSessionsExcept_Call {
+	return &MockInternalDB_DeleteUserSessionsExcept_Call{Call: _e.mock.On("DeleteUserSessionsExcept", userID, exceptSessionID)}
+}
+
+func (_c *MockInternalDB_DeleteUserSessionsExcept_Call) Run(run func(userID int64, exceptSessionID string)) *MockInternalDB_DeleteUserSessionsExcept_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteUserSessionsExcept_Call) Return(err error) *MockInternalDB_DeleteUserSessionsExcept_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteUserSessionsExcept_Call) RunAndReturn(run func(userID int64, exceptSessionID string) error) *MockInternalDB_DeleteUserSessionsExcept_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetActiveUserByID provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetActiveUserByID(userID int64) (*User, error) {
 	ret := _mock.Called(userID)

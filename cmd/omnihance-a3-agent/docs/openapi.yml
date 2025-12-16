@@ -147,6 +147,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/session/update-password:
+    post:
+      tags:
+        - session
+      summary: Update user password
+      description: Updates the current user's password. Validates the current password, sets the new password, and logs out all other sessions except the current one. This ensures that after a password change, only the current session remains active.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordRequest'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Password updated successfully"
+        '400':
+          description: Bad Request - Invalid request body, validation failed, or current password is incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/status:
     get:
       tags:
@@ -727,6 +773,21 @@ components:
           type: string
           description: Response message
           example: "Signed in successfully"
+    UpdatePasswordRequest:
+      type: object
+      required:
+        - current_password
+        - new_password
+      properties:
+        current_password:
+          type: string
+          description: Current user password for verification
+          example: "oldpassword123"
+        new_password:
+          type: string
+          minLength: 6
+          description: New password (minimum 6 characters)
+          example: "newpassword123"
     GetSessionResponse:
       type: object
       properties:

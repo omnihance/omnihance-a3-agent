@@ -8,6 +8,7 @@ export const API_ROUTES = {
   AUTH_SIGN_UP: '/api/auth/sign-up',
   SESSION: '/api/session',
   SESSION_SIGN_OUT: '/api/session/sign-out',
+  SESSION_UPDATE_PASSWORD: '/api/session/update-password',
   STATUS: '/api/status',
   FILE_TREE: '/api/file-tree',
   NPC_FILE: '/api/file-tree/npc-file',
@@ -108,6 +109,22 @@ const SignOutResponseSchema = z.object({
 });
 
 export type SignOutResponse = z.infer<typeof SignOutResponseSchema>;
+
+const UpdatePasswordRequestSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(6),
+});
+
+export type UpdatePasswordRequest = z.infer<typeof UpdatePasswordRequestSchema>;
+
+const UpdatePasswordResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type UpdatePasswordResponse = z.infer<
+  typeof UpdatePasswordResponseSchema
+>;
 
 const StatusResponseSchema = z.object({
   name: z.string(),
@@ -410,6 +427,20 @@ export async function signOut(): Promise<SignOutResponse> {
     SignOutResponseSchema,
     response.data,
     API_ROUTES.SESSION_SIGN_OUT,
+  );
+}
+
+export async function updatePassword(
+  data: UpdatePasswordRequest,
+): Promise<UpdatePasswordResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SESSION_UPDATE_PASSWORD,
+    UpdatePasswordRequestSchema.parse(data),
+  );
+  return validateResponse(
+    UpdatePasswordResponseSchema,
+    response.data,
+    API_ROUTES.SESSION_UPDATE_PASSWORD,
   );
 }
 

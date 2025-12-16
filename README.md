@@ -254,6 +254,7 @@ The application uses environment variables for configuration. A `.env` file is a
 
 - `GET /api/session` - Get current session information
 - `DELETE /api/session/sign-out` - Sign out current user
+- `POST /api/session/update-password` - Update user password (requires current password, logs out all other sessions)
 
 ### Status
 

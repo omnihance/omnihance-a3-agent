@@ -40,6 +40,7 @@ type InternalDB interface {
 	UpdateSessionLastAccessed(sessionID string) error
 	DeleteSession(sessionID string) error
 	DeleteUserSessions(userID int64) error
+	DeleteUserSessionsExcept(userID int64, exceptSessionID string) error
 	DeleteExpiredSessions() error
 	GetUserByID(userID int64) (*User, error)
 	GetActiveUserByID(userID int64) (*User, error)
