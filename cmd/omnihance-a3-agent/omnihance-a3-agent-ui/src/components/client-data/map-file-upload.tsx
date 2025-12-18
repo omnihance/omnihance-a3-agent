@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Map, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import {
   Card,
@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadMcFile, APIError } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { queryKeys } from '@/constants';
 
 export function MapFileUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
     mutationFn: uploadMcFile,
@@ -25,6 +27,9 @@ export function MapFileUpload() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.maps,
+      });
     },
   });
 
