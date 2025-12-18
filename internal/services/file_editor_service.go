@@ -42,6 +42,17 @@ type FileEditorService interface {
 	WriteTextFileData(path string, content string) error
 	ReadSpawnFileData(path string) ([]NPCSpawnData, error)
 	WriteSpawnFileData(path string, data []NPCSpawnData) error
+	Stat(name string) (fs.FileInfo, error)
+	ReadDir(name string) ([]fs.DirEntry, error)
+	ReadFile(name string) ([]byte, error)
+	WriteFile(name string, data []byte, perm fs.FileMode) error
+	MkdirAll(path string, perm fs.FileMode) error
+	Remove(name string) error
+	RemoveAll(path string) error
+	OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error)
+	Hostname() (string, error)
+	IsNotExist(err error) bool
+	IsExist(err error) bool
 }
 
 type fileEditorService struct {
@@ -203,6 +214,50 @@ func (fes *fileEditorService) WriteSpawnFileData(path string, data []NPCSpawnDat
 	}
 
 	return nil
+}
+
+func (fes *fileEditorService) Stat(name string) (fs.FileInfo, error) {
+	return os.Stat(name)
+}
+
+func (fes *fileEditorService) ReadDir(name string) ([]fs.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+func (fes *fileEditorService) ReadFile(name string) ([]byte, error) {
+	return os.ReadFile(name)
+}
+
+func (fes *fileEditorService) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	return os.WriteFile(name, data, perm)
+}
+
+func (fes *fileEditorService) MkdirAll(path string, perm fs.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
+func (fes *fileEditorService) Remove(name string) error {
+	return os.Remove(name)
+}
+
+func (fes *fileEditorService) RemoveAll(path string) error {
+	return os.RemoveAll(path)
+}
+
+func (fes *fileEditorService) OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error) {
+	return os.OpenFile(name, flag, perm)
+}
+
+func (fes *fileEditorService) Hostname() (string, error) {
+	return os.Hostname()
+}
+
+func (fes *fileEditorService) IsNotExist(err error) bool {
+	return os.IsNotExist(err)
+}
+
+func (fes *fileEditorService) IsExist(err error) bool {
+	return os.IsExist(err)
 }
 
 type NPCFileData struct {

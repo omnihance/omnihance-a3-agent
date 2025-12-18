@@ -6,6 +6,7 @@ package services
 
 import (
 	"io/fs"
+	"os"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -151,6 +152,110 @@ func (_c *MockFileEditorService_GetFileType_Call) RunAndReturn(run func(path str
 	return _c
 }
 
+// Hostname provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) Hostname() (string, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Hostname")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (string, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() string); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_Hostname_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Hostname'
+type MockFileEditorService_Hostname_Call struct {
+	*mock.Call
+}
+
+// Hostname is a helper method to define mock.On call
+func (_e *MockFileEditorService_Expecter) Hostname() *MockFileEditorService_Hostname_Call {
+	return &MockFileEditorService_Hostname_Call{Call: _e.mock.On("Hostname")}
+}
+
+func (_c *MockFileEditorService_Hostname_Call) Run(run func()) *MockFileEditorService_Hostname_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_Hostname_Call) Return(s string, err error) *MockFileEditorService_Hostname_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_Hostname_Call) RunAndReturn(run func() (string, error)) *MockFileEditorService_Hostname_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsExist provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) IsExist(err error) bool {
+	ret := _mock.Called(err)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsExist")
+	}
+
+	var r0 bool
+	if returnFunc, ok := ret.Get(0).(func(error) bool); ok {
+		r0 = returnFunc(err)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	return r0
+}
+
+// MockFileEditorService_IsExist_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsExist'
+type MockFileEditorService_IsExist_Call struct {
+	*mock.Call
+}
+
+// IsExist is a helper method to define mock.On call
+//   - err error
+func (_e *MockFileEditorService_Expecter) IsExist(err interface{}) *MockFileEditorService_IsExist_Call {
+	return &MockFileEditorService_IsExist_Call{Call: _e.mock.On("IsExist", err)}
+}
+
+func (_c *MockFileEditorService_IsExist_Call) Run(run func(err error)) *MockFileEditorService_IsExist_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 error
+		if args[0] != nil {
+			arg0 = args[0].(error)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_IsExist_Call) Return(b bool) *MockFileEditorService_IsExist_Call {
+	_c.Call.Return(b)
+	return _c
+}
+
+func (_c *MockFileEditorService_IsExist_Call) RunAndReturn(run func(err error) bool) *MockFileEditorService_IsExist_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsFileEditable provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) bool {
 	ret := _mock.Called(path, fileInfo)
@@ -261,6 +366,312 @@ func (_c *MockFileEditorService_IsFileViewable_Call) Return(b bool) *MockFileEdi
 }
 
 func (_c *MockFileEditorService_IsFileViewable_Call) RunAndReturn(run func(path string, fileInfo fs.FileInfo) bool) *MockFileEditorService_IsFileViewable_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsNotExist provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) IsNotExist(err error) bool {
+	ret := _mock.Called(err)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsNotExist")
+	}
+
+	var r0 bool
+	if returnFunc, ok := ret.Get(0).(func(error) bool); ok {
+		r0 = returnFunc(err)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	return r0
+}
+
+// MockFileEditorService_IsNotExist_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsNotExist'
+type MockFileEditorService_IsNotExist_Call struct {
+	*mock.Call
+}
+
+// IsNotExist is a helper method to define mock.On call
+//   - err error
+func (_e *MockFileEditorService_Expecter) IsNotExist(err interface{}) *MockFileEditorService_IsNotExist_Call {
+	return &MockFileEditorService_IsNotExist_Call{Call: _e.mock.On("IsNotExist", err)}
+}
+
+func (_c *MockFileEditorService_IsNotExist_Call) Run(run func(err error)) *MockFileEditorService_IsNotExist_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 error
+		if args[0] != nil {
+			arg0 = args[0].(error)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_IsNotExist_Call) Return(b bool) *MockFileEditorService_IsNotExist_Call {
+	_c.Call.Return(b)
+	return _c
+}
+
+func (_c *MockFileEditorService_IsNotExist_Call) RunAndReturn(run func(err error) bool) *MockFileEditorService_IsNotExist_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MkdirAll provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) MkdirAll(path string, perm fs.FileMode) error {
+	ret := _mock.Called(path, perm)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MkdirAll")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, fs.FileMode) error); ok {
+		r0 = returnFunc(path, perm)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_MkdirAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MkdirAll'
+type MockFileEditorService_MkdirAll_Call struct {
+	*mock.Call
+}
+
+// MkdirAll is a helper method to define mock.On call
+//   - path string
+//   - perm fs.FileMode
+func (_e *MockFileEditorService_Expecter) MkdirAll(path interface{}, perm interface{}) *MockFileEditorService_MkdirAll_Call {
+	return &MockFileEditorService_MkdirAll_Call{Call: _e.mock.On("MkdirAll", path, perm)}
+}
+
+func (_c *MockFileEditorService_MkdirAll_Call) Run(run func(path string, perm fs.FileMode)) *MockFileEditorService_MkdirAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 fs.FileMode
+		if args[1] != nil {
+			arg1 = args[1].(fs.FileMode)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_MkdirAll_Call) Return(err error) *MockFileEditorService_MkdirAll_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_MkdirAll_Call) RunAndReturn(run func(path string, perm fs.FileMode) error) *MockFileEditorService_MkdirAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// OpenFile provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) OpenFile(name string, flag int, perm fs.FileMode) (*os.File, error) {
+	ret := _mock.Called(name, flag, perm)
+
+	if len(ret) == 0 {
+		panic("no return value specified for OpenFile")
+	}
+
+	var r0 *os.File
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, int, fs.FileMode) (*os.File, error)); ok {
+		return returnFunc(name, flag, perm)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, int, fs.FileMode) *os.File); ok {
+		r0 = returnFunc(name, flag, perm)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*os.File)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, int, fs.FileMode) error); ok {
+		r1 = returnFunc(name, flag, perm)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_OpenFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OpenFile'
+type MockFileEditorService_OpenFile_Call struct {
+	*mock.Call
+}
+
+// OpenFile is a helper method to define mock.On call
+//   - name string
+//   - flag int
+//   - perm fs.FileMode
+func (_e *MockFileEditorService_Expecter) OpenFile(name interface{}, flag interface{}, perm interface{}) *MockFileEditorService_OpenFile_Call {
+	return &MockFileEditorService_OpenFile_Call{Call: _e.mock.On("OpenFile", name, flag, perm)}
+}
+
+func (_c *MockFileEditorService_OpenFile_Call) Run(run func(name string, flag int, perm fs.FileMode)) *MockFileEditorService_OpenFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 fs.FileMode
+		if args[2] != nil {
+			arg2 = args[2].(fs.FileMode)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_OpenFile_Call) Return(file *os.File, err error) *MockFileEditorService_OpenFile_Call {
+	_c.Call.Return(file, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_OpenFile_Call) RunAndReturn(run func(name string, flag int, perm fs.FileMode) (*os.File, error)) *MockFileEditorService_OpenFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadDir provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadDir(name string) ([]fs.DirEntry, error) {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadDir")
+	}
+
+	var r0 []fs.DirEntry
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]fs.DirEntry, error)); ok {
+		return returnFunc(name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []fs.DirEntry); ok {
+		r0 = returnFunc(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]fs.DirEntry)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadDir_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadDir'
+type MockFileEditorService_ReadDir_Call struct {
+	*mock.Call
+}
+
+// ReadDir is a helper method to define mock.On call
+//   - name string
+func (_e *MockFileEditorService_Expecter) ReadDir(name interface{}) *MockFileEditorService_ReadDir_Call {
+	return &MockFileEditorService_ReadDir_Call{Call: _e.mock.On("ReadDir", name)}
+}
+
+func (_c *MockFileEditorService_ReadDir_Call) Run(run func(name string)) *MockFileEditorService_ReadDir_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadDir_Call) Return(dirEntrys []fs.DirEntry, err error) *MockFileEditorService_ReadDir_Call {
+	_c.Call.Return(dirEntrys, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadDir_Call) RunAndReturn(run func(name string) ([]fs.DirEntry, error)) *MockFileEditorService_ReadDir_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadFile provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadFile(name string) ([]byte, error) {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadFile")
+	}
+
+	var r0 []byte
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]byte, error)); ok {
+		return returnFunc(name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []byte); ok {
+		r0 = returnFunc(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadFile'
+type MockFileEditorService_ReadFile_Call struct {
+	*mock.Call
+}
+
+// ReadFile is a helper method to define mock.On call
+//   - name string
+func (_e *MockFileEditorService_Expecter) ReadFile(name interface{}) *MockFileEditorService_ReadFile_Call {
+	return &MockFileEditorService_ReadFile_Call{Call: _e.mock.On("ReadFile", name)}
+}
+
+func (_c *MockFileEditorService_ReadFile_Call) Run(run func(name string)) *MockFileEditorService_ReadFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadFile_Call) Return(bytes []byte, err error) *MockFileEditorService_ReadFile_Call {
+	_c.Call.Return(bytes, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadFile_Call) RunAndReturn(run func(name string) ([]byte, error)) *MockFileEditorService_ReadFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -385,6 +796,233 @@ func (_c *MockFileEditorService_ReadSpawnFileData_Call) Return(nPCSpawnDatas []N
 }
 
 func (_c *MockFileEditorService_ReadSpawnFileData_Call) RunAndReturn(run func(path string) ([]NPCSpawnData, error)) *MockFileEditorService_ReadSpawnFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Remove provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) Remove(name string) error {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Remove")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string) error); ok {
+		r0 = returnFunc(name)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_Remove_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Remove'
+type MockFileEditorService_Remove_Call struct {
+	*mock.Call
+}
+
+// Remove is a helper method to define mock.On call
+//   - name string
+func (_e *MockFileEditorService_Expecter) Remove(name interface{}) *MockFileEditorService_Remove_Call {
+	return &MockFileEditorService_Remove_Call{Call: _e.mock.On("Remove", name)}
+}
+
+func (_c *MockFileEditorService_Remove_Call) Run(run func(name string)) *MockFileEditorService_Remove_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_Remove_Call) Return(err error) *MockFileEditorService_Remove_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_Remove_Call) RunAndReturn(run func(name string) error) *MockFileEditorService_Remove_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RemoveAll provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) RemoveAll(path string) error {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveAll")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string) error); ok {
+		r0 = returnFunc(path)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_RemoveAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveAll'
+type MockFileEditorService_RemoveAll_Call struct {
+	*mock.Call
+}
+
+// RemoveAll is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) RemoveAll(path interface{}) *MockFileEditorService_RemoveAll_Call {
+	return &MockFileEditorService_RemoveAll_Call{Call: _e.mock.On("RemoveAll", path)}
+}
+
+func (_c *MockFileEditorService_RemoveAll_Call) Run(run func(path string)) *MockFileEditorService_RemoveAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_RemoveAll_Call) Return(err error) *MockFileEditorService_RemoveAll_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_RemoveAll_Call) RunAndReturn(run func(path string) error) *MockFileEditorService_RemoveAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Stat provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) Stat(name string) (fs.FileInfo, error) {
+	ret := _mock.Called(name)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Stat")
+	}
+
+	var r0 fs.FileInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (fs.FileInfo, error)); ok {
+		return returnFunc(name)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) fs.FileInfo); ok {
+		r0 = returnFunc(name)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(fs.FileInfo)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(name)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_Stat_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stat'
+type MockFileEditorService_Stat_Call struct {
+	*mock.Call
+}
+
+// Stat is a helper method to define mock.On call
+//   - name string
+func (_e *MockFileEditorService_Expecter) Stat(name interface{}) *MockFileEditorService_Stat_Call {
+	return &MockFileEditorService_Stat_Call{Call: _e.mock.On("Stat", name)}
+}
+
+func (_c *MockFileEditorService_Stat_Call) Run(run func(name string)) *MockFileEditorService_Stat_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_Stat_Call) Return(fileInfo fs.FileInfo, err error) *MockFileEditorService_Stat_Call {
+	_c.Call.Return(fileInfo, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_Stat_Call) RunAndReturn(run func(name string) (fs.FileInfo, error)) *MockFileEditorService_Stat_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteFile provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	ret := _mock.Called(name, data, perm)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteFile")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, []byte, fs.FileMode) error); ok {
+		r0 = returnFunc(name, data, perm)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteFile'
+type MockFileEditorService_WriteFile_Call struct {
+	*mock.Call
+}
+
+// WriteFile is a helper method to define mock.On call
+//   - name string
+//   - data []byte
+//   - perm fs.FileMode
+func (_e *MockFileEditorService_Expecter) WriteFile(name interface{}, data interface{}, perm interface{}) *MockFileEditorService_WriteFile_Call {
+	return &MockFileEditorService_WriteFile_Call{Call: _e.mock.On("WriteFile", name, data, perm)}
+}
+
+func (_c *MockFileEditorService_WriteFile_Call) Run(run func(name string, data []byte, perm fs.FileMode)) *MockFileEditorService_WriteFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 []byte
+		if args[1] != nil {
+			arg1 = args[1].([]byte)
+		}
+		var arg2 fs.FileMode
+		if args[2] != nil {
+			arg2 = args[2].(fs.FileMode)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteFile_Call) Return(err error) *MockFileEditorService_WriteFile_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteFile_Call) RunAndReturn(run func(name string, data []byte, perm fs.FileMode) error) *MockFileEditorService_WriteFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

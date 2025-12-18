@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
@@ -52,7 +53,7 @@ func (s *Server) handleFileTree(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -78,7 +79,7 @@ func (s *Server) handleFileTree(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
-	hostname, _ := os.Hostname()
+	hostname, _ := s.fileEditor.Hostname()
 	if hostname == "" {
 		hostname = "A3 Online Server"
 	}
@@ -94,7 +95,7 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 	if runtime.GOOS == "windows" {
 		for _, drive := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
 			drivePath := string(drive) + ":\\"
-			if info, err := os.Stat(drivePath); err == nil {
+			if info, err := s.fileEditor.Stat(drivePath); err == nil {
 				modTime := info.ModTime()
 				node := &FileNode{
 					ID:           utils.GenerateMD5Hash(drivePath),
@@ -110,7 +111,7 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 		}
 	} else {
 		rootPath := "/"
-		entries, err := os.ReadDir(rootPath)
+		entries, err := s.fileEditor.ReadDir(rootPath)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +130,7 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 }
 
 func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, error) {
-	info, err := os.Stat(path)
+	info, err := s.fileEditor.Stat(path)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, er
 
 	if info.IsDir() {
 		node.Kind = "directory"
-		entries, err := os.ReadDir(path)
+		entries, err := s.fileEditor.ReadDir(path)
 		if err == nil {
 			for _, entry := range entries {
 				if !showDotfiles && len(entry.Name()) > 0 && entry.Name()[0] == '.' {
@@ -176,7 +177,7 @@ func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, er
 	return node, nil
 }
 
-func (s *Server) createNodeFromEntry(parentPath string, entry os.DirEntry, depth int) *FileNode {
+func (s *Server) createNodeFromEntry(parentPath string, entry fs.DirEntry, depth int) *FileNode {
 	kind := "file"
 	if entry.IsDir() {
 		kind = "directory"
@@ -224,10 +225,10 @@ func (s *Server) handleNPCFileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -328,10 +329,10 @@ func (s *Server) handleTextFileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -367,7 +368,7 @@ func (s *Server) handleTextFileData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content, err := os.ReadFile(cleanPath)
+	content, err := s.fileEditor.ReadFile(cleanPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -396,9 +397,9 @@ func (s *Server) handleSpawnFileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -491,9 +492,9 @@ func (s *Server) validateFileUpdateRequest(w http.ResponseWriter, r *http.Reques
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -600,7 +601,7 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	}
 
 	revisionDir := filepath.Join(s.cfg.RevisionsDirectory, ctx.fileID, strconv.FormatInt(revisionID, 10))
-	if err = os.MkdirAll(revisionDir, 0755); err != nil {
+	if err = s.fileEditor.MkdirAll(revisionDir, 0755); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
@@ -613,8 +614,8 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	fileName := filepath.Base(ctx.cleanPath)
 	revisionFileName := strconv.FormatInt(epochTime, 10) + "_" + fileName
 	revisionPath := filepath.Join(revisionDir, revisionFileName)
-	if err = os.WriteFile(revisionPath, previousData, 0644); err != nil {
-		if removeErr := os.RemoveAll(revisionDir); removeErr != nil {
+	if err = s.fileEditor.WriteFile(revisionPath, previousData, 0644); err != nil {
+		if removeErr := s.fileEditor.RemoveAll(revisionDir); removeErr != nil {
 			s.log.Error("Failed to remove revision directory during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
@@ -627,11 +628,11 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	}
 
 	if err = s.internalDB.UpdateFileRevisionPath(tx, revisionID, revisionPath, ctx.userID); err != nil {
-		if removeErr := os.Remove(revisionPath); removeErr != nil {
+		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
 			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
-		if removeErr := os.RemoveAll(revisionDir); removeErr != nil {
+		if removeErr := s.fileEditor.RemoveAll(revisionDir); removeErr != nil {
 			s.log.Error("Failed to remove revision directory during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
@@ -644,11 +645,11 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	}
 
 	if err = s.internalDB.UpdateFileRevisionStatus(tx, revisionID, "completed", ctx.userID); err != nil {
-		if removeErr := os.Remove(revisionPath); removeErr != nil {
+		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
 			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
-		if removeErr := os.RemoveAll(revisionDir); removeErr != nil {
+		if removeErr := s.fileEditor.RemoveAll(revisionDir); removeErr != nil {
 			s.log.Error("Failed to remove revision directory during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
@@ -661,11 +662,11 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	}
 
 	if err = tx.Commit(); err != nil {
-		if removeErr := os.Remove(revisionPath); removeErr != nil {
+		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
 			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
-		if removeErr := os.RemoveAll(revisionDir); removeErr != nil {
+		if removeErr := s.fileEditor.RemoveAll(revisionDir); removeErr != nil {
 			s.log.Error("Failed to remove revision directory during cleanup", logger.Field{Key: "error", Value: removeErr})
 		}
 
@@ -711,7 +712,7 @@ func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := os.ReadFile(ctx.cleanPath)
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -812,7 +813,7 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := os.ReadFile(ctx.cleanPath)
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -875,7 +876,7 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := os.ReadFile(ctx.cleanPath)
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -931,18 +932,19 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) acquireFileLock(fileID string) (string, error) {
 	locksDir := filepath.Join(s.cfg.RevisionsDirectory, "locks")
-	if err := os.MkdirAll(locksDir, 0755); err != nil {
+	if err := s.fileEditor.MkdirAll(locksDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create locks directory: %w", err)
 	}
 
 	lockPath := filepath.Join(locksDir, fileID+".lock")
-	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	lockFile, err := s.fileEditor.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
-		if os.IsExist(err) {
+		if s.fileEditor.IsExist(err) {
 			return "", fmt.Errorf("file is currently being edited by another process")
 		}
 		return "", fmt.Errorf("failed to create lock file: %w", err)
 	}
+
 	if err := lockFile.Close(); err != nil {
 		s.log.Error("Failed to close lock file", logger.Field{Key: "error", Value: err})
 	}
@@ -972,9 +974,9 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -1033,7 +1035,7 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := os.Stat(revision.RevisionPath); os.IsNotExist(err) {
+	if _, err := s.fileEditor.Stat(revision.RevisionPath); s.fileEditor.IsNotExist(err) {
 		tx, err := s.internalDB.BeginTx()
 		if err != nil {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -1078,7 +1080,7 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	revisionData, err := os.ReadFile(revision.RevisionPath)
+	revisionData, err := s.fileEditor.ReadFile(revision.RevisionPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -1126,7 +1128,7 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 
 	err = nil
 
-	if err = os.WriteFile(cleanPath, revisionData, 0644); err != nil {
+	if err = s.fileEditor.WriteFile(cleanPath, revisionData, 0644); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
@@ -1153,9 +1155,9 @@ func (s *Server) handleRevisionSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cleanPath := filepath.Clean(pathParam)
-	info, err := os.Stat(cleanPath)
+	info, err := s.fileEditor.Stat(cleanPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if s.fileEditor.IsNotExist(err) {
 			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
 				"errorCode": constants.ErrorCodeNotFound,
 				"context":   "file-system",
@@ -1197,7 +1199,7 @@ func (s *Server) handleRevisionSummary(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) releaseFileLock(lockPath string) {
 	if lockPath != "" {
-		if err := os.Remove(lockPath); err != nil {
+		if err := s.fileEditor.Remove(lockPath); err != nil {
 			s.log.Error("Failed to remove lock file", logger.Field{Key: "error", Value: err})
 		}
 	}
@@ -1267,6 +1269,6 @@ type NPCSpawnAPIData struct {
 type fileUpdateContext struct {
 	userID    int64
 	cleanPath string
-	info      os.FileInfo
+	info      fs.FileInfo
 	fileID    string
 }
