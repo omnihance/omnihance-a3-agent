@@ -16,6 +16,8 @@ tags:
     name: file-system
   - description: Server metrics
     name: metrics
+  - description: Game data operations
+    name: game-data
 
 paths:
   /api/auth/sign-in:
@@ -843,6 +845,239 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/monsters:
+    get:
+      tags:
+        - game-data
+      summary: Get monster client data
+      description: Returns a list of monster client data. Supports optional search filtering by name using the 's' query parameter. If no search parameter is provided, returns all monster data.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: s
+          schema:
+            type: string
+          description: Optional search string to filter monsters by name (case-insensitive partial match). If not provided, returns all monsters.
+          example: "goblin"
+      responses:
+        '200':
+          description: Monster client data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameClientDataResponse'
+              example:
+                - id: 1
+                  name: "Goblin Warrior"
+                - id: 2
+                  name: "Goblin Archer"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-mon-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload monster list client data file
+      description: Uploads and processes a monster list client data file (MON.ull). The file is decoded using ULL decryption, parsed into structured monster data, and bulk replaces all existing monster client data in the database. The file size must not exceed the maximum upload size configured in the server. All uploaded monsters are associated with the current user as both creator and updater.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The monster list client data file (MON.ull) to upload. Must be ULL-encrypted binary format.
+      responses:
+        '200':
+          description: Monster list file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Monster list file uploaded successfully"
+                  count:
+                    type: integer
+                    format: int64
+                    description: The number of monster records that were uploaded
+                    example: 150
+        '400':
+          description: Bad Request - File size exceeds maximum allowed size, failed to parse multipart form, file not found in form, or failed to parse monster file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - User ID not found in context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save monster data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-mc-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload map list client data file
+      description: Uploads and processes a map list client data file (MC.ull). The file is decoded using ULL decryption, parsed into structured map data, and bulk replaces all existing map client data in the database. The file size must not exceed the maximum upload size configured in the server. All uploaded maps are associated with the current user as both creator and updater.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The map list client data file (MC.ull) to upload. Must be ULL-encrypted binary format.
+      responses:
+        '200':
+          description: Map list file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Map list file uploaded successfully"
+                  count:
+                    type: integer
+                    format: int64
+                    description: The number of map list records that were uploaded
+                    example: 50
+        '400':
+          description: Bad Request - File size exceeds maximum allowed size, failed to parse multipart form, file not found in form, or failed to parse map file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - User ID not found in context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save map data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/maps:
+    get:
+      tags:
+        - game-data
+      summary: Get map client data
+      description: Returns a list of map client data. Supports optional search filtering by name using the 's' query parameter. If no search parameter is provided, returns all map data.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: s
+          schema:
+            type: string
+          description: Optional search string to filter maps by name (case-insensitive partial match). If not provided, returns all maps.
+          example: "forest"
+      responses:
+        '200':
+          description: Map client data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameClientDataResponse'
+              example:
+                - id: 1
+                  name: "Forest Map"
+                - id: 2
+                  name: "Forest Dungeon"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/items:
+    get:
+      tags:
+        - game-data
+      summary: Get item client data
+      description: Returns a list of item client data. Supports optional search filtering by name using the 's' query parameter. If no search parameter is provided, returns all item data.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: s
+          schema:
+            type: string
+          description: Optional search string to filter items by name (case-insensitive partial match). If not provided, returns all items.
+          example: "sword"
+      responses:
+        '200':
+          description: Item client data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameClientDataResponse'
+              example:
+                - id: 1
+                  name: "Iron Sword"
+                - id: 2
+                  name: "Steel Sword"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -1324,3 +1559,16 @@ components:
           nullable: true
           description: Unix timestamp of the last completed revision. Null if no revisions exist.
           example: 1609459200
+    GameClientDataResponse:
+      type: object
+      description: Game client data response containing ID and name
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the game data entry
+          example: 1
+        name:
+          type: string
+          description: Name of the game data entry
+          example: "Goblin Warrior"

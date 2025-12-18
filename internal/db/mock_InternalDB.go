@@ -93,6 +93,159 @@ func (_c *MockInternalDB_BeginTx_Call) RunAndReturn(run func() (*goqu.TxDatabase
 	return _c
 }
 
+// BulkReplaceItemClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) BulkReplaceItemClientData(data []ItemClientData) error {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkReplaceItemClientData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func([]ItemClientData) error); ok {
+		r0 = returnFunc(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_BulkReplaceItemClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkReplaceItemClientData'
+type MockInternalDB_BulkReplaceItemClientData_Call struct {
+	*mock.Call
+}
+
+// BulkReplaceItemClientData is a helper method to define mock.On call
+//   - data []ItemClientData
+func (_e *MockInternalDB_Expecter) BulkReplaceItemClientData(data interface{}) *MockInternalDB_BulkReplaceItemClientData_Call {
+	return &MockInternalDB_BulkReplaceItemClientData_Call{Call: _e.mock.On("BulkReplaceItemClientData", data)}
+}
+
+func (_c *MockInternalDB_BulkReplaceItemClientData_Call) Run(run func(data []ItemClientData)) *MockInternalDB_BulkReplaceItemClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []ItemClientData
+		if args[0] != nil {
+			arg0 = args[0].([]ItemClientData)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceItemClientData_Call) Return(err error) *MockInternalDB_BulkReplaceItemClientData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceItemClientData_Call) RunAndReturn(run func(data []ItemClientData) error) *MockInternalDB_BulkReplaceItemClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BulkReplaceMapClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) BulkReplaceMapClientData(data []MapClientData) error {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkReplaceMapClientData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func([]MapClientData) error); ok {
+		r0 = returnFunc(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_BulkReplaceMapClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkReplaceMapClientData'
+type MockInternalDB_BulkReplaceMapClientData_Call struct {
+	*mock.Call
+}
+
+// BulkReplaceMapClientData is a helper method to define mock.On call
+//   - data []MapClientData
+func (_e *MockInternalDB_Expecter) BulkReplaceMapClientData(data interface{}) *MockInternalDB_BulkReplaceMapClientData_Call {
+	return &MockInternalDB_BulkReplaceMapClientData_Call{Call: _e.mock.On("BulkReplaceMapClientData", data)}
+}
+
+func (_c *MockInternalDB_BulkReplaceMapClientData_Call) Run(run func(data []MapClientData)) *MockInternalDB_BulkReplaceMapClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []MapClientData
+		if args[0] != nil {
+			arg0 = args[0].([]MapClientData)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceMapClientData_Call) Return(err error) *MockInternalDB_BulkReplaceMapClientData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceMapClientData_Call) RunAndReturn(run func(data []MapClientData) error) *MockInternalDB_BulkReplaceMapClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// BulkReplaceMonsterClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) BulkReplaceMonsterClientData(data []MonsterClientData) error {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BulkReplaceMonsterClientData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func([]MonsterClientData) error); ok {
+		r0 = returnFunc(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_BulkReplaceMonsterClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BulkReplaceMonsterClientData'
+type MockInternalDB_BulkReplaceMonsterClientData_Call struct {
+	*mock.Call
+}
+
+// BulkReplaceMonsterClientData is a helper method to define mock.On call
+//   - data []MonsterClientData
+func (_e *MockInternalDB_Expecter) BulkReplaceMonsterClientData(data interface{}) *MockInternalDB_BulkReplaceMonsterClientData_Call {
+	return &MockInternalDB_BulkReplaceMonsterClientData_Call{Call: _e.mock.On("BulkReplaceMonsterClientData", data)}
+}
+
+func (_c *MockInternalDB_BulkReplaceMonsterClientData_Call) Run(run func(data []MonsterClientData)) *MockInternalDB_BulkReplaceMonsterClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []MonsterClientData
+		if args[0] != nil {
+			arg0 = args[0].([]MonsterClientData)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceMonsterClientData_Call) Return(err error) *MockInternalDB_BulkReplaceMonsterClientData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_BulkReplaceMonsterClientData_Call) RunAndReturn(run func(data []MonsterClientData) error) *MockInternalDB_BulkReplaceMonsterClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Close provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) Close() error {
 	ret := _mock.Called()
@@ -996,6 +1149,192 @@ func (_c *MockInternalDB_GetAdminUserCount_Call) Return(n int64, err error) *Moc
 }
 
 func (_c *MockInternalDB_GetAdminUserCount_Call) RunAndReturn(run func() (int64, error)) *MockInternalDB_GetAdminUserCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllItemClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetAllItemClientData(search string) ([]ItemClientData, error) {
+	ret := _mock.Called(search)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllItemClientData")
+	}
+
+	var r0 []ItemClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]ItemClientData, error)); ok {
+		return returnFunc(search)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []ItemClientData); ok {
+		r0 = returnFunc(search)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ItemClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(search)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetAllItemClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllItemClientData'
+type MockInternalDB_GetAllItemClientData_Call struct {
+	*mock.Call
+}
+
+// GetAllItemClientData is a helper method to define mock.On call
+//   - search string
+func (_e *MockInternalDB_Expecter) GetAllItemClientData(search interface{}) *MockInternalDB_GetAllItemClientData_Call {
+	return &MockInternalDB_GetAllItemClientData_Call{Call: _e.mock.On("GetAllItemClientData", search)}
+}
+
+func (_c *MockInternalDB_GetAllItemClientData_Call) Run(run func(search string)) *MockInternalDB_GetAllItemClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllItemClientData_Call) Return(itemClientDatas []ItemClientData, err error) *MockInternalDB_GetAllItemClientData_Call {
+	_c.Call.Return(itemClientDatas, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllItemClientData_Call) RunAndReturn(run func(search string) ([]ItemClientData, error)) *MockInternalDB_GetAllItemClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllMapClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetAllMapClientData(search string) ([]MapClientData, error) {
+	ret := _mock.Called(search)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllMapClientData")
+	}
+
+	var r0 []MapClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]MapClientData, error)); ok {
+		return returnFunc(search)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []MapClientData); ok {
+		r0 = returnFunc(search)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MapClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(search)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetAllMapClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllMapClientData'
+type MockInternalDB_GetAllMapClientData_Call struct {
+	*mock.Call
+}
+
+// GetAllMapClientData is a helper method to define mock.On call
+//   - search string
+func (_e *MockInternalDB_Expecter) GetAllMapClientData(search interface{}) *MockInternalDB_GetAllMapClientData_Call {
+	return &MockInternalDB_GetAllMapClientData_Call{Call: _e.mock.On("GetAllMapClientData", search)}
+}
+
+func (_c *MockInternalDB_GetAllMapClientData_Call) Run(run func(search string)) *MockInternalDB_GetAllMapClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllMapClientData_Call) Return(mapClientDatas []MapClientData, err error) *MockInternalDB_GetAllMapClientData_Call {
+	_c.Call.Return(mapClientDatas, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllMapClientData_Call) RunAndReturn(run func(search string) ([]MapClientData, error)) *MockInternalDB_GetAllMapClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllMonsterClientData provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetAllMonsterClientData(search string) ([]MonsterClientData, error) {
+	ret := _mock.Called(search)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllMonsterClientData")
+	}
+
+	var r0 []MonsterClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]MonsterClientData, error)); ok {
+		return returnFunc(search)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []MonsterClientData); ok {
+		r0 = returnFunc(search)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MonsterClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(search)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetAllMonsterClientData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllMonsterClientData'
+type MockInternalDB_GetAllMonsterClientData_Call struct {
+	*mock.Call
+}
+
+// GetAllMonsterClientData is a helper method to define mock.On call
+//   - search string
+func (_e *MockInternalDB_Expecter) GetAllMonsterClientData(search interface{}) *MockInternalDB_GetAllMonsterClientData_Call {
+	return &MockInternalDB_GetAllMonsterClientData_Call{Call: _e.mock.On("GetAllMonsterClientData", search)}
+}
+
+func (_c *MockInternalDB_GetAllMonsterClientData_Call) Run(run func(search string)) *MockInternalDB_GetAllMonsterClientData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllMonsterClientData_Call) Return(monsterClientDatas []MonsterClientData, err error) *MockInternalDB_GetAllMonsterClientData_Call {
+	_c.Call.Return(monsterClientDatas, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetAllMonsterClientData_Call) RunAndReturn(run func(search string) ([]MonsterClientData, error)) *MockInternalDB_GetAllMonsterClientData_Call {
 	_c.Call.Return(run)
 	return _c
 }

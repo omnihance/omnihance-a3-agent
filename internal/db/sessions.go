@@ -10,24 +10,25 @@ import (
 )
 
 type Session struct {
-	SessionID      string  `db:"session_id" json:"session_id"`
-	UserID         int64   `db:"user_id" json:"user_id"`
-	CreatedAt      int64   `db:"created_at" json:"created_at"`
-	ExpiresAt      int64   `db:"expires_at" json:"expires_at"`
-	LastAccessedAt int64   `db:"last_accessed_at" json:"last_accessed_at"`
-	UserAgent      *string `db:"user_agent" json:"user_agent"`
-	IPAddress      *string `db:"ip_address" json:"ip_address"`
+	SessionID      string    `db:"session_id" json:"session_id"`
+	UserID         int64     `db:"user_id" json:"user_id"`
+	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	ExpiresAt      time.Time `db:"expires_at" json:"expires_at"`
+	LastAccessedAt time.Time `db:"last_accessed_at" json:"last_accessed_at"`
+	UserAgent      *string   `db:"user_agent" json:"user_agent"`
+	IPAddress      *string   `db:"ip_address" json:"ip_address"`
 }
 
 func (s *sqliteInternalDB) CreateSession(userID int64, expiresAt time.Time, userAgent, ipAddress *string) (*Session, error) {
 	sessionID := uuid.New().String()
 
+	now := time.Now()
 	session := Session{
 		SessionID:      sessionID,
 		UserID:         userID,
-		CreatedAt:      time.Now().Unix(),
-		ExpiresAt:      expiresAt.Unix(),
-		LastAccessedAt: time.Now().Unix(),
+		CreatedAt:      now,
+		ExpiresAt:      expiresAt,
+		LastAccessedAt: now,
 		UserAgent:      userAgent,
 		IPAddress:      ipAddress,
 	}
@@ -76,7 +77,7 @@ func (s *sqliteInternalDB) GetSession(sessionID string) (*Session, error) {
 		return nil, fmt.Errorf("session not found")
 	}
 
-	if time.Now().Unix() > session.ExpiresAt {
+	if time.Now().After(session.ExpiresAt) {
 		return nil, fmt.Errorf("session expired")
 	}
 

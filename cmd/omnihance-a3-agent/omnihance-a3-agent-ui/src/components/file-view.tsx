@@ -35,12 +35,15 @@ import {
   getSpawnFile,
   getRevisionSummary,
   revertFile,
+  getMaps,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/utils';
 import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
 import { SpawnFileView } from '@/components/spawn-file-view';
 import { toast } from 'sonner';
+import { queryKeys } from '@/constants';
+import { useMemo } from 'react';
 
 interface FileViewProps {
   filePath: string;
@@ -52,7 +55,7 @@ export function FileView({ filePath }: FileViewProps) {
     isLoading: fileTreeLoading,
     error: fileTreeError,
   } = useQuery({
-    queryKey: ['file-tree', filePath],
+    queryKey: queryKeys.fileTree(filePath),
     queryFn: () => {
       return getFileTree({ path: filePath });
     },
@@ -68,7 +71,7 @@ export function FileView({ filePath }: FileViewProps) {
     isLoading: textFileLoading,
     error: textFileError,
   } = useQuery({
-    queryKey: ['text-file', filePath],
+    queryKey: queryKeys.textFile(filePath),
     queryFn: () => {
       return getTextFile({ path: filePath });
     },
@@ -80,7 +83,7 @@ export function FileView({ filePath }: FileViewProps) {
     isLoading: npcFileLoading,
     error: npcFileError,
   } = useQuery({
-    queryKey: ['npc-file', filePath],
+    queryKey: queryKeys.npcFile(filePath),
     queryFn: () => {
       return getNPCFile({ path: filePath });
     },
@@ -92,7 +95,7 @@ export function FileView({ filePath }: FileViewProps) {
     isLoading: spawnFileLoading,
     error: spawnFileError,
   } = useQuery({
-    queryKey: ['spawn-file', filePath],
+    queryKey: queryKeys.spawnFile(filePath),
     queryFn: () => {
       return getSpawnFile({ path: filePath });
     },
@@ -101,13 +104,38 @@ export function FileView({ filePath }: FileViewProps) {
 
   const { data: revisionSummary, isLoading: revisionSummaryLoading } = useQuery(
     {
-      queryKey: ['revision-summary', filePath],
+      queryKey: queryKeys.revisionSummary(filePath),
       queryFn: () => {
         return getRevisionSummary({ path: filePath });
       },
       enabled: !!filePath && isEditable,
     },
   );
+
+  const { data: maps } = useQuery({
+    queryKey: queryKeys.maps,
+    queryFn: () => getMaps(),
+    enabled: fileType === 'a3_spawn_file',
+  });
+
+  const mapName = useMemo(() => {
+    if (fileType !== 'a3_spawn_file' || !maps || !fileNode?.name) {
+      return null;
+    }
+
+    const fileName = fileNode.name;
+    if (!fileName.endsWith('.n_ndt')) {
+      return null;
+    }
+
+    const mapId = parseInt(fileName.replace(/\.n_ndt$/, ''), 10);
+    if (isNaN(mapId)) {
+      return null;
+    }
+
+    const map = maps.find((m) => m.id === mapId);
+    return map?.name || null;
+  }, [fileType, maps, fileNode?.name]);
 
   const queryClient = useQueryClient();
   const [showRevertDialog, setShowRevertDialog] = useState(false);
@@ -118,19 +146,19 @@ export function FileView({ filePath }: FileViewProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['text-file', filePath],
+        queryKey: queryKeys.textFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['npc-file', filePath],
+        queryKey: queryKeys.npcFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['spawn-file', filePath],
+        queryKey: queryKeys.spawnFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['file-tree', filePath],
+        queryKey: queryKeys.fileTree(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['revision-summary', filePath],
+        queryKey: queryKeys.revisionSummary(filePath),
       });
       toast.success('File reverted to previous version');
       setShowRevertDialog(false);
@@ -201,6 +229,11 @@ export function FileView({ filePath }: FileViewProps) {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {fileNode?.name || 'Loading...'}
+              {mapName && (
+                <span className="text-muted-foreground font-normal ml-2">
+                  ({mapName})
+                </span>
+              )}
             </h1>
             <p className="text-muted-foreground mt-1">{filePath}</p>
           </div>

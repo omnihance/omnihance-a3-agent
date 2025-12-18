@@ -1,7 +1,9 @@
 package services
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
 	"io/fs"
 	"mime"
 	"os"
@@ -53,6 +55,10 @@ type FileEditorService interface {
 	Hostname() (string, error)
 	IsNotExist(err error) bool
 	IsExist(err error) bool
+	ReadClientMonsterFileData(path string) ([]MonsterClientData, error)
+	ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error)
+	ReadClientMapFileData(path string) ([]MapClientData, error)
+	ReadClientMapFileBytes(data []byte) ([]MapClientData, error)
 }
 
 type fileEditorService struct {
@@ -260,6 +266,62 @@ func (fes *fileEditorService) IsExist(err error) bool {
 	return os.IsExist(err)
 }
 
+func (fes *fileEditorService) ReadClientMonsterFileData(path string) ([]MonsterClientData, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return fes.ReadClientMonsterFileBytes(data)
+}
+
+func (fes *fileEditorService) ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error) {
+	const entrySize = 96
+	entryCount := binary.LittleEndian.Uint32(data[:4])
+	if len(data) < int(entryCount*entrySize+4) {
+		return nil, errors.New("data is too small")
+	}
+
+	reader := bytes.NewReader(data[4:])
+	monsterData := make([]MonsterClientData, entryCount)
+	for i := range monsterData {
+		err := binary.Read(reader, binary.LittleEndian, &monsterData[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return monsterData, nil
+}
+
+func (fes *fileEditorService) ReadClientMapFileData(path string) ([]MapClientData, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return fes.ReadClientMapFileBytes(data)
+}
+
+func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientData, error) {
+	const entrySize = 56
+	entryCount := binary.LittleEndian.Uint32(data[:4])
+	if len(data) < int(entryCount*entrySize+4) {
+		return nil, errors.New("data is too small")
+	}
+
+	reader := bytes.NewReader(data[4:])
+	mapData := make([]MapClientData, entryCount)
+	for i := range mapData {
+		err := binary.Read(reader, binary.LittleEndian, &mapData[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return mapData, nil
+}
+
 type NPCFileData struct {
 	Name                [0x14]byte     `json:"name"`
 	Id                  uint16         `json:"id"`
@@ -297,4 +359,20 @@ type NPCSpawnData struct {
 	Unknown1    uint16
 	Orientation byte
 	SpwanStep   byte
+}
+
+type MonsterClientData struct {
+	ID      uint32
+	Name    [0x1F]byte
+	Unknown [0x3D]byte
+}
+
+type MapClientData struct {
+	ID       uint32
+	Unknown1 uint32
+	Unknown2 uint32
+	Unknown3 uint32
+	Unknown4 uint32
+	Unknown5 uint32
+	Name     [0x20]byte
 }

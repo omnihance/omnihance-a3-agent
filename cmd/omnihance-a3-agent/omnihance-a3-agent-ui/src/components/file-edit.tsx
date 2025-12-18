@@ -19,11 +19,14 @@ import {
   getTextFile,
   getNPCFile,
   getSpawnFile,
+  getMaps,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/utils';
 import { TextFileEdit } from './text-file-edit';
 import { NPCFileEdit } from './npc-file-edit';
 import { SpawnFileEdit } from './spawn-file-edit';
+import { queryKeys } from '@/constants';
+import { useMemo } from 'react';
 
 interface FileEditProps {
   filePath: string;
@@ -35,7 +38,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     isLoading: fileTreeLoading,
     error: fileTreeError,
   } = useQuery({
-    queryKey: ['file-tree', filePath],
+    queryKey: queryKeys.fileTree(filePath),
     queryFn: () => {
       return getFileTree({ path: filePath });
     },
@@ -50,7 +53,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     isLoading: textFileLoading,
     error: textFileError,
   } = useQuery({
-    queryKey: ['text-file', filePath],
+    queryKey: queryKeys.textFile(filePath),
     queryFn: () => {
       return getTextFile({ path: filePath });
     },
@@ -62,7 +65,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     isLoading: npcFileLoading,
     error: npcFileError,
   } = useQuery({
-    queryKey: ['npc-file', filePath],
+    queryKey: queryKeys.npcFile(filePath),
     queryFn: () => {
       return getNPCFile({ path: filePath });
     },
@@ -74,12 +77,37 @@ export function FileEdit({ filePath }: FileEditProps) {
     isLoading: spawnFileLoading,
     error: spawnFileError,
   } = useQuery({
-    queryKey: ['spawn-file', filePath],
+    queryKey: queryKeys.spawnFile(filePath),
     queryFn: () => {
       return getSpawnFile({ path: filePath });
     },
     enabled: !!filePath && fileType === 'a3_spawn_file',
   });
+
+  const { data: maps } = useQuery({
+    queryKey: queryKeys.maps,
+    queryFn: () => getMaps(),
+    enabled: fileType === 'a3_spawn_file',
+  });
+
+  const mapName = useMemo(() => {
+    if (fileType !== 'a3_spawn_file' || !maps || !fileNode?.name) {
+      return null;
+    }
+
+    const fileName = fileNode.name;
+    if (!fileName.endsWith('.n_ndt')) {
+      return null;
+    }
+
+    const mapId = parseInt(fileName.replace(/\.n_ndt$/, ''), 10);
+    if (isNaN(mapId)) {
+      return null;
+    }
+
+    const map = maps.find((m) => m.id === mapId);
+    return map?.name || null;
+  }, [fileType, maps, fileNode?.name]);
 
   const fileTreeErrorMessage =
     fileTreeError instanceof APIError
@@ -118,6 +146,11 @@ export function FileEdit({ filePath }: FileEditProps) {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
               {fileNode?.name || 'Loading...'}
+              {mapName && (
+                <span className="text-muted-foreground font-normal ml-2">
+                  ({mapName})
+                </span>
+              )}
             </h1>
             <p className="text-muted-foreground mt-1">{filePath}</p>
           </div>

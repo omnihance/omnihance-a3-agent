@@ -552,6 +552,254 @@ func (_c *MockFileEditorService_OpenFile_Call) RunAndReturn(run func(name string
 	return _c
 }
 
+// ReadClientMapFileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientData, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientMapFileBytes")
+	}
+
+	var r0 []MapClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]MapClientData, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []MapClientData); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MapClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientMapFileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientMapFileBytes'
+type MockFileEditorService_ReadClientMapFileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientMapFileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientMapFileBytes(data interface{}) *MockFileEditorService_ReadClientMapFileBytes_Call {
+	return &MockFileEditorService_ReadClientMapFileBytes_Call{Call: _e.mock.On("ReadClientMapFileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientMapFileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileBytes_Call) Return(mapClientDatas []MapClientData, err error) *MockFileEditorService_ReadClientMapFileBytes_Call {
+	_c.Call.Return(mapClientDatas, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileBytes_Call) RunAndReturn(run func(data []byte) ([]MapClientData, error)) *MockFileEditorService_ReadClientMapFileBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientMapFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientMapFileData(path string) ([]MapClientData, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientMapFileData")
+	}
+
+	var r0 []MapClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]MapClientData, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []MapClientData); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MapClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientMapFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientMapFileData'
+type MockFileEditorService_ReadClientMapFileData_Call struct {
+	*mock.Call
+}
+
+// ReadClientMapFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadClientMapFileData(path interface{}) *MockFileEditorService_ReadClientMapFileData_Call {
+	return &MockFileEditorService_ReadClientMapFileData_Call{Call: _e.mock.On("ReadClientMapFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadClientMapFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileData_Call) Return(mapClientDatas []MapClientData, err error) *MockFileEditorService_ReadClientMapFileData_Call {
+	_c.Call.Return(mapClientDatas, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMapFileData_Call) RunAndReturn(run func(path string) ([]MapClientData, error)) *MockFileEditorService_ReadClientMapFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientMonsterFileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientMonsterFileBytes")
+	}
+
+	var r0 []MonsterClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]MonsterClientData, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []MonsterClientData); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MonsterClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientMonsterFileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientMonsterFileBytes'
+type MockFileEditorService_ReadClientMonsterFileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientMonsterFileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientMonsterFileBytes(data interface{}) *MockFileEditorService_ReadClientMonsterFileBytes_Call {
+	return &MockFileEditorService_ReadClientMonsterFileBytes_Call{Call: _e.mock.On("ReadClientMonsterFileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientMonsterFileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileBytes_Call) Return(monsterClientDatas []MonsterClientData, err error) *MockFileEditorService_ReadClientMonsterFileBytes_Call {
+	_c.Call.Return(monsterClientDatas, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileBytes_Call) RunAndReturn(run func(data []byte) ([]MonsterClientData, error)) *MockFileEditorService_ReadClientMonsterFileBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientMonsterFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientMonsterFileData(path string) ([]MonsterClientData, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientMonsterFileData")
+	}
+
+	var r0 []MonsterClientData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]MonsterClientData, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []MonsterClientData); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MonsterClientData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientMonsterFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientMonsterFileData'
+type MockFileEditorService_ReadClientMonsterFileData_Call struct {
+	*mock.Call
+}
+
+// ReadClientMonsterFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadClientMonsterFileData(path interface{}) *MockFileEditorService_ReadClientMonsterFileData_Call {
+	return &MockFileEditorService_ReadClientMonsterFileData_Call{Call: _e.mock.On("ReadClientMonsterFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadClientMonsterFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileData_Call) Return(monsterClientDatas []MonsterClientData, err error) *MockFileEditorService_ReadClientMonsterFileData_Call {
+	_c.Call.Return(monsterClientDatas, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientMonsterFileData_Call) RunAndReturn(run func(path string) ([]MonsterClientData, error)) *MockFileEditorService_ReadClientMonsterFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadDir provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) ReadDir(name string) ([]fs.DirEntry, error) {
 	ret := _mock.Called(name)

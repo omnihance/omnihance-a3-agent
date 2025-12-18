@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useMemo } from 'react';
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +19,13 @@ import {
 } from '@/components/ui/table';
 import { Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { APIError, updateSpawnFile, type SpawnFileAPIData } from '@/lib/api';
+import {
+  APIError,
+  updateSpawnFile,
+  type SpawnFileAPIData,
+  getMonsters,
+} from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 const spawnSchema = z.object({
   id: z.number().int().min(0).max(65000),
@@ -61,6 +67,29 @@ export function SpawnFileEdit({ filePath, defaultData }: SpawnFileEditProps) {
 
   const { control } = form;
 
+  const { data: monsters } = useQuery({
+    queryKey: queryKeys.monsters,
+    queryFn: () => getMonsters(),
+  });
+
+  const monsterMap = useMemo(() => {
+    if (!monsters) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const monster of monsters) {
+      map.set(monster.id, monster.name);
+    }
+
+    return map;
+  }, [monsters]);
+
+  const getMonsterName = (npcId: number): string => {
+    const monsterName = monsterMap.get(npcId);
+    return monsterName || `${npcId}`;
+  };
+
   const spawnsArray = useFieldArray({
     control,
     name: 'spawns',
@@ -71,10 +100,10 @@ export function SpawnFileEdit({ filePath, defaultData }: SpawnFileEditProps) {
       updateSpawnFile({ path: filePath }, values),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['spawn-file', filePath],
+        queryKey: queryKeys.spawnFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['file-tree', filePath],
+        queryKey: queryKeys.fileTree(filePath),
       });
       toast.success('Spawn file saved');
       router.navigate({
@@ -156,6 +185,7 @@ export function SpawnFileEdit({ filePath, defaultData }: SpawnFileEditProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead>
+                  <TableHead>Monster Name</TableHead>
                   <TableHead className="text-right">NPC ID</TableHead>
                   <TableHead className="text-right">X</TableHead>
                   <TableHead className="text-right">Y</TableHead>
@@ -166,183 +196,17 @@ export function SpawnFileEdit({ filePath, defaultData }: SpawnFileEditProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {spawnsArray.fields.map((field, index) => (
-                  <TableRow key={field.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.id`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-24"
-                            min={0}
-                            max={65000}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.x`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-20"
-                            min={0}
-                            max={255}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.y`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-20"
-                            min={0}
-                            max={255}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.orientation`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-20"
-                            min={0}
-                            max={255}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.spwan_step`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-20"
-                            min={0}
-                            max={255}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Controller
-                        name={`spawns.${index}.unknown1`}
-                        control={control}
-                        render={({ field: controllerField }) => (
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            className="text-right w-24"
-                            min={0}
-                            max={65000}
-                            value={
-                              typeof controllerField.value === 'number'
-                                ? controllerField.value.toString()
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              controllerField.onChange(
-                                value === '' ? 0 : Number(value),
-                              );
-                            }}
-                            onBlur={controllerField.onBlur}
-                          />
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeSpawn(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {spawnsArray.fields.map((field, index) => {
+                  return (
+                    <SpawnRow
+                      key={field.id}
+                      index={index}
+                      control={control}
+                      getMonsterName={getMonsterName}
+                      removeSpawn={removeSpawn}
+                    />
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -369,5 +233,191 @@ export function SpawnFileEdit({ filePath, defaultData }: SpawnFileEditProps) {
         </Button>
       </div>
     </form>
+  );
+}
+
+interface SpawnRowProps {
+  index: number;
+  control: ReturnType<typeof useForm<SpawnFileFormData>>['control'];
+  getMonsterName: (npcId: number) => string;
+  removeSpawn: (index: number) => void;
+}
+
+function SpawnRow({
+  index,
+  control,
+  getMonsterName,
+  removeSpawn,
+}: SpawnRowProps) {
+  const npcId = useWatch({
+    control,
+    name: `spawns.${index}.id`,
+  });
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{index + 1}</TableCell>
+      <TableCell>{getMonsterName(npcId)}</TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.id`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-24"
+              min={0}
+              max={65000}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.x`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-20"
+              min={0}
+              max={255}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.y`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-20"
+              min={0}
+              max={255}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.orientation`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-20"
+              min={0}
+              max={255}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.spwan_step`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-20"
+              min={0}
+              max={255}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Controller
+          name={`spawns.${index}.unknown1`}
+          control={control}
+          render={({ field: controllerField }) => (
+            <Input
+              type="number"
+              inputMode="numeric"
+              className="text-right w-24"
+              min={0}
+              max={65000}
+              value={
+                typeof controllerField.value === 'number'
+                  ? controllerField.value.toString()
+                  : ''
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                controllerField.onChange(value === '' ? 0 : Number(value));
+              }}
+              onBlur={controllerField.onBlur}
+            />
+          )}
+        />
+      </TableCell>
+      <TableCell className="text-right">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => removeSpawn(index)}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </TableCell>
+    </TableRow>
   );
 }

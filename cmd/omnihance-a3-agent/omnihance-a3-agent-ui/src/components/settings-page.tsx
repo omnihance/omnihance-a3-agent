@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getSession, updatePassword, APIError } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 const changePasswordSchema = z
   .object({
@@ -36,7 +37,7 @@ type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export function SettingsPage() {
   const { data: session } = useQuery({
-    queryKey: ['session'],
+    queryKey: queryKeys.session,
     queryFn: getSession,
     retry: false,
   });

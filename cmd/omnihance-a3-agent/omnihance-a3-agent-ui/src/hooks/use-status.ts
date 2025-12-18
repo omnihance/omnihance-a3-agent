@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { getStatus, type StatusResponse } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 export function useStatus() {
   const query = useQuery<StatusResponse>({
-    queryKey: ['status'],
+    queryKey: queryKeys.status,
     queryFn: getStatus,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,

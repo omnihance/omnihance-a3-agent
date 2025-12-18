@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -8,13 +9,43 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MapPin, Navigation, Hash, Compass } from 'lucide-react';
+import { getMonsters } from '@/lib/api';
 import type { SpawnFileAPIData } from '@/lib/api';
+import { useMemo } from 'react';
+import { queryKeys } from '@/constants';
 
 interface SpawnFileViewProps {
   data: SpawnFileAPIData;
 }
 
 export function SpawnFileView({ data }: SpawnFileViewProps) {
+  const { data: monsters } = useQuery({
+    queryKey: queryKeys.monsters,
+    queryFn: () => getMonsters(),
+  });
+
+  const monsterMap = useMemo(() => {
+    if (!monsters) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const monster of monsters) {
+      map.set(monster.id, monster.name);
+    }
+
+    return map;
+  }, [monsters]);
+
+  const getMonsterDisplay = (id: number): string => {
+    const monsterName = monsterMap.get(id);
+    if (monsterName) {
+      return `${monsterName} (${id})`;
+    }
+
+    return `${id}`;
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -45,7 +76,7 @@ export function SpawnFileView({ data }: SpawnFileViewProps) {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Hash className="h-3 w-3 text-muted-foreground" />
-                        {spawn.id}
+                        {getMonsterDisplay(spawn.id)}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">

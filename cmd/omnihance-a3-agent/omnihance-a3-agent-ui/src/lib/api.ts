@@ -20,6 +20,11 @@ export const API_ROUTES = {
   SETTING: (key: string) => `/api/settings/${key}`,
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
+  GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
+  GAME_CLIENT_DATA_UPLOAD_MON_FILE: '/api/game-client-data/upload-mon-file',
+  GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
+  GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
+  GAME_CLIENT_DATA_ITEMS: '/api/game-client-data/items',
 } as const;
 
 export class APIError extends Error {
@@ -345,6 +350,22 @@ const MetricsChartsResponseSchema = z.object({
 
 export type MetricsChartsResponse = z.infer<typeof MetricsChartsResponseSchema>;
 
+const GameClientDataResponseSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+});
+
+export type GameClientDataResponse = z.infer<
+  typeof GameClientDataResponseSchema
+>;
+
+const UploadFileResponseSchema = z.object({
+  message: z.string(),
+  count: z.number().int(),
+});
+
+export type UploadFileResponse = z.infer<typeof UploadFileResponseSchema>;
+
 const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
@@ -665,5 +686,93 @@ export async function getMetricsCharts(params?: {
     MetricsChartsResponseSchema,
     response.data,
     API_ROUTES.METRICS_CHARTS,
+  );
+}
+
+export async function getMonsters(params?: {
+  s?: string;
+}): Promise<GameClientDataResponse[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_MONSTERS,
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    z.array(GameClientDataResponseSchema),
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_MONSTERS,
+  );
+}
+
+export async function uploadMonFile(file: File): Promise<UploadFileResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_MON_FILE,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return validateResponse(
+    UploadFileResponseSchema,
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_MON_FILE,
+  );
+}
+
+export async function getMaps(params?: {
+  s?: string;
+}): Promise<GameClientDataResponse[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_MAPS,
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    z.array(GameClientDataResponseSchema),
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_MAPS,
+  );
+}
+
+export async function uploadMcFile(file: File): Promise<UploadFileResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_MC_FILE,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    },
+  );
+  return validateResponse(
+    UploadFileResponseSchema,
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_MC_FILE,
+  );
+}
+
+export async function getItems(params?: {
+  s?: string;
+}): Promise<GameClientDataResponse[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_ITEMS,
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    z.array(GameClientDataResponseSchema),
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_ITEMS,
   );
 }

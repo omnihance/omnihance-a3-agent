@@ -25,6 +25,7 @@ type EnvVars struct {
 	MetricsEnabled                   bool
 	SessionTimeoutSeconds            int
 	CookieSecret                     string
+	MaxFileUploadSizeMb              int
 }
 
 var defaultEnvVars = map[string]string{
@@ -88,6 +89,12 @@ func New() *EnvVars {
 		cookieSecret = utils.GenerateRandomToken(32)
 	}
 
+	maxFileUploadSizeMb, err := strconv.Atoi(os.Getenv("MAX_FILE_UPLOAD_SIZE_MB"))
+	if err != nil {
+		slog.Warn("Could not get max file upload size: " + err.Error())
+		maxFileUploadSizeMb = 2
+	}
+
 	return &EnvVars{
 		Port:                             os.Getenv("PORT"),
 		LogLevel:                         os.Getenv("LOG_LEVEL"),
@@ -100,6 +107,7 @@ func New() *EnvVars {
 		MetricsEnabled:                   metricsEnabled,
 		SessionTimeoutSeconds:            sessionTimeoutSeconds,
 		CookieSecret:                     cookieSecret,
+		MaxFileUploadSizeMb:              maxFileUploadSizeMb,
 	}
 }
 

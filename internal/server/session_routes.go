@@ -43,8 +43,8 @@ func (s *Server) getSessionHandler(w http.ResponseWriter, r *http.Request) {
 		UserID:    userId,
 		Email:     email,
 		Roles:     roles,
-		CreatedAt: time.Unix(session.CreatedAt, 0),
-		ExpiresAt: time.Unix(session.ExpiresAt, 0),
+		CreatedAt: session.CreatedAt,
+		ExpiresAt: session.ExpiresAt,
 	})
 }
 

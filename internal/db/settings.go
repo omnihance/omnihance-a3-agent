@@ -2,18 +2,19 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 )
 
 type Settings struct {
-	Key       string `db:"key" json:"key"`
-	Value     string `db:"value" json:"value"`
-	CreatedBy *int64 `db:"created_by" json:"created_by"`
-	CreatedAt int64  `db:"created_at" json:"created_at"`
-	UpdatedBy *int64 `db:"updated_by" json:"updated_by"`
-	UpdatedAt *int64 `db:"updated_at" json:"updated_at"`
+	Key       string     `db:"key" json:"key"`
+	Value     string     `db:"value" json:"value"`
+	CreatedBy *int64     `db:"created_by" json:"created_by"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	UpdatedBy *int64     `db:"updated_by" json:"updated_by"`
+	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 }
 
 var defaultSettings = map[string]string{
@@ -73,7 +74,7 @@ func (s *sqliteInternalDB) SetSetting(key string, value string, userID *int64) e
 
 	updateRecord := goqu.Record{
 		"value":      value,
-		"updated_at": goqu.L("strftime('%s', 'now')"),
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
 	}
 
 	if userID != nil {

@@ -21,6 +21,7 @@ import {
 import { Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { APIError, updateNPCFile, type NPCFileAPIData } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 const attackSchema = z.object({
   range: z.number().int().min(0).max(65000),
@@ -88,10 +89,10 @@ export function NPCFileEdit({ filePath, defaultData }: NPCFileEditProps) {
       updateNPCFile({ path: filePath }, values),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['npc-file', filePath],
+        queryKey: queryKeys.npcFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['file-tree', filePath],
+        queryKey: queryKeys.fileTree(filePath),
       });
       toast.success('NPC file saved');
       router.navigate({

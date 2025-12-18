@@ -21,7 +21,7 @@ import {
   getMetricsCharts,
 } from '@/lib/api';
 import { MetricChart } from '@/components/metric-chart';
-import { APP_NAME } from '@/constants';
+import { APP_NAME, queryKeys } from '@/constants';
 import { useStatus } from '@/hooks/use-status';
 
 const METRIC_ICONS: Record<string, LucideIcon> = {
@@ -37,14 +37,14 @@ function DashboardPageContent() {
   } = useStatus();
 
   const { data: metricsSummary } = useQuery({
-    queryKey: ['metrics-summary'],
+    queryKey: queryKeys.metricsSummary,
     queryFn: getMetricsSummary,
     enabled: status?.metrics_enabled ?? false,
     refetchInterval: 5000,
   });
 
   const { data: metricsCharts } = useQuery({
-    queryKey: ['metrics-charts'],
+    queryKey: queryKeys.metricsCharts,
     queryFn: () => getMetricsCharts(),
     enabled: status?.metrics_enabled ?? false,
     refetchInterval: 5000,

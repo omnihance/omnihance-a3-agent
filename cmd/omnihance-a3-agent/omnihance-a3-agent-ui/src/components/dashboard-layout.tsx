@@ -15,6 +15,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { SidebarContent } from '@/components/sidebar-content';
 import { beautifyRole, cn } from '@/lib/utils';
 import { signOut, getSession, APIError } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -27,7 +28,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = router.state.location.pathname;
 
   const { data: session } = useQuery({
-    queryKey: ['session'],
+    queryKey: queryKeys.session,
     queryFn: getSession,
     retry: false,
   });

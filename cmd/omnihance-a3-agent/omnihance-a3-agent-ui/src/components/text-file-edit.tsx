@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { APIError, updateTextFile } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 const textFileSchema = z.object({
   content: z.string(),
@@ -51,10 +52,10 @@ export function TextFileEdit({ filePath, defaultContent }: TextFileEditProps) {
       updateTextFile({ path: filePath }, { content: data.content }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['text-file', filePath],
+        queryKey: queryKeys.textFile(filePath),
       });
       queryClient.invalidateQueries({
-        queryKey: ['file-tree', filePath],
+        queryKey: queryKeys.fileTree(filePath),
       });
       toast.success('File saved');
       router.navigate({

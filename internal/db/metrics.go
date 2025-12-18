@@ -20,12 +20,12 @@ const (
 )
 
 type MetricName struct {
-	ID          int64   `db:"id" json:"id"`
-	Name        string  `db:"name" json:"name"`
-	Type        string  `db:"type" json:"type"`
-	Unit        *string `db:"unit" json:"unit"`
-	Description *string `db:"description" json:"description"`
-	CreatedAt   int64   `db:"created_at" json:"created_at"`
+	ID          int64     `db:"id" json:"id"`
+	Name        string    `db:"name" json:"name"`
+	Type        string    `db:"type" json:"type"`
+	Unit        *string   `db:"unit" json:"unit"`
+	Description *string   `db:"description" json:"description"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }
 
 type Label struct {
@@ -35,11 +35,11 @@ type Label struct {
 }
 
 type MetricSeries struct {
-	ID          int64  `db:"id" json:"id"`
-	MetricID    int64  `db:"metric_id" json:"metric_id"`
-	LabelHash   string `db:"label_hash" json:"label_hash"`
-	CreatedAt   int64  `db:"created_at" json:"created_at"`
-	LastUpdated int64  `db:"last_updated" json:"last_updated"`
+	ID          int64     `db:"id" json:"id"`
+	MetricID    int64     `db:"metric_id" json:"metric_id"`
+	LabelHash   string    `db:"label_hash" json:"label_hash"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	LastUpdated time.Time `db:"last_updated" json:"last_updated"`
 }
 
 type SeriesLabel struct {
@@ -54,13 +54,13 @@ type MetricSample struct {
 }
 
 type SeriesWithLabels struct {
-	SeriesID    int64   `db:"series_id" json:"series_id"`
-	MetricName  string  `db:"metric_name" json:"metric_name"`
-	MetricType  string  `db:"metric_type" json:"metric_type"`
-	MetricUnit  *string `db:"metric_unit" json:"metric_unit"`
-	Labels      string  `db:"labels" json:"labels"`
-	LabelHash   string  `db:"label_hash" json:"label_hash"`
-	LastUpdated int64   `db:"last_updated" json:"last_updated"`
+	SeriesID    int64     `db:"series_id" json:"series_id"`
+	MetricName  string    `db:"metric_name" json:"metric_name"`
+	MetricType  string    `db:"metric_type" json:"metric_type"`
+	MetricUnit  *string   `db:"metric_unit" json:"metric_unit"`
+	Labels      string    `db:"labels" json:"labels"`
+	LabelHash   string    `db:"label_hash" json:"label_hash"`
+	LastUpdated time.Time `db:"last_updated" json:"last_updated"`
 }
 
 type LatestSample struct {
@@ -272,7 +272,7 @@ func (s *sqliteInternalDB) getOrCreateMetricName(name string, metricType MetricT
 	record := goqu.Record{
 		"name":       name,
 		"type":       string(metricType),
-		"created_at": goqu.L("strftime('%s', 'now')"),
+		"created_at": goqu.L("CURRENT_TIMESTAMP"),
 	}
 
 	if unit != nil {
@@ -375,8 +375,8 @@ func (s *sqliteInternalDB) getOrCreateSeries(metricID int64, labelHash string, l
 		Rows(goqu.Record{
 			"metric_id":    metricID,
 			"label_hash":   labelHash,
-			"created_at":   goqu.L("strftime('%s', 'now')"),
-			"last_updated": goqu.L("strftime('%s', 'now')"),
+			"created_at":   goqu.L("CURRENT_TIMESTAMP"),
+			"last_updated": goqu.L("CURRENT_TIMESTAMP"),
 		}).
 		Executor().
 		Exec()

@@ -5,6 +5,7 @@ import {
   Settings,
   ChevronLeft,
   FolderOpen,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils';
 const sidebarLinks = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/file', icon: FolderOpen, label: 'File Browser' },
+  { href: '/client-data', icon: Database, label: 'Client Data' },
 ];
 
 const bottomLinks = [{ href: '/settings', icon: Settings, label: 'Settings' }];

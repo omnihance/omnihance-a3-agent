@@ -45,6 +45,8 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Configure NPC ID, X/Y coordinates, orientation
     - Set spawn step and other spawn properties
     - Table-based interface for managing multiple spawn points
+    - **Monster Name Display**: Real-time monster name lookup based on NPC ID
+    - **Map Name Display**: Shows map name in brackets when viewing spawn files (e.g., "0.n_ndt (Wolfreck)")
   - **Text File Editor**: Edit text-based configuration files
 - **File Locking**: Prevents concurrent editing conflicts
 - **File Revisions**: Automatic version control for all file edits
@@ -76,6 +78,28 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Routing**: TanStack Router for client-side routing
 - **Toast Notifications**: User-friendly feedback with Sonner
 
+### 🎮 Game Client Data Management
+
+- **Monster Client Data**: Upload and manage monster data from A3 client files
+  - Upload MON.ull files to populate monster database
+  - Automatic ULL decryption and parsing
+  - Bulk import with duplicate detection
+  - Search and filter monsters by name
+  - Real-time monster name lookup in spawn file editor
+- **Map Client Data**: Upload and manage map data from A3 client files
+  - Upload MC.ull files to populate map database
+  - Automatic ULL decryption and parsing
+  - Bulk import with duplicate detection
+  - Search and filter maps by name
+  - Map name display in spawn file views (extracted from filename)
+- **Item Client Data**: Query item data from A3 client files
+  - Search and filter items by name
+  - Item data lookup support
+- **Smart Data Integration**:
+  - Automatic monster name resolution in spawn file editing
+  - Map name extraction from spawn file filenames (e.g., "0.n_ndt" → "Wolfreck")
+  - Real-time updates when editing NPC IDs
+
 ### 🔧 Additional Features
 
 - **API Documentation**: OpenAPI/Swagger documentation embedded
@@ -84,6 +108,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Request Logging**: Structured JSON logging with request IDs
 - **Settings Management**: Key-value settings storage
 - **Error Handling**: Comprehensive error codes and messages
+- **Query Key Management**: Centralized React Query keys for efficient cache management
 
 ## Architecture
 
@@ -103,13 +128,17 @@ internal/
   │   ├── sessions.go           # Session management
   │   ├── settings.go           # Settings storage
   │   ├── file_revisions.go     # File revision tracking
-  │   └── metrics.go            # Metrics storage
+  │   ├── metrics.go            # Metrics storage
+  │   ├── monster_client_data.go # Monster client data storage
+  │   ├── map_client_data.go    # Map client data storage
+  │   └── item_client_data.go   # Item client data storage
   ├── logger/                    # Logging abstraction
   ├── mw/                        # Middleware (auth, IP checks)
   ├── server/                    # HTTP server and routes
   │   ├── routes.go             # Route registration
   │   ├── auth_routes.go        # Authentication endpoints
   │   ├── file_system_routes.go # File operations
+  │   ├── game_client_data_routes.go # Game client data endpoints
   │   ├── metrics_routes.go     # Metrics endpoints
   │   ├── session_routes.go     # Session management
   │   └── status_routes.go      # Status endpoint
@@ -139,10 +168,15 @@ omnihance-a3-agent-ui/
   │   │   ├── spawn-file-view.tsx
   │   │   ├── text-file-edit.tsx
   │   │   ├── metric-chart.tsx
+  │   │   ├── client-data-page.tsx
+  │   │   ├── client-data/
+  │   │   │   ├── monster-file-upload.tsx
+  │   │   │   └── map-file-upload.tsx
   │   │   └── ui/              # shadcn/ui components
   │   ├── routes/              # Route definitions
   │   ├── hooks/               # Custom React hooks
   │   ├── lib/                 # Utilities and API client
+  │   ├── constants.ts         # Application constants and query keys
   │   └── integrations/        # Third-party integrations
 ```
 
@@ -286,6 +320,14 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/metrics/summary` - Get current metric values (CPU, RAM)
 - `GET /api/metrics/charts` - Get metric charts with time range filter
 
+### Game Client Data
+
+- `GET /api/game-client-data/monsters` - Get monster client data (supports optional `s` query parameter for search)
+- `POST /api/game-client-data/upload-mon-file` - Upload MON.ull file to populate monster database
+- `GET /api/game-client-data/maps` - Get map client data (supports optional `s` query parameter for search)
+- `POST /api/game-client-data/upload-mc-file` - Upload MC.ull file to populate map database
+- `GET /api/game-client-data/items` - Get item client data (supports optional `s` query parameter for search)
+
 ### Health
 
 - `GET /health` - Health check endpoint
@@ -298,6 +340,9 @@ The application uses SQLite with the following main tables:
 - **sessions**: Active user sessions
 - **settings**: Key-value application settings
 - **file_revisions**: File edit history and revisions
+- **monster_client_data**: Monster data from MON.ull files (ID, name, timestamps)
+- **map_client_data**: Map data from MC.ull files (ID, name, timestamps)
+- **item_client_data**: Item data from client files (ID, name, timestamps)
 - **metric_names**: Metric definitions
 - **metric_series**: Metric time series
 - **metric_samples**: Metric data points
@@ -311,13 +356,18 @@ The application uses SQLite with the following main tables:
 
 3. **Sign In**: Use your registered credentials to sign in.
 
-4. **Navigate Files**: Use the file tree sidebar to browse your server's file system.
+4. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases.
 
-5. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them.
+5. **Navigate Files**: Use the file tree sidebar to browse your server's file system.
 
-6. **Monitor Metrics**: View system metrics on the dashboard with real-time charts.
+6. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them.
 
-7. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed.
+   - When editing spawn files, monster names are automatically displayed based on NPC ID
+   - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
+
+7. **Monitor Metrics**: View system metrics on the dashboard with real-time charts.
+
+8. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed.
 
 ## Development Commands
 

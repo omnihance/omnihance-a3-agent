@@ -55,6 +55,12 @@ type InternalDB interface {
 	DeleteUser(userID int64, deletedBy int64) error
 	GetAdminUserCount() (int64, error)
 	SetDefaultSettings() error
+	BulkReplaceMonsterClientData(data []MonsterClientData) error
+	GetAllMonsterClientData(search string) ([]MonsterClientData, error)
+	BulkReplaceMapClientData(data []MapClientData) error
+	GetAllMapClientData(search string) ([]MapClientData, error)
+	BulkReplaceItemClientData(data []ItemClientData) error
+	GetAllItemClientData(search string) ([]ItemClientData, error)
 }
 
 type sqliteInternalDB struct {
@@ -167,10 +173,34 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate006MonsterClientDataTable(); err != nil {
+		return err
+	}
+
+	if err := s.migrate007MapClientDataTable(); err != nil {
+		return err
+	}
+
+	if err := s.migrate008ItemClientDataTable(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback008ItemClientDataTable(); err != nil {
+		return err
+	}
+
+	if err := s.rollback007MapClientDataTable(); err != nil {
+		return err
+	}
+
+	if err := s.rollback006MonsterClientDataTable(); err != nil {
+		return err
+	}
+
 	if err := s.rollback005MetricsTables(); err != nil {
 		return err
 	}
@@ -547,9 +577,9 @@ func (s *sqliteInternalDB) migrate004FileRevisionsTable() error {
 		previous_hash TEXT NOT NULL,
 		current_hash TEXT NOT NULL,
 		created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-		created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-		updated_at INTEGER,
+		updated_at TIMESTAMP,
 		status TEXT NOT NULL DEFAULT 'draft'
 	);
 
@@ -642,7 +672,7 @@ func (s *sqliteInternalDB) migrate005MetricsTables() error {
 			type TEXT NOT NULL CHECK(type IN ('counter', 'gauge', 'histogram', 'summary')),
 			unit TEXT,
 			description TEXT,
-			created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_metric_names_name ON metric_names(name);
@@ -661,8 +691,8 @@ func (s *sqliteInternalDB) migrate005MetricsTables() error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			metric_id INTEGER NOT NULL,
 			label_hash TEXT NOT NULL,
-			created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-			last_updated INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (metric_id) REFERENCES metric_names(id) ON DELETE CASCADE,
 			UNIQUE(metric_id, label_hash)
 		);
@@ -697,9 +727,9 @@ func (s *sqliteInternalDB) migrate005MetricsTables() error {
 		AFTER INSERT ON metric_samples
 		BEGIN
 			UPDATE metric_series 
-			SET last_updated = NEW.timestamp 
+			SET last_updated = datetime(NEW.timestamp, 'unixepoch') 
 			WHERE id = NEW.series_id 
-			  AND last_updated < NEW.timestamp;
+			  AND last_updated < datetime(NEW.timestamp, 'unixepoch');
 		END;
 	`
 
@@ -760,6 +790,279 @@ func (s *sqliteInternalDB) rollback005MetricsTables() error {
 			logger.Field{Key: "error", Value: err},
 		)
 		return fmt.Errorf("failed to mark migration %s as rolled back: %w", migName, err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate006MonsterClientDataTable() error {
+	const migName = "006_monster_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS monster_client_data (
+		id INTEGER PRIMARY KEY,
+		name TEXT NOT NULL,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_monster_client_data_name ON monster_client_data (name);
+
+	CREATE INDEX IF NOT EXISTS idx_monster_client_data_created_by ON monster_client_data (created_by);
+
+	CREATE INDEX IF NOT EXISTS idx_monster_client_data_updated_by ON monster_client_data (updated_by);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create monster_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback006MonsterClientDataTable() error {
+	const migName = "006_monster_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	DROP TABLE IF EXISTS monster_client_data;
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback monster_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate007MapClientDataTable() error {
+	const migName = "007_map_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS map_client_data (
+		id INTEGER PRIMARY KEY,
+		name TEXT NOT NULL,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_map_client_data_name ON map_client_data (name);
+
+	CREATE INDEX IF NOT EXISTS idx_map_client_data_created_by ON map_client_data (created_by);
+
+	CREATE INDEX IF NOT EXISTS idx_map_client_data_updated_by ON map_client_data (updated_by);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create map_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback007MapClientDataTable() error {
+	const migName = "007_map_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	DROP TABLE IF EXISTS map_client_data;
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback map_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate008ItemClientDataTable() error {
+	const migName = "008_item_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS item_client_data (
+		id INTEGER PRIMARY KEY,
+		name TEXT NOT NULL,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_name ON item_client_data (name);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_created_by ON item_client_data (created_by);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_updated_by ON item_client_data (updated_by);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create item_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback008ItemClientDataTable() error {
+	const migName = "008_item_client_data_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	DROP TABLE IF EXISTS item_client_data;
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback item_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
 	}
 
 	return nil

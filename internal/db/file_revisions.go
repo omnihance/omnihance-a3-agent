@@ -2,23 +2,24 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 )
 
 type FileRevision struct {
-	ID           int64  `db:"id" json:"id"`
-	FileID       string `db:"file_id" json:"file_id"`
-	OriginalPath string `db:"original_path" json:"original_path"`
-	RevisionPath string `db:"revision_path" json:"revision_path"`
-	PreviousHash string `db:"previous_hash" json:"previous_hash"`
-	CurrentHash  string `db:"current_hash" json:"current_hash"`
-	CreatedBy    int64  `db:"created_by" json:"created_by"`
-	CreatedAt    int64  `db:"created_at" json:"created_at"`
-	UpdatedBy    *int64 `db:"updated_by" json:"updated_by"`
-	UpdatedAt    *int64 `db:"updated_at" json:"updated_at"`
-	Status       string `db:"status" json:"status"`
+	ID           int64      `db:"id" json:"id"`
+	FileID       string     `db:"file_id" json:"file_id"`
+	OriginalPath string     `db:"original_path" json:"original_path"`
+	RevisionPath string     `db:"revision_path" json:"revision_path"`
+	PreviousHash string     `db:"previous_hash" json:"previous_hash"`
+	CurrentHash  string     `db:"current_hash" json:"current_hash"`
+	CreatedBy    int64      `db:"created_by" json:"created_by"`
+	CreatedAt    time.Time  `db:"created_at" json:"created_at"`
+	UpdatedBy    *int64     `db:"updated_by" json:"updated_by"`
+	UpdatedAt    *time.Time `db:"updated_at" json:"updated_at"`
+	Status       string     `db:"status" json:"status"`
 }
 
 func (s *sqliteInternalDB) CreateFileRevision(tx *goqu.TxDatabase, fileID, originalPath, revisionPath string, previousHash, currentHash string, createdBy int64) (int64, error) {
@@ -31,7 +32,7 @@ func (s *sqliteInternalDB) CreateFileRevision(tx *goqu.TxDatabase, fileID, origi
 			"previous_hash": previousHash,
 			"current_hash":  currentHash,
 			"created_by":    createdBy,
-			"created_at":    goqu.L("strftime('%s', 'now')"),
+			"created_at":    goqu.L("CURRENT_TIMESTAMP"),
 			"status":        "draft",
 		}).
 		Executor().
@@ -61,7 +62,7 @@ func (s *sqliteInternalDB) CreateFileRevision(tx *goqu.TxDatabase, fileID, origi
 func (s *sqliteInternalDB) UpdateFileRevisionStatus(tx *goqu.TxDatabase, revisionID int64, status string, updatedBy int64) error {
 	updateRecord := goqu.Record{
 		"status":     status,
-		"updated_at": goqu.L("strftime('%s', 'now')"),
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
 		"updated_by": updatedBy,
 	}
 
@@ -88,7 +89,7 @@ func (s *sqliteInternalDB) UpdateFileRevisionStatus(tx *goqu.TxDatabase, revisio
 func (s *sqliteInternalDB) UpdateFileRevisionPath(tx *goqu.TxDatabase, revisionID int64, revisionPath string, updatedBy int64) error {
 	updateRecord := goqu.Record{
 		"revision_path": revisionPath,
-		"updated_at":    goqu.L("strftime('%s', 'now')"),
+		"updated_at":    goqu.L("CURRENT_TIMESTAMP"),
 		"updated_by":    updatedBy,
 	}
 
@@ -202,7 +203,7 @@ func (s *sqliteInternalDB) GetRevisionSummary(fileID string) (*RevisionSummary, 
 		return &RevisionSummary{Count: 0, LastRevisionAt: nil}, nil
 	}
 
-	var lastRevisionAt int64
+	var lastRevisionAt time.Time
 	found, err := s.goqu.From("file_revisions").
 		Prepared(true).
 		Select(goqu.I("created_at")).
@@ -220,7 +221,8 @@ func (s *sqliteInternalDB) GetRevisionSummary(fileID string) (*RevisionSummary, 
 	}
 
 	if found {
-		summary.LastRevisionAt = &lastRevisionAt
+		unixTime := lastRevisionAt.Unix()
+		summary.LastRevisionAt = &unixTime
 	}
 
 	return &summary, nil

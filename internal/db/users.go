@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
@@ -9,18 +10,18 @@ import (
 )
 
 type User struct {
-	ID        int64  `db:"id" json:"id"`
-	IsDeleted bool   `db:"is_deleted" json:"is_deleted"`
-	Email     string `db:"email" json:"email"`
-	Password  string `db:"password" json:"password"`
-	Roles     string `db:"roles" json:"roles"`
-	Status    string `db:"status" json:"status"`
-	CreatedBy *int64 `db:"created_by" json:"created_by"`
-	CreatedAt int64  `db:"created_at" json:"created_at"`
-	UpdatedBy *int64 `db:"updated_by" json:"updated_by"`
-	UpdatedAt *int64 `db:"updated_at" json:"updated_at"`
-	DeletedBy *int64 `db:"deleted_by" json:"deleted_by"`
-	DeletedAt *int64 `db:"deleted_at" json:"deleted_at"`
+	ID        int64      `db:"id" json:"id"`
+	IsDeleted bool       `db:"is_deleted" json:"is_deleted"`
+	Email     string     `db:"email" json:"email"`
+	Password  string     `db:"password" json:"password"`
+	Roles     string     `db:"roles" json:"roles"`
+	Status    string     `db:"status" json:"status"`
+	CreatedBy *int64     `db:"created_by" json:"created_by"`
+	CreatedAt time.Time  `db:"created_at" json:"created_at"`
+	UpdatedBy *int64     `db:"updated_by" json:"updated_by"`
+	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
+	DeletedBy *int64     `db:"deleted_by" json:"deleted_by"`
+	DeletedAt *time.Time `db:"deleted_at" json:"deleted_at"`
 }
 
 func (s *sqliteInternalDB) GetUserByID(userID int64) (*User, error) {
@@ -160,7 +161,7 @@ func (s *sqliteInternalDB) CreateUserWithStatus(email string, password string, r
 		"email":      email,
 		"password":   password,
 		"roles":      roles,
-		"created_at": goqu.L("strftime('%s', 'now')"),
+		"created_at": goqu.L("CURRENT_TIMESTAMP"),
 	}
 
 	if status != "" {
@@ -204,7 +205,7 @@ func (s *sqliteInternalDB) UpdateUserPassword(userID int64, newPassword string, 
 		Set(goqu.Record{
 			"password":   newPassword,
 			"updated_by": updatedBy,
-			"updated_at": goqu.L("strftime('%s', 'now')"),
+			"updated_at": goqu.L("CURRENT_TIMESTAMP"),
 		}).
 		Where(goqu.Ex{"id": userID, "is_deleted": false}).
 		Executor().
@@ -228,7 +229,7 @@ func (s *sqliteInternalDB) UpdateUserRoles(userID int64, roles string, updatedBy
 		Set(goqu.Record{
 			"roles":      roles,
 			"updated_by": updatedBy,
-			"updated_at": goqu.L("strftime('%s', 'now')"),
+			"updated_at": goqu.L("CURRENT_TIMESTAMP"),
 		}).
 		Where(goqu.Ex{"id": userID, "is_deleted": false}).
 		Executor().
@@ -253,7 +254,7 @@ func (s *sqliteInternalDB) DeleteUser(userID int64, deletedBy int64) error {
 		Set(goqu.Record{
 			"is_deleted": true,
 			"deleted_by": deletedBy,
-			"deleted_at": goqu.L("strftime('%s', 'now')"),
+			"deleted_at": goqu.L("CURRENT_TIMESTAMP"),
 		}).
 		Where(goqu.Ex{"id": userID, "is_deleted": false}).
 		Executor().

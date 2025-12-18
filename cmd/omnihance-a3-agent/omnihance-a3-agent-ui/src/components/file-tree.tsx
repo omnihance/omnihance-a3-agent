@@ -28,6 +28,7 @@ import {
   type FileTreeResponse,
 } from '@/lib/api';
 import { formatBytes, formatDate, cn } from '@/lib/utils';
+import { queryKeys } from '@/constants';
 
 interface FileTreeProps {
   initialPath?: string;
@@ -66,7 +67,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
     isLoading,
     error,
   } = useQuery<FileTreeResponse>({
-    queryKey: ['file-tree', queryPath, showDotfiles],
+    queryKey: queryKeys.fileTree(queryPath, showDotfiles),
     queryFn: async () => {
       let pathToUse = queryPath;
 
