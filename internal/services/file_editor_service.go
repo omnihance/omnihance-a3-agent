@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"mime"
 	"os"
@@ -21,17 +23,20 @@ const (
 	FileTypeMap     FileType = "a3_map_file"
 	FileTypeUnknown FileType = "a3_unknown_file"
 	FileTypeSpawn   FileType = "a3_spawn_file"
+	FileTypeQuest   FileType = "a3_quest_file"
 	FileTypeText    FileType = "text_file"
 )
 
 const (
-	NPCFileSize = 78
+	NPCFileSize   = 78
+	QuestFileSize = 798
 )
 
 const (
 	DropFileExtension  = ".itm"
 	MapFileExtension   = ".map"
 	SpawnFileExtension = ".n_ndt"
+	QuestFileExtension = ".dat"
 )
 
 type FileEditorService interface {
@@ -94,6 +99,10 @@ func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) Fil
 	default:
 		if fileInfo.Size() == NPCFileSize {
 			return FileTypeNPC
+		}
+
+		if fileInfo.Size() == QuestFileSize && extension == QuestFileExtension {
+			return FileTypeQuest
 		}
 
 		mimeType := mime.TypeByExtension(extension)
@@ -322,6 +331,54 @@ func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientDa
 	return mapData, nil
 }
 
+func (fes *fileEditorService) ReadQuestFileData(path string) (*QuestFileData, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return fes.ReadQuestFileBytes(data)
+}
+
+func (fes *fileEditorService) ReadQuestFileBytes(data []byte) (*QuestFileData, error) {
+	r := bytes.NewReader(data)
+
+	var quest QuestFileData
+	if err := binary.Read(r, binary.LittleEndian, &quest.Header); err != nil {
+		return nil, fmt.Errorf("read header: %w", err)
+	}
+
+	quest.Objectives = make([]Objective, 0, 7)
+	for i := range quest.Objectives {
+		var block ObjectiveBlock
+		if err := binary.Read(r, binary.LittleEndian, &block); err != nil {
+			return nil, fmt.Errorf("read objective block %d: %w", i, err)
+		}
+
+		obj := Objective{
+			Block: block,
+		}
+
+		nameLen := block.NameLength()
+		if nameLen > 0 {
+			name := make([]byte, nameLen)
+			if _, err := io.ReadFull(r, name); err != nil {
+				return nil, fmt.Errorf("read objective name %d: %w", i, err)
+			}
+
+			obj.Name = string(name)
+		}
+
+		quest.Objectives = append(quest.Objectives, obj)
+	}
+
+	if err := binary.Read(r, binary.LittleEndian, &quest.Continuations); err != nil {
+		return nil, fmt.Errorf("read continuation quests: %w", err)
+	}
+
+	return &quest, nil
+}
+
 type NPCFileData struct {
 	Name                [0x14]byte     `json:"name"`
 	Id                  uint16         `json:"id"`
@@ -375,4 +432,92 @@ type MapClientData struct {
 	Unknown4 uint32
 	Unknown5 uint32
 	Name     [0x20]byte
+}
+
+type QuestFileData struct {
+	Header        QuestHeader
+	Objectives    []Objective // exactly 7, parsed sequentially
+	Continuations [0x3]uint32
+}
+
+type QuestHeader struct {
+	QuestID         uint16
+	QuestIDPadding  uint16
+	GiverNPC        uint16
+	GiverNPCPadding uint16
+
+	TargetNPCRaw [24]byte // UInt16 + 22 bytes unknown/associated data
+
+	MinLevelRaw uint32 // UInt8 + 3 padding bytes
+	MaxLevelRaw uint32 // UInt8 + 3 padding bytes
+
+	Flags uint32
+
+	// Reward item codes (4 slots, last unused)
+	RewardItemRaw [4]uint32 // each: UInt16 item code + 2 padding
+
+	// Padding between item codes and counts (bytes 60–67)
+	RewardPadding [8]byte
+
+	// Reward item counts (4 slots, last unused)
+	RewardCountRaw [4]uint32 // each: UInt8 count + 3 padding
+
+	ExpReward   uint32
+	WoonzReward uint32
+	LoreReward  uint32
+
+	TailPadding uint32
+}
+
+func (h *QuestHeader) RewardItem(i int) uint16 {
+	return uint16(h.RewardItemRaw[i])
+}
+
+func (h *QuestHeader) RewardCount(i int) uint8 {
+	return uint8(h.RewardCountRaw[i])
+}
+
+type Objective struct {
+	Block ObjectiveBlock
+	Name  string // only if NameLength > 0
+}
+
+type ObjectiveBlock struct {
+	TypeRaw uint32 // UInt8 + 3 padding
+
+	MapIDRaw      uint32 // UInt16 + 2 padding
+	LocationIDRaw uint32 // UInt16 + 2 padding
+
+	RadiusRaw uint32 // UInt8 + 3 padding
+
+	TargetIDRaw  uint32 // Monster or NPC ID (UInt16 + padding)
+	KillCountRaw uint32 // UInt16 + padding
+
+	QuestItemIDRaw uint32
+
+	DropItem1Raw uint32
+	DropItem2Raw uint32
+	DropItem3Raw uint32
+
+	Pad1 [16]byte
+
+	RequiredItemCountRaw uint32 // UInt16 + padding
+
+	Pad2 [16]byte
+
+	DropProb1Raw uint32 // UInt8 + padding
+	DropProb2Raw uint32
+	DropProb3Raw uint32
+
+	Pad3 [4]byte
+
+	NameLengthRaw uint32 // UInt8 + 3 padding
+}
+
+func (o *ObjectiveBlock) Type() uint8 {
+	return uint8(o.TypeRaw)
+}
+
+func (o *ObjectiveBlock) NameLength() uint8 {
+	return uint8(o.NameLengthRaw)
 }
