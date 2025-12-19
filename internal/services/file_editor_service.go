@@ -97,7 +97,7 @@ func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) Fil
 		}
 
 		mimeType := mime.TypeByExtension(extension)
-		if strings.HasPrefix(mimeType, "text/") {
+		if strings.HasPrefix(mimeType, "text/") || mimeType == "application/json" {
 			return FileTypeText
 		}
 	}
