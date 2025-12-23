@@ -37,6 +37,15 @@ func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if !s.cfg.MetricsEnabled {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "metrics",
+			"errors":    []string{"Metrics collection is disabled"},
+		})
+		return
+	}
+
 	samples, err := s.internalDB.GetLatestSamples()
 	if err != nil {
 		s.log.Error("Failed to get latest metric samples", logger.Field{Key: "error", Value: err})
@@ -130,6 +139,15 @@ type ChartResponse struct {
 
 func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request) {
 	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
+		return
+	}
+
+	if !s.cfg.MetricsEnabled {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "metrics",
+			"errors":    []string{"Metrics collection is disabled"},
+		})
 		return
 	}
 
