@@ -77,6 +77,12 @@ func New() *EnvVars {
 		metricsEnabled = true
 	}
 
+	runningInDocker, _ := strconv.ParseBool(os.Getenv("RUNNING_IN_DOCKER"))
+	if runningInDocker {
+		metricsEnabled = false
+		slog.Info("Running in Docker, metrics collection disabled (host metrics unavailable)")
+	}
+
 	sessionTimeoutSeconds, err := strconv.Atoi(os.Getenv("SESSION_TIMEOUT_SECONDS"))
 	if err != nil {
 		slog.Warn("Could not get session timeout seconds: " + err.Error())

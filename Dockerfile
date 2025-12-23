@@ -59,6 +59,9 @@ ARG PORT=8080
 # Set PORT environment variable
 ENV PORT=$PORT
 
+# Set RUNNING_IN_DOCKER environment variable
+ENV RUNNING_IN_DOCKER=true
+
 # Expose the port
 EXPOSE $PORT
 
