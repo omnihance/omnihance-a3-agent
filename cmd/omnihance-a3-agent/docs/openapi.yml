@@ -18,6 +18,8 @@ tags:
     name: metrics
   - description: Game data operations
     name: game-data
+  - description: User management operations
+    name: user-management
 
 paths:
   /api/auth/sign-in:
@@ -1078,6 +1080,236 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/users:
+    get:
+      tags:
+        - user-management
+      summary: List all users
+      description: Returns a paginated list of all users. Supports optional email search filtering. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based)
+          example: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page
+          example: 10
+        - in: query
+          name: s
+          schema:
+            type: string
+          description: Optional search string to filter users by email (case-insensitive partial match)
+          example: "user@example.com"
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListUsersResponse'
+        '400':
+          description: Bad Request - Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/statuses:
+    get:
+      tags:
+        - user-management
+      summary: Get allowed user statuses
+      description: Returns a list of all allowed user status values. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User statuses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserStatusesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/{id}/status:
+    patch:
+      tags:
+        - user-management
+      summary: Update user status
+      description: Updates the status of a user. The new status must be different from the current status. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: User status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User status updated successfully"
+        '400':
+          description: Bad Request - Invalid request body, validation failed, or status unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/{id}/password:
+    patch:
+      tags:
+        - user-management
+      summary: Set user password
+      description: Sets a new password for a user. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUserPasswordRequest'
+      responses:
+        '200':
+          description: Password set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Password set successfully"
+        '400':
+          description: Bad Request - Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -1572,3 +1804,92 @@ components:
           type: string
           description: Name of the game data entry
           example: "Goblin Warrior"
+    ListUsersResponse:
+      type: object
+      description: Paginated list of users
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserListItem'
+          description: Array of user items
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+    PaginationInfo:
+      type: object
+      description: Pagination metadata
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: Total number of items
+          example: 10
+        page:
+          type: integer
+          description: Current page number (1-based)
+          example: 1
+        pageSize:
+          type: integer
+          description: Number of items per page
+          example: 10
+    UserListItem:
+      type: object
+      description: User list item information
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        roles:
+          type: array
+          items:
+            type: string
+          description: User roles
+          example: ["super_admin"]
+        status:
+          type: string
+          enum: [pending, active, inactive, banned]
+          description: User status
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+          description: User creation timestamp
+          example: "2024-01-01T00:00:00Z"
+    UpdateUserStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, active, inactive, banned]
+          description: New user status
+          example: "active"
+    SetUserPasswordRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 6
+          description: New password (minimum 6 characters)
+          example: "newpassword123"
+    GetUserStatusesResponse:
+      type: object
+      description: Response containing allowed user statuses
+      properties:
+        statuses:
+          type: array
+          items:
+            type: string
+            enum: [pending, active, inactive, banned]
+          description: List of allowed user status values
+          example: ["pending", "active", "inactive", "banned"]

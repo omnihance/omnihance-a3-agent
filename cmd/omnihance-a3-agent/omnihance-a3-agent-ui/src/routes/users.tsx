@@ -1,13 +1,12 @@
-import { createRoute, redirect, useSearch } from '@tanstack/react-router';
+import { createRoute, redirect } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { FileEdit } from '@/components/file-edit';
-import { PathError } from '@/components/path-error';
+import { UsersPage } from '@/components/users-page';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
 
 const rolePermissions: Record<string, string[]> = {
-  edit_files: ['super_admin', 'admin'],
+  manage_users: ['super_admin'],
 };
 
 function normalizeRole(role: string): string {
@@ -27,23 +26,10 @@ function isAllowed(action: string, roles: string[]): boolean {
   return roles.some((role) => allowedRolesMap.has(normalizeRole(role)));
 }
 
-function FileEditPageWithLayout() {
-  const { path } = useSearch({ from: '/file/edit' });
-
-  if (!path) {
-    return (
-      <DashboardLayout>
-        <PathError
-          title="File Path Required"
-          description="No file path was provided. Please select a file from the project directory to edit."
-        />
-      </DashboardLayout>
-    );
-  }
-
+function UsersPageWithLayout() {
   return (
     <DashboardLayout>
-      <FileEdit filePath={path} />
+      <UsersPage />
     </DashboardLayout>
   );
 }
@@ -51,26 +37,20 @@ function FileEditPageWithLayout() {
 export default (parentRoute: AnyRootRoute) =>
   createRoute({
     getParentRoute: () => parentRoute,
-    path: '/file/edit',
-    validateSearch: (search: Record<string, unknown>) => {
-      return {
-        path: (search.path as string) || '',
-      };
-    },
+    path: '/users',
     head: () => ({
       meta: [
         {
-          title: `File Edit - ${APP_NAME}`,
+          title: `Users - ${APP_NAME}`,
         },
       ],
     }),
-    beforeLoad: async ({ location, search }) => {
+    beforeLoad: async ({ location }) => {
       try {
         const session = await getSession();
-        if (!isAllowed('edit_files', session.roles)) {
+        if (!isAllowed('manage_users', session.roles)) {
           throw redirect({
-            to: '/file/view',
-            search: { path: (search.path as string) || '' },
+            to: '/dashboard',
           });
         }
       } catch (error) {
@@ -86,5 +66,5 @@ export default (parentRoute: AnyRootRoute) =>
         });
       }
     },
-    component: FileEditPageWithLayout,
+    component: UsersPageWithLayout,
   });

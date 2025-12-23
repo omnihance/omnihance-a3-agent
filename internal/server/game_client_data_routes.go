@@ -9,6 +9,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
+	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 )
 
@@ -96,6 +97,10 @@ func (s *Server) handleItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadMONFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionUploadGameData) {
+		return
+	}
+
 	userID, ok := utils.GetUserIdFromContext(r.Context())
 	if !ok {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
@@ -204,6 +209,10 @@ func (s *Server) handleUploadMONFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionUploadGameData) {
+		return
+	}
+
 	userID, ok := utils.GetUserIdFromContext(r.Context())
 	if !ok {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
@@ -211,6 +220,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"User ID not found in context"},
 		})
+		return
 	}
 
 	maxUploadSize := int64(s.cfg.MaxFileUploadSizeMb) * 1024 * 1024

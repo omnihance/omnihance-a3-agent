@@ -19,6 +19,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
+	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 )
@@ -682,6 +683,10 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 }
 
 func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
 	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeNPC, "NPC")
 	if !ok {
 		return
@@ -784,6 +789,10 @@ func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
 	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeText, "text")
 	if !ok {
 		return
@@ -846,6 +855,10 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
 	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeSpawn, "spawn")
 	if !ok {
 		return
@@ -953,6 +966,10 @@ func (s *Server) acquireFileLock(fileID string) (string, error) {
 }
 
 func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionRevertFiles) {
+		return
+	}
+
 	userID, ok := utils.GetUserIdFromContext(r.Context())
 	if !ok {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
