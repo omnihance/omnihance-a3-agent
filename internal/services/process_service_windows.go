@@ -19,6 +19,7 @@ func terminateProcessWindowsImpl(ps *processService, proc *os.Process, pid int) 
 		ps.logger.Warn("failed to open process handle, using Kill()", logger.Field{Key: "pid", Value: pid}, logger.Field{Key: "error", Value: err})
 		return killProcessWindows(ps, proc, pid)
 	}
+
 	defer windows.CloseHandle(handle)
 
 	if err := windows.TerminateProcess(handle, 0); err != nil {
@@ -47,7 +48,7 @@ func terminateProcessWindowsImpl(ps *processService, proc *os.Process, pid int) 
 	}
 }
 
-func killProcessWindows(ps *processService, proc *os.Process, pid int) error {
+func killProcessWindows(_ *processService, proc *os.Process, _ int) error {
 	if err := proc.Kill(); err != nil {
 		return fmt.Errorf("failed to kill process: %w", err)
 	}
@@ -68,7 +69,7 @@ func killProcessWindows(ps *processService, proc *os.Process, pid int) error {
 		if err != nil {
 			return fmt.Errorf("process wait error: %w", err)
 		}
+
 		return nil
 	}
 }
-
