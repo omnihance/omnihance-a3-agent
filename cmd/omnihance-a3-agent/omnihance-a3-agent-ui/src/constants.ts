@@ -23,4 +23,11 @@ export const queryKeys = {
   npcFile: (path: string) => ['npc-file', path] as const,
   spawnFile: (path: string) => ['spawn-file', path] as const,
   revisionSummary: (path: string) => ['revision-summary', path] as const,
+  users: (page: number, pageSize: number, search?: string) => {
+    if (search !== undefined && search !== '') {
+      return ['users', page, pageSize, search] as const;
+    }
+    return ['users', page, pageSize] as const;
+  },
+  userStatuses: ['user-statuses'] as const,
 } as const;

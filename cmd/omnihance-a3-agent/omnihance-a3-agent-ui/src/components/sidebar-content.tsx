@@ -6,15 +6,38 @@ import {
   ChevronLeft,
   FolderOpen,
   Database,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '@/hooks/use-permissions';
 
 const sidebarLinks = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/file', icon: FolderOpen, label: 'File Browser' },
-  { href: '/client-data', icon: Database, label: 'Client Data' },
+  {
+    href: '/dashboard',
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    permission: 'view_metrics' as const,
+  },
+  {
+    href: '/file',
+    icon: FolderOpen,
+    label: 'File Browser',
+    permission: 'view_files' as const,
+  },
+  {
+    href: '/client-data',
+    icon: Database,
+    label: 'Client Data',
+    permission: 'upload_game_data' as const,
+  },
+  {
+    href: '/users',
+    icon: Users,
+    label: 'Users',
+    permission: 'manage_users' as const,
+  },
 ];
 
 const bottomLinks = [{ href: '/settings', icon: Settings, label: 'Settings' }];
@@ -32,6 +55,12 @@ export function SidebarContent({
   setSidebarOpen,
   isActive,
 }: SidebarContentProps) {
+  const { hasPermission } = usePermissions();
+
+  const visibleSidebarLinks = sidebarLinks.filter((link) =>
+    hasPermission(link.permission),
+  );
+
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
@@ -50,7 +79,7 @@ export function SidebarContent({
       {/* Navigation */}
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1">
-          {sidebarLinks.map((link) => (
+          {visibleSidebarLinks.map((link) => (
             <Link
               key={link.href}
               to={link.href}

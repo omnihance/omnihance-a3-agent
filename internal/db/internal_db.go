@@ -48,10 +48,12 @@ type InternalDB interface {
 	GetUserByIDIncludeDeleted(userID int64) (*User, error)
 	GetUserByEmailIncludeDeleted(email string) (*User, error)
 	GetUsers() ([]User, error)
+	GetUsersPaginated(page, pageSize int, search string) ([]User, int64, error)
 	CreateUser(email, password, roles string, createdBy *int64) (*User, error)
 	CreateUserWithStatus(email, password, roles, status string, createdBy *int64) (*User, error)
 	UpdateUserPassword(userID int64, newPassword string, updatedBy int64) error
 	UpdateUserRoles(userID int64, roles string, updatedBy int64) error
+	UpdateUserStatus(userID int64, status string, updatedBy int64) error
 	DeleteUser(userID int64, deletedBy int64) error
 	GetAdminUserCount() (int64, error)
 	SetDefaultSettings() error

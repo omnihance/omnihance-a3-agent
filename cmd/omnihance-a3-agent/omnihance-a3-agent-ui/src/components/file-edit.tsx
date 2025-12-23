@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { usePermissions } from '@/hooks/use-permissions';
 import {
   ArrowLeft,
   File as FileIcon,
@@ -33,6 +35,23 @@ interface FileEditProps {
 }
 
 export function FileEdit({ filePath }: FileEditProps) {
+  const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const canEditFiles = hasPermission('edit_files');
+
+  useEffect(() => {
+    if (!canEditFiles) {
+      navigate({
+        to: '/file/view',
+        search: { path: filePath },
+      });
+    }
+  }, [canEditFiles, navigate, filePath]);
+
+  if (!canEditFiles) {
+    return null;
+  }
+
   const {
     data: fileTreeResponse,
     isLoading: fileTreeLoading,

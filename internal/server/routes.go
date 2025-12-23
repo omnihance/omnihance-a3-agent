@@ -38,6 +38,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	s.InitializeMetricsRoutes(r)
 	s.InitializeSessionRoutes(r)
 	s.InitializeGameClientDataRoutes(r)
+	s.InitializeUserManagementRoutes(r)
 	r.Handle("/*", s.FrontendHandler())
 
 	return r

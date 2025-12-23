@@ -10,6 +10,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
+	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services/collectors"
 	"github.com/omnihance/omnihance-a3-agent/internal/services/echarts"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
@@ -32,6 +33,10 @@ func (s *Server) InitializeMetricsRoutes(r *chi.Mux) {
 }
 
 func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
+		return
+	}
+
 	samples, err := s.internalDB.GetLatestSamples()
 	if err != nil {
 		s.log.Error("Failed to get latest metric samples", logger.Field{Key: "error", Value: err})
@@ -124,6 +129,10 @@ type ChartResponse struct {
 }
 
 func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
+		return
+	}
+
 	timeRange := r.URL.Query().Get("range")
 	if timeRange == "" {
 		timeRange = "1h"

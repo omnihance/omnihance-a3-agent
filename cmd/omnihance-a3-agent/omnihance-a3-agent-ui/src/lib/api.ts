@@ -25,6 +25,10 @@ export const API_ROUTES = {
   GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
   GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
   GAME_CLIENT_DATA_ITEMS: '/api/game-client-data/items',
+  USERS: '/api/users',
+  USER_STATUSES: '/api/users/statuses',
+  USER_STATUS: (id: number) => `/api/users/${id}/status`,
+  USER_PASSWORD: (id: number) => `/api/users/${id}/password`,
 } as const;
 
 export class APIError extends Error {
@@ -365,6 +369,73 @@ const UploadFileResponseSchema = z.object({
 });
 
 export type UploadFileResponse = z.infer<typeof UploadFileResponseSchema>;
+
+const UserListItemSchema = z.object({
+  id: z.number().int(),
+  email: z.string().email(),
+  roles: z.array(z.string()),
+  status: z.enum(['pending', 'active', 'inactive', 'banned']),
+  created_at: z.string(),
+});
+
+export type UserListItem = z.infer<typeof UserListItemSchema>;
+
+const PaginationInfoSchema = z.object({
+  totalCount: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+});
+
+export type PaginationInfo = z.infer<typeof PaginationInfoSchema>;
+
+const ListUsersResponseSchema = z.object({
+  data: z.array(UserListItemSchema),
+  pagination: PaginationInfoSchema,
+});
+
+export type ListUsersResponse = z.infer<typeof ListUsersResponseSchema>;
+
+const UpdateUserStatusRequestSchema = z.object({
+  status: z.enum(['pending', 'active', 'inactive', 'banned']),
+});
+
+export type UpdateUserStatusRequest = z.infer<
+  typeof UpdateUserStatusRequestSchema
+>;
+
+const UpdateUserStatusResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type UpdateUserStatusResponse = z.infer<
+  typeof UpdateUserStatusResponseSchema
+>;
+
+const SetUserPasswordRequestSchema = z.object({
+  password: z.string().min(6),
+});
+
+export type SetUserPasswordRequest = z.infer<
+  typeof SetUserPasswordRequestSchema
+>;
+
+const SetUserPasswordResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type SetUserPasswordResponse = z.infer<
+  typeof SetUserPasswordResponseSchema
+>;
+
+const GetUserStatusesResponseSchema = z.object({
+  statuses: z.array(z.string()),
+});
+
+export type GetUserStatusesResponse = z.infer<
+  typeof GetUserStatusesResponseSchema
+>;
 
 const axiosInstance = axios.create({
   headers: {
@@ -774,5 +845,59 @@ export async function getItems(params?: {
     z.array(GameClientDataResponseSchema),
     response.data,
     API_ROUTES.GAME_CLIENT_DATA_ITEMS,
+  );
+}
+
+export async function getUsers(params?: {
+  page?: number;
+  pageSize?: number;
+  s?: string;
+}): Promise<ListUsersResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.USERS, {
+    params,
+  });
+  return validateResponse(
+    ListUsersResponseSchema,
+    response.data,
+    API_ROUTES.USERS,
+  );
+}
+
+export async function updateUserStatus(
+  id: number,
+  data: UpdateUserStatusRequest,
+): Promise<UpdateUserStatusResponse> {
+  const response = await axiosInstance.patch<unknown>(
+    API_ROUTES.USER_STATUS(id),
+    UpdateUserStatusRequestSchema.parse(data),
+  );
+  return validateResponse(
+    UpdateUserStatusResponseSchema,
+    response.data,
+    API_ROUTES.USER_STATUS(id),
+  );
+}
+
+export async function setUserPassword(
+  id: number,
+  data: SetUserPasswordRequest,
+): Promise<SetUserPasswordResponse> {
+  const response = await axiosInstance.patch<unknown>(
+    API_ROUTES.USER_PASSWORD(id),
+    SetUserPasswordRequestSchema.parse(data),
+  );
+  return validateResponse(
+    SetUserPasswordResponseSchema,
+    response.data,
+    API_ROUTES.USER_PASSWORD(id),
+  );
+}
+
+export async function getUserStatuses(): Promise<GetUserStatusesResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.USER_STATUSES);
+  return validateResponse(
+    GetUserStatusesResponseSchema,
+    response.data,
+    API_ROUTES.USER_STATUSES,
   );
 }
