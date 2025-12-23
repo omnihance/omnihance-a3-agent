@@ -11,5 +11,5 @@ import (
 
 func terminateProcessWindowsImpl(ps *processService, _ *os.Process, pid int) error {
 	ps.logger.Error("terminateProcessWindows called on non-Windows system", logger.Field{Key: "pid", Value: pid})
-	return errors.New("Windows-specific function called on non-Windows system")
+	return errors.New("windows-specific function called on non-windows system")
 }
