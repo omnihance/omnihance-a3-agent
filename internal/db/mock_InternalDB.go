@@ -2251,6 +2251,86 @@ func (_c *MockInternalDB_GetUsers_Call) RunAndReturn(run func() ([]User, error))
 	return _c
 }
 
+// GetUsersPaginated provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetUsersPaginated(page int, pageSize int, search string) ([]User, int64, error) {
+	ret := _mock.Called(page, pageSize, search)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetUsersPaginated")
+	}
+
+	var r0 []User
+	var r1 int64
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(int, int, string) ([]User, int64, error)); ok {
+		return returnFunc(page, pageSize, search)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int, int, string) []User); ok {
+		r0 = returnFunc(page, pageSize, search)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]User)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int, int, string) int64); ok {
+		r1 = returnFunc(page, pageSize, search)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+	if returnFunc, ok := ret.Get(2).(func(int, int, string) error); ok {
+		r2 = returnFunc(page, pageSize, search)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockInternalDB_GetUsersPaginated_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetUsersPaginated'
+type MockInternalDB_GetUsersPaginated_Call struct {
+	*mock.Call
+}
+
+// GetUsersPaginated is a helper method to define mock.On call
+//   - page int
+//   - pageSize int
+//   - search string
+func (_e *MockInternalDB_Expecter) GetUsersPaginated(page interface{}, pageSize interface{}, search interface{}) *MockInternalDB_GetUsersPaginated_Call {
+	return &MockInternalDB_GetUsersPaginated_Call{Call: _e.mock.On("GetUsersPaginated", page, pageSize, search)}
+}
+
+func (_c *MockInternalDB_GetUsersPaginated_Call) Run(run func(page int, pageSize int, search string)) *MockInternalDB_GetUsersPaginated_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int
+		if args[0] != nil {
+			arg0 = args[0].(int)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetUsersPaginated_Call) Return(users []User, n int64, err error) *MockInternalDB_GetUsersPaginated_Call {
+	_c.Call.Return(users, n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetUsersPaginated_Call) RunAndReturn(run func(page int, pageSize int, search string) ([]User, int64, error)) *MockInternalDB_GetUsersPaginated_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InsertMetric provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) InsertMetric(metricName string, metricType MetricType, labels map[string]string, value float64, timestamp *int64, unit *string, description *string) error {
 	ret := _mock.Called(metricName, metricType, labels, value, timestamp, unit, description)
@@ -2970,6 +3050,69 @@ func (_c *MockInternalDB_UpdateUserRoles_Call) Return(err error) *MockInternalDB
 }
 
 func (_c *MockInternalDB_UpdateUserRoles_Call) RunAndReturn(run func(userID int64, roles string, updatedBy int64) error) *MockInternalDB_UpdateUserRoles_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateUserStatus provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateUserStatus(userID int64, status string, updatedBy int64) error {
+	ret := _mock.Called(userID, status, updatedBy)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateUserStatus")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, int64) error); ok {
+		r0 = returnFunc(userID, status, updatedBy)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_UpdateUserStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateUserStatus'
+type MockInternalDB_UpdateUserStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateUserStatus is a helper method to define mock.On call
+//   - userID int64
+//   - status string
+//   - updatedBy int64
+func (_e *MockInternalDB_Expecter) UpdateUserStatus(userID interface{}, status interface{}, updatedBy interface{}) *MockInternalDB_UpdateUserStatus_Call {
+	return &MockInternalDB_UpdateUserStatus_Call{Call: _e.mock.On("UpdateUserStatus", userID, status, updatedBy)}
+}
+
+func (_c *MockInternalDB_UpdateUserStatus_Call) Run(run func(userID int64, status string, updatedBy int64)) *MockInternalDB_UpdateUserStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 int64
+		if args[2] != nil {
+			arg2 = args[2].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateUserStatus_Call) Return(err error) *MockInternalDB_UpdateUserStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateUserStatus_Call) RunAndReturn(run func(userID int64, status string, updatedBy int64) error) *MockInternalDB_UpdateUserStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

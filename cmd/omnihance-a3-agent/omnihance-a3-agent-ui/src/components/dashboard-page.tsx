@@ -9,6 +9,7 @@ import {
   Activity,
   CheckCircle2,
   XCircle,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { useStatus } from '@/hooks/use-status';
 const METRIC_ICONS: Record<string, LucideIcon> = {
   cpu_usage_percentage: Cpu,
   memory_usage_percentage: MemoryStick,
+  process_count: Layers,
 };
 
 function DashboardPageContent() {

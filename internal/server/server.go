@@ -13,13 +13,14 @@ import (
 )
 
 type Server struct {
-	cfg           *config.EnvVars
-	log           logger.Logger
-	frontendFiles embed.FS
-	docsFiles     embed.FS
-	version       string
-	internalDB    db.InternalDB
-	fileEditor    services.FileEditorService
+	cfg            *config.EnvVars
+	log            logger.Logger
+	frontendFiles  embed.FS
+	docsFiles      embed.FS
+	version        string
+	internalDB     db.InternalDB
+	fileEditor     services.FileEditorService
+	processService services.ProcessService
 }
 
 func NewServer(
@@ -30,15 +31,17 @@ func NewServer(
 	version string,
 	internalDB db.InternalDB,
 	fileEditor services.FileEditorService,
+	processService services.ProcessService,
 ) *http.Server {
 	newServer := &Server{
-		cfg:           cfg,
-		log:           log,
-		frontendFiles: frontendFiles,
-		docsFiles:     docsFiles,
-		version:       version,
-		internalDB:    internalDB,
-		fileEditor:    fileEditor,
+		cfg:            cfg,
+		log:            log,
+		frontendFiles:  frontendFiles,
+		docsFiles:      docsFiles,
+		version:        version,
+		internalDB:     internalDB,
+		fileEditor:     fileEditor,
+		processService: processService,
 	}
 
 	server := &http.Server{

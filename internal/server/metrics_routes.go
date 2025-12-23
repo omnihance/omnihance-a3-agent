@@ -75,7 +75,12 @@ func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	cards := make([]MetricCard, 0, 2)
+	processCount, err := s.processService.GetProcessCount()
+	if err != nil {
+		s.log.Warn("Failed to get process count", logger.Field{Key: "error", Value: err})
+	}
+
+	cards := make([]MetricCard, 0, 3)
 
 	if cpuSampleCount > 0 {
 		cpuUsageTotal := cpuUsagePerCore * float64(cpuSampleCount)
@@ -113,6 +118,14 @@ func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request
 			DisplayValue: fmt.Sprintf("%.2f%%", 0.0),
 		})
 	}
+
+	cards = append(cards, MetricCard{
+		Name:         "Processes",
+		MetricName:   "process_count",
+		Description:  "Running Processes",
+		Value:        float64(processCount),
+		DisplayValue: fmt.Sprintf("%d", processCount),
+	})
 
 	response := map[string]interface{}{
 		"cards": cards,
