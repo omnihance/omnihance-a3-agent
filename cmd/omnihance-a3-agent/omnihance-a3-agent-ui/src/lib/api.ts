@@ -29,6 +29,14 @@ export const API_ROUTES = {
   USER_STATUSES: '/api/users/statuses',
   USER_STATUS: (id: number) => `/api/users/${id}/status`,
   USER_PASSWORD: (id: number) => `/api/users/${id}/password`,
+  SERVER_PROCESSES: '/api/server/processes',
+  SERVER_PROCESS: (id: number) => `/api/server/processes/${id}`,
+  SERVER_PROCESSES_REORDER: '/api/server/processes/reorder',
+  SERVER_START: '/api/server/start',
+  SERVER_STOP: '/api/server/stop',
+  SERVER_PROCESS_START: (id: number) => `/api/server/processes/${id}/start`,
+  SERVER_PROCESS_STOP: (id: number) => `/api/server/processes/${id}/stop`,
+  SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
 } as const;
 
 export class APIError extends Error {
@@ -899,5 +907,207 @@ export async function getUserStatuses(): Promise<GetUserStatusesResponse> {
     GetUserStatusesResponseSchema,
     response.data,
     API_ROUTES.USER_STATUSES,
+  );
+}
+
+const ServerProcessSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  path: z.string(),
+  port: z.number().int().nullable(),
+  sequence_order: z.number().int(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type ServerProcess = z.infer<typeof ServerProcessSchema>;
+
+const CreateServerProcessRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  port: z.number().int().positive().optional(),
+});
+
+export type CreateServerProcessRequest = z.infer<
+  typeof CreateServerProcessRequestSchema
+>;
+
+const UpdateServerProcessRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  port: z.number().int().positive().optional(),
+});
+
+export type UpdateServerProcessRequest = z.infer<
+  typeof UpdateServerProcessRequestSchema
+>;
+
+const ReorderUpdateSchema = z.object({
+  id: z.number().int(),
+  sequence_order: z.number().int(),
+});
+
+const ReorderServerProcessesRequestSchema = z.object({
+  updates: z.array(ReorderUpdateSchema),
+});
+
+export type ReorderServerProcessesRequest = z.infer<
+  typeof ReorderServerProcessesRequestSchema
+>;
+
+const ProcessStatusSchema = z.object({
+  running: z.boolean(),
+  port_open: z.boolean().optional(),
+  start_time: z.string().optional(),
+  end_time: z.string().optional(),
+  current_uptime_seconds: z.number().int().optional(),
+  last_uptime_seconds: z.number().int().optional(),
+});
+
+export type ProcessStatus = z.infer<typeof ProcessStatusSchema>;
+
+const GetServerProcessesResponseSchema = z.object({
+  processes: z.array(ServerProcessSchema),
+});
+
+export type GetServerProcessesResponse = z.infer<
+  typeof GetServerProcessesResponseSchema
+>;
+
+const MessageResponseSchema = z.object({
+  message: z.string(),
+});
+
+export type MessageResponse = z.infer<typeof MessageResponseSchema>;
+
+export async function getServerProcesses(): Promise<ServerProcess[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESSES,
+  );
+  const data = validateResponse(
+    GetServerProcessesResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES,
+  );
+  return data.processes;
+}
+
+export async function createServerProcess(
+  data: CreateServerProcessRequest,
+): Promise<ServerProcess> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESSES,
+    CreateServerProcessRequestSchema.parse(data),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES,
+  );
+}
+
+export async function getServerProcess(id: number): Promise<ServerProcess> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function updateServerProcess(
+  id: number,
+  data: UpdateServerProcessRequest,
+): Promise<ServerProcess> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+    UpdateServerProcessRequestSchema.parse(data),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function deleteServerProcess(
+  id: number,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.delete<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function reorderServerProcesses(
+  data: ReorderServerProcessesRequest,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESSES_REORDER,
+    ReorderServerProcessesRequestSchema.parse(data),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES_REORDER,
+  );
+}
+
+export async function startFullServer(): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(API_ROUTES.SERVER_START);
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_START,
+  );
+}
+
+export async function stopFullServer(): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(API_ROUTES.SERVER_STOP);
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_STOP,
+  );
+}
+
+export async function startProcess(id: number): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESS_START(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_START(id),
+  );
+}
+
+export async function stopProcess(id: number): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESS_STOP(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_STOP(id),
+  );
+}
+
+export async function getProcessStatus(id: number): Promise<ProcessStatus> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESS_STATUS(id),
+  );
+  return validateResponse(
+    ProcessStatusSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_STATUS(id),
   );
 }

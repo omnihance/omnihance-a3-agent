@@ -10,7 +10,8 @@ type PermissionAction =
   | 'upload_game_data'
   | 'manage_users'
   | 'view_metrics'
-  | 'view_game_data';
+  | 'view_game_data'
+  | 'manage_server';
 
 const rolePermissions: Record<PermissionAction, string[]> = {
   view_files: ['super_admin', 'admin', 'viewer'],
@@ -20,6 +21,7 @@ const rolePermissions: Record<PermissionAction, string[]> = {
   manage_users: ['super_admin'],
   view_metrics: ['super_admin', 'admin', 'viewer'],
   view_game_data: ['super_admin', 'admin', 'viewer'],
+  manage_server: ['super_admin', 'admin'],
 };
 
 function normalizeRole(role: string): string {

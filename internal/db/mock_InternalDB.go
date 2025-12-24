@@ -430,6 +430,86 @@ func (_c *MockInternalDB_CreateFileRevision_Call) RunAndReturn(run func(tx *goqu
 	return _c
 }
 
+// CreateServerProcess provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateServerProcess(name string, path string, port *int, sequenceOrder int) (*ServerProcess, error) {
+	ret := _mock.Called(name, path, port, sequenceOrder)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateServerProcess")
+	}
+
+	var r0 *ServerProcess
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int, int) (*ServerProcess, error)); ok {
+		return returnFunc(name, path, port, sequenceOrder)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int, int) *ServerProcess); ok {
+		r0 = returnFunc(name, path, port, sequenceOrder)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerProcess)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string, *int, int) error); ok {
+		r1 = returnFunc(name, path, port, sequenceOrder)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateServerProcess_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateServerProcess'
+type MockInternalDB_CreateServerProcess_Call struct {
+	*mock.Call
+}
+
+// CreateServerProcess is a helper method to define mock.On call
+//   - name string
+//   - path string
+//   - port *int
+//   - sequenceOrder int
+func (_e *MockInternalDB_Expecter) CreateServerProcess(name interface{}, path interface{}, port interface{}, sequenceOrder interface{}) *MockInternalDB_CreateServerProcess_Call {
+	return &MockInternalDB_CreateServerProcess_Call{Call: _e.mock.On("CreateServerProcess", name, path, port, sequenceOrder)}
+}
+
+func (_c *MockInternalDB_CreateServerProcess_Call) Run(run func(name string, path string, port *int, sequenceOrder int)) *MockInternalDB_CreateServerProcess_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int
+		if args[2] != nil {
+			arg2 = args[2].(*int)
+		}
+		var arg3 int
+		if args[3] != nil {
+			arg3 = args[3].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateServerProcess_Call) Return(serverProcess *ServerProcess, err error) *MockInternalDB_CreateServerProcess_Call {
+	_c.Call.Return(serverProcess, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateServerProcess_Call) RunAndReturn(run func(name string, path string, port *int, sequenceOrder int) (*ServerProcess, error)) *MockInternalDB_CreateServerProcess_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateSession provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateSession(userID int64, expiresAt time.Time, userAgent *string, ipAddress *string) (*Session, error) {
 	ret := _mock.Called(userID, expiresAt, userAgent, ipAddress)
@@ -767,6 +847,57 @@ func (_c *MockInternalDB_DeleteOldMetrics_Call) Return(err error) *MockInternalD
 }
 
 func (_c *MockInternalDB_DeleteOldMetrics_Call) RunAndReturn(run func(retentionDays int) error) *MockInternalDB_DeleteOldMetrics_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteServerProcess provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) DeleteServerProcess(id int64) error {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteServerProcess")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = returnFunc(id)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_DeleteServerProcess_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteServerProcess'
+type MockInternalDB_DeleteServerProcess_Call struct {
+	*mock.Call
+}
+
+// DeleteServerProcess is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) DeleteServerProcess(id interface{}) *MockInternalDB_DeleteServerProcess_Call {
+	return &MockInternalDB_DeleteServerProcess_Call{Call: _e.mock.On("DeleteServerProcess", id)}
+}
+
+func (_c *MockInternalDB_DeleteServerProcess_Call) Run(run func(id int64)) *MockInternalDB_DeleteServerProcess_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteServerProcess_Call) Return(err error) *MockInternalDB_DeleteServerProcess_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteServerProcess_Call) RunAndReturn(run func(id int64) error) *MockInternalDB_DeleteServerProcess_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1578,6 +1709,59 @@ func (_c *MockInternalDB_GetLatestSamples_Call) RunAndReturn(run func() ([]Lates
 	return _c
 }
 
+// GetMaxSequenceOrder provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetMaxSequenceOrder() (int, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMaxSequenceOrder")
+	}
+
+	var r0 int
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (int, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() int); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetMaxSequenceOrder_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxSequenceOrder'
+type MockInternalDB_GetMaxSequenceOrder_Call struct {
+	*mock.Call
+}
+
+// GetMaxSequenceOrder is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetMaxSequenceOrder() *MockInternalDB_GetMaxSequenceOrder_Call {
+	return &MockInternalDB_GetMaxSequenceOrder_Call{Call: _e.mock.On("GetMaxSequenceOrder")}
+}
+
+func (_c *MockInternalDB_GetMaxSequenceOrder_Call) Run(run func()) *MockInternalDB_GetMaxSequenceOrder_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetMaxSequenceOrder_Call) Return(n int, err error) *MockInternalDB_GetMaxSequenceOrder_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetMaxSequenceOrder_Call) RunAndReturn(run func() (int, error)) *MockInternalDB_GetMaxSequenceOrder_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMetricSamplesByTimeRange provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetMetricSamplesByTimeRange(metricName string, startTime int64, endTime int64) ([]MetricSampleWithLabels, error) {
 	ret := _mock.Called(metricName, startTime, endTime)
@@ -1765,6 +1949,123 @@ func (_c *MockInternalDB_GetSeriesWithLabels_Call) Return(seriesWithLabelss []Se
 }
 
 func (_c *MockInternalDB_GetSeriesWithLabels_Call) RunAndReturn(run func() ([]SeriesWithLabels, error)) *MockInternalDB_GetSeriesWithLabels_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerProcess provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerProcess(id int64) (*ServerProcess, error) {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerProcess")
+	}
+
+	var r0 *ServerProcess
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*ServerProcess, error)); ok {
+		return returnFunc(id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *ServerProcess); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerProcess)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerProcess_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerProcess'
+type MockInternalDB_GetServerProcess_Call struct {
+	*mock.Call
+}
+
+// GetServerProcess is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) GetServerProcess(id interface{}) *MockInternalDB_GetServerProcess_Call {
+	return &MockInternalDB_GetServerProcess_Call{Call: _e.mock.On("GetServerProcess", id)}
+}
+
+func (_c *MockInternalDB_GetServerProcess_Call) Run(run func(id int64)) *MockInternalDB_GetServerProcess_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcess_Call) Return(serverProcess *ServerProcess, err error) *MockInternalDB_GetServerProcess_Call {
+	_c.Call.Return(serverProcess, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcess_Call) RunAndReturn(run func(id int64) (*ServerProcess, error)) *MockInternalDB_GetServerProcess_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerProcesses provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerProcesses() ([]ServerProcess, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerProcesses")
+	}
+
+	var r0 []ServerProcess
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerProcess, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerProcess); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerProcess)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerProcesses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerProcesses'
+type MockInternalDB_GetServerProcesses_Call struct {
+	*mock.Call
+}
+
+// GetServerProcesses is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerProcesses() *MockInternalDB_GetServerProcesses_Call {
+	return &MockInternalDB_GetServerProcesses_Call{Call: _e.mock.On("GetServerProcesses")}
+}
+
+func (_c *MockInternalDB_GetServerProcesses_Call) Run(run func()) *MockInternalDB_GetServerProcesses_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcesses_Call) Return(serverProcesss []ServerProcess, err error) *MockInternalDB_GetServerProcesses_Call {
+	_c.Call.Return(serverProcesss, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcesses_Call) RunAndReturn(run func() ([]ServerProcess, error)) *MockInternalDB_GetServerProcesses_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2569,6 +2870,57 @@ func (_c *MockInternalDB_MigrateUp_Call) RunAndReturn(run func() error) *MockInt
 	return _c
 }
 
+// ReorderServerProcesses provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error {
+	ret := _mock.Called(updates)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReorderServerProcesses")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func([]ReorderUpdate) error); ok {
+		r0 = returnFunc(updates)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReorderServerProcesses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReorderServerProcesses'
+type MockInternalDB_ReorderServerProcesses_Call struct {
+	*mock.Call
+}
+
+// ReorderServerProcesses is a helper method to define mock.On call
+//   - updates []ReorderUpdate
+func (_e *MockInternalDB_Expecter) ReorderServerProcesses(updates interface{}) *MockInternalDB_ReorderServerProcesses_Call {
+	return &MockInternalDB_ReorderServerProcesses_Call{Call: _e.mock.On("ReorderServerProcesses", updates)}
+}
+
+func (_c *MockInternalDB_ReorderServerProcesses_Call) Run(run func(updates []ReorderUpdate)) *MockInternalDB_ReorderServerProcesses_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []ReorderUpdate
+		if args[0] != nil {
+			arg0 = args[0].([]ReorderUpdate)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReorderServerProcesses_Call) Return(err error) *MockInternalDB_ReorderServerProcesses_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReorderServerProcesses_Call) RunAndReturn(run func(updates []ReorderUpdate) error) *MockInternalDB_ReorderServerProcesses_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDefaultSettings provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) SetDefaultSettings() error {
 	ret := _mock.Called()
@@ -2873,6 +3225,189 @@ func (_c *MockInternalDB_UpdateFileRevisionStatus_Call) Return(err error) *MockI
 }
 
 func (_c *MockInternalDB_UpdateFileRevisionStatus_Call) RunAndReturn(run func(tx *goqu.TxDatabase, revisionID int64, status string, updatedBy int64) error) *MockInternalDB_UpdateFileRevisionStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateProcessEndTime provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateProcessEndTime(id int64, endTime time.Time) error {
+	ret := _mock.Called(id, endTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateProcessEndTime")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, time.Time) error); ok {
+		r0 = returnFunc(id, endTime)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_UpdateProcessEndTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateProcessEndTime'
+type MockInternalDB_UpdateProcessEndTime_Call struct {
+	*mock.Call
+}
+
+// UpdateProcessEndTime is a helper method to define mock.On call
+//   - id int64
+//   - endTime time.Time
+func (_e *MockInternalDB_Expecter) UpdateProcessEndTime(id interface{}, endTime interface{}) *MockInternalDB_UpdateProcessEndTime_Call {
+	return &MockInternalDB_UpdateProcessEndTime_Call{Call: _e.mock.On("UpdateProcessEndTime", id, endTime)}
+}
+
+func (_c *MockInternalDB_UpdateProcessEndTime_Call) Run(run func(id int64, endTime time.Time)) *MockInternalDB_UpdateProcessEndTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateProcessEndTime_Call) Return(err error) *MockInternalDB_UpdateProcessEndTime_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateProcessEndTime_Call) RunAndReturn(run func(id int64, endTime time.Time) error) *MockInternalDB_UpdateProcessEndTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateProcessStartTime provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateProcessStartTime(id int64, startTime time.Time) error {
+	ret := _mock.Called(id, startTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateProcessStartTime")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, time.Time) error); ok {
+		r0 = returnFunc(id, startTime)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_UpdateProcessStartTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateProcessStartTime'
+type MockInternalDB_UpdateProcessStartTime_Call struct {
+	*mock.Call
+}
+
+// UpdateProcessStartTime is a helper method to define mock.On call
+//   - id int64
+//   - startTime time.Time
+func (_e *MockInternalDB_Expecter) UpdateProcessStartTime(id interface{}, startTime interface{}) *MockInternalDB_UpdateProcessStartTime_Call {
+	return &MockInternalDB_UpdateProcessStartTime_Call{Call: _e.mock.On("UpdateProcessStartTime", id, startTime)}
+}
+
+func (_c *MockInternalDB_UpdateProcessStartTime_Call) Run(run func(id int64, startTime time.Time)) *MockInternalDB_UpdateProcessStartTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateProcessStartTime_Call) Return(err error) *MockInternalDB_UpdateProcessStartTime_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateProcessStartTime_Call) RunAndReturn(run func(id int64, startTime time.Time) error) *MockInternalDB_UpdateProcessStartTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateServerProcess provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateServerProcess(id int64, name string, path string, port *int) error {
+	ret := _mock.Called(id, name, path, port)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateServerProcess")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, *int) error); ok {
+		r0 = returnFunc(id, name, path, port)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_UpdateServerProcess_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateServerProcess'
+type MockInternalDB_UpdateServerProcess_Call struct {
+	*mock.Call
+}
+
+// UpdateServerProcess is a helper method to define mock.On call
+//   - id int64
+//   - name string
+//   - path string
+//   - port *int
+func (_e *MockInternalDB_Expecter) UpdateServerProcess(id interface{}, name interface{}, path interface{}, port interface{}) *MockInternalDB_UpdateServerProcess_Call {
+	return &MockInternalDB_UpdateServerProcess_Call{Call: _e.mock.On("UpdateServerProcess", id, name, path, port)}
+}
+
+func (_c *MockInternalDB_UpdateServerProcess_Call) Run(run func(id int64, name string, path string, port *int)) *MockInternalDB_UpdateServerProcess_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 *int
+		if args[3] != nil {
+			arg3 = args[3].(*int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateServerProcess_Call) Return(err error) *MockInternalDB_UpdateServerProcess_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateServerProcess_Call) RunAndReturn(run func(id int64, name string, path string, port *int) error) *MockInternalDB_UpdateServerProcess_Call {
 	_c.Call.Return(run)
 	return _c
 }

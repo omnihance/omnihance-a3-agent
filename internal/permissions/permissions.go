@@ -16,6 +16,7 @@ const (
 	ActionManageUsers    PermissionAction = "manage_users"
 	ActionViewMetrics    PermissionAction = "view_metrics"
 	ActionViewGameData   PermissionAction = "view_game_data"
+	ActionManageServer   PermissionAction = "manage_server"
 )
 
 var rolePermissions = map[PermissionAction][]string{
@@ -26,6 +27,7 @@ var rolePermissions = map[PermissionAction][]string{
 	ActionManageUsers:    {constants.RoleSuperAdmin},
 	ActionViewMetrics:    {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
 	ActionViewGameData:   {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
+	ActionManageServer:   {constants.RoleSuperAdmin, constants.RoleAdmin},
 }
 
 func normalizeRole(role string) string {

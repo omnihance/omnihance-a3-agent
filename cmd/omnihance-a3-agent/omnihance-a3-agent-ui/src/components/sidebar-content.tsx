@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Database,
   Users,
+  PlaySquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -24,6 +25,12 @@ const sidebarLinks = [
     href: '/file',
     icon: FolderOpen,
     label: 'File Browser',
+    permission: 'view_files' as const,
+  },
+  {
+    href: '/manage-server',
+    icon: PlaySquare,
+    label: 'Server Management',
     permission: 'view_files' as const,
   },
   {

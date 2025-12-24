@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/shirou/gopsutil/v3/process"
 )
 
@@ -30,6 +31,11 @@ type ProcessService interface {
 	IsProcessRunning(pathOfBinary string) (bool, error)
 	StartProcess(pathOfBinary string, startParams ...string) error
 	StopProcess(pathOfBinary string) error
+	IsBatchFile(path string) bool
+	GetProcessByCommandLine(pattern string) ([]ProcessInfo, error)
+	WaitForPort(host string, port int, timeout, checkInterval time.Duration) (bool, error)
+	WaitForProcess(path string, timeout, checkInterval time.Duration) (bool, error)
+	StartProcessWithHealthCheck(path string, port *int, timeout, checkInterval time.Duration, startParams ...string) error
 }
 
 type processService struct {
@@ -110,6 +116,10 @@ func (ps *processService) IsProcessRunning(pathOfBinary string) (bool, error) {
 		return false, fmt.Errorf("failed to normalize path: %w", err)
 	}
 
+	if ps.IsBatchFile(pathOfBinary) {
+		return ps.isBatchFileRunning(normalizedPath)
+	}
+
 	processes, err := ps.GetProcessList()
 	if err != nil {
 		return false, err
@@ -131,6 +141,38 @@ func (ps *processService) IsProcessRunning(pathOfBinary string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (ps *processService) isBatchFileRunning(normalizedPath string) (bool, error) {
+	processes, err := ps.GetProcessList()
+	if err != nil {
+		return false, err
+	}
+
+	for _, proc := range processes {
+		if proc.Name != "cmd.exe" {
+			continue
+		}
+
+		if proc.CommandLine == "" {
+			continue
+		}
+
+		normalizedCmdLine := ps.normalizeCommandLine(proc.CommandLine)
+		if strings.Contains(normalizedCmdLine, normalizedPath) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (ps *processService) normalizeCommandLine(cmdLine string) string {
+	normalized := strings.ToLower(cmdLine)
+	normalized = strings.ReplaceAll(normalized, "/", "\\")
+	normalized = strings.Trim(normalized, `"`)
+	normalized = strings.TrimSpace(normalized)
+	return normalized
 }
 
 func (ps *processService) normalizePath(path string) (string, error) {
@@ -161,18 +203,13 @@ func (ps *processService) StartProcess(pathOfBinary string, startParams ...strin
 		return fmt.Errorf("failed to normalize path: %w", err)
 	}
 
-	if runtime.GOOS == "windows" {
-		normalizedPath = strings.TrimSuffix(normalizedPath, ".exe")
-		normalizedPath += ".exe"
-	}
-
 	absPath, err := filepath.Abs(normalizedPath)
 	if err != nil {
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
-		return fmt.Errorf("binary not found: %s", absPath)
+		return fmt.Errorf("file not found: %s", absPath)
 	}
 
 	isRunning, err := ps.IsProcessRunning(absPath)
@@ -184,7 +221,25 @@ func (ps *processService) StartProcess(pathOfBinary string, startParams ...strin
 		return fmt.Errorf("process is already running: %s", absPath)
 	}
 
-	cmd := exec.Command(absPath, startParams...)
+	var cmd *exec.Cmd
+	if ps.IsBatchFile(absPath) {
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("cmd.exe", "/c", absPath)
+		} else {
+			cmd = exec.Command("sh", absPath)
+		}
+		cmd.Args = append(cmd.Args, startParams...)
+	} else {
+		if runtime.GOOS == "windows" {
+			normalizedPath = strings.TrimSuffix(normalizedPath, ".exe")
+			normalizedPath += ".exe"
+			absPath, err = filepath.Abs(normalizedPath)
+			if err != nil {
+				return fmt.Errorf("failed to get absolute path: %w", err)
+			}
+		}
+		cmd = exec.Command(absPath, startParams...)
+	}
 
 	dir := filepath.Dir(absPath)
 	cmd.Dir = dir
@@ -205,24 +260,42 @@ func (ps *processService) StopProcess(pathOfBinary string) error {
 		return fmt.Errorf("failed to normalize path: %w", err)
 	}
 
-	processes, err := ps.GetProcessList()
-	if err != nil {
-		return err
-	}
-
 	var targetProcesses []ProcessInfo
-	for _, proc := range processes {
-		if proc.Path == "" {
-			continue
-		}
 
-		procPath, err := ps.normalizePath(proc.Path)
+	if ps.IsBatchFile(pathOfBinary) {
+		processes, err := ps.GetProcessList()
 		if err != nil {
-			continue
+			return err
 		}
 
-		if procPath == normalizedPath {
-			targetProcesses = append(targetProcesses, proc)
+		normalizedCmdLine := ps.normalizeCommandLine(normalizedPath)
+		for _, proc := range processes {
+			if proc.Name == "cmd.exe" && proc.CommandLine != "" {
+				procCmdLine := ps.normalizeCommandLine(proc.CommandLine)
+				if strings.Contains(procCmdLine, normalizedCmdLine) {
+					targetProcesses = append(targetProcesses, proc)
+				}
+			}
+		}
+	} else {
+		processes, err := ps.GetProcessList()
+		if err != nil {
+			return err
+		}
+
+		for _, proc := range processes {
+			if proc.Path == "" {
+				continue
+			}
+
+			procPath, err := ps.normalizePath(proc.Path)
+			if err != nil {
+				continue
+			}
+
+			if procPath == normalizedPath {
+				targetProcesses = append(targetProcesses, proc)
+			}
 		}
 	}
 
@@ -300,4 +373,114 @@ func (ps *processService) terminateProcessUnix(proc *os.Process, pid int) error 
 
 func (ps *processService) terminateProcessWindows(proc *os.Process, pid int) error {
 	return terminateProcessWindowsImpl(ps, proc, pid)
+}
+
+func (ps *processService) IsBatchFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".bat" || ext == ".cmd"
+}
+
+func (ps *processService) GetProcessByCommandLine(pattern string) ([]ProcessInfo, error) {
+	processes, err := ps.GetProcessList()
+	if err != nil {
+		return nil, err
+	}
+
+	normalizedPattern := ps.normalizeCommandLine(pattern)
+	var matches []ProcessInfo
+
+	for _, proc := range processes {
+		if proc.CommandLine == "" {
+			continue
+		}
+
+		normalizedCmdLine := ps.normalizeCommandLine(proc.CommandLine)
+		if strings.Contains(normalizedCmdLine, normalizedPattern) {
+			matches = append(matches, proc)
+		}
+	}
+
+	return matches, nil
+}
+
+func (ps *processService) WaitForPort(host string, port int, timeout, checkInterval time.Duration) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, fmt.Errorf("timeout waiting for port %d", port)
+		case <-ticker.C:
+			isOpen, err := utils.IsPortOpen(host, port, 2*time.Second)
+			if err != nil {
+				ps.logger.Warn("error checking port", logger.Field{Key: "port", Value: port}, logger.Field{Key: "error", Value: err})
+				continue
+			}
+
+			if isOpen {
+				return true, nil
+			}
+		}
+	}
+}
+
+func (ps *processService) WaitForProcess(path string, timeout, checkInterval time.Duration) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return false, fmt.Errorf("timeout waiting for process: %s", path)
+		case <-ticker.C:
+			isRunning, err := ps.IsProcessRunning(path)
+			if err != nil {
+				ps.logger.Warn("error checking process", logger.Field{Key: "path", Value: path}, logger.Field{Key: "error", Value: err})
+				continue
+			}
+
+			if isRunning {
+				return true, nil
+			}
+		}
+	}
+}
+
+func (ps *processService) StartProcessWithHealthCheck(path string, port *int, timeout, checkInterval time.Duration, startParams ...string) error {
+	if err := ps.StartProcess(path, startParams...); err != nil {
+		return err
+	}
+
+	if port != nil {
+		isReady, err := ps.WaitForPort("127.0.0.1", *port, timeout, checkInterval)
+		if err != nil {
+			return fmt.Errorf("process started but port check failed: %w", err)
+		}
+
+		if !isReady {
+			return fmt.Errorf("process started but port %d did not become available within timeout", *port)
+		}
+
+		ps.logger.Info("process started and port is ready", logger.Field{Key: "path", Value: path}, logger.Field{Key: "port", Value: *port})
+	} else {
+		isReady, err := ps.WaitForProcess(path, timeout, checkInterval)
+		if err != nil {
+			return fmt.Errorf("process started but health check failed: %w", err)
+		}
+
+		if !isReady {
+			return fmt.Errorf("process started but did not become available within timeout")
+		}
+
+		ps.logger.Info("process started and is ready", logger.Field{Key: "path", Value: path})
+	}
+
+	return nil
 }

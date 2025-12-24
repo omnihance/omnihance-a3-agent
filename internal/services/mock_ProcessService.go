@@ -5,6 +5,8 @@
 package services
 
 import (
+	"time"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -33,6 +35,68 @@ type MockProcessService_Expecter struct {
 
 func (_m *MockProcessService) EXPECT() *MockProcessService_Expecter {
 	return &MockProcessService_Expecter{mock: &_m.Mock}
+}
+
+// GetProcessByCommandLine provides a mock function for the type MockProcessService
+func (_mock *MockProcessService) GetProcessByCommandLine(pattern string) ([]ProcessInfo, error) {
+	ret := _mock.Called(pattern)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProcessByCommandLine")
+	}
+
+	var r0 []ProcessInfo
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]ProcessInfo, error)); ok {
+		return returnFunc(pattern)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []ProcessInfo); ok {
+		r0 = returnFunc(pattern)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ProcessInfo)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(pattern)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockProcessService_GetProcessByCommandLine_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProcessByCommandLine'
+type MockProcessService_GetProcessByCommandLine_Call struct {
+	*mock.Call
+}
+
+// GetProcessByCommandLine is a helper method to define mock.On call
+//   - pattern string
+func (_e *MockProcessService_Expecter) GetProcessByCommandLine(pattern interface{}) *MockProcessService_GetProcessByCommandLine_Call {
+	return &MockProcessService_GetProcessByCommandLine_Call{Call: _e.mock.On("GetProcessByCommandLine", pattern)}
+}
+
+func (_c *MockProcessService_GetProcessByCommandLine_Call) Run(run func(pattern string)) *MockProcessService_GetProcessByCommandLine_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProcessService_GetProcessByCommandLine_Call) Return(processInfos []ProcessInfo, err error) *MockProcessService_GetProcessByCommandLine_Call {
+	_c.Call.Return(processInfos, err)
+	return _c
+}
+
+func (_c *MockProcessService_GetProcessByCommandLine_Call) RunAndReturn(run func(pattern string) ([]ProcessInfo, error)) *MockProcessService_GetProcessByCommandLine_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // GetProcessCount provides a mock function for the type MockProcessService
@@ -139,6 +203,57 @@ func (_c *MockProcessService_GetProcessList_Call) Return(processInfos []ProcessI
 }
 
 func (_c *MockProcessService_GetProcessList_Call) RunAndReturn(run func() ([]ProcessInfo, error)) *MockProcessService_GetProcessList_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsBatchFile provides a mock function for the type MockProcessService
+func (_mock *MockProcessService) IsBatchFile(path string) bool {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsBatchFile")
+	}
+
+	var r0 bool
+	if returnFunc, ok := ret.Get(0).(func(string) bool); ok {
+		r0 = returnFunc(path)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	return r0
+}
+
+// MockProcessService_IsBatchFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsBatchFile'
+type MockProcessService_IsBatchFile_Call struct {
+	*mock.Call
+}
+
+// IsBatchFile is a helper method to define mock.On call
+//   - path string
+func (_e *MockProcessService_Expecter) IsBatchFile(path interface{}) *MockProcessService_IsBatchFile_Call {
+	return &MockProcessService_IsBatchFile_Call{Call: _e.mock.On("IsBatchFile", path)}
+}
+
+func (_c *MockProcessService_IsBatchFile_Call) Run(run func(path string)) *MockProcessService_IsBatchFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProcessService_IsBatchFile_Call) Return(b bool) *MockProcessService_IsBatchFile_Call {
+	_c.Call.Return(b)
+	return _c
+}
+
+func (_c *MockProcessService_IsBatchFile_Call) RunAndReturn(run func(path string) bool) *MockProcessService_IsBatchFile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -269,6 +384,90 @@ func (_c *MockProcessService_StartProcess_Call) RunAndReturn(run func(pathOfBina
 	return _c
 }
 
+// StartProcessWithHealthCheck provides a mock function for the type MockProcessService
+func (_mock *MockProcessService) StartProcessWithHealthCheck(path string, port *int, timeout time.Duration, checkInterval time.Duration, startParams ...string) error {
+	var tmpRet mock.Arguments
+	if len(startParams) > 0 {
+		tmpRet = _mock.Called(path, port, timeout, checkInterval, startParams)
+	} else {
+		tmpRet = _mock.Called(path, port, timeout, checkInterval)
+	}
+	ret := tmpRet
+
+	if len(ret) == 0 {
+		panic("no return value specified for StartProcessWithHealthCheck")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, *int, time.Duration, time.Duration, ...string) error); ok {
+		r0 = returnFunc(path, port, timeout, checkInterval, startParams...)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockProcessService_StartProcessWithHealthCheck_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartProcessWithHealthCheck'
+type MockProcessService_StartProcessWithHealthCheck_Call struct {
+	*mock.Call
+}
+
+// StartProcessWithHealthCheck is a helper method to define mock.On call
+//   - path string
+//   - port *int
+//   - timeout time.Duration
+//   - checkInterval time.Duration
+//   - startParams ...string
+func (_e *MockProcessService_Expecter) StartProcessWithHealthCheck(path interface{}, port interface{}, timeout interface{}, checkInterval interface{}, startParams ...interface{}) *MockProcessService_StartProcessWithHealthCheck_Call {
+	return &MockProcessService_StartProcessWithHealthCheck_Call{Call: _e.mock.On("StartProcessWithHealthCheck",
+		append([]interface{}{path, port, timeout, checkInterval}, startParams...)...)}
+}
+
+func (_c *MockProcessService_StartProcessWithHealthCheck_Call) Run(run func(path string, port *int, timeout time.Duration, checkInterval time.Duration, startParams ...string)) *MockProcessService_StartProcessWithHealthCheck_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 *int
+		if args[1] != nil {
+			arg1 = args[1].(*int)
+		}
+		var arg2 time.Duration
+		if args[2] != nil {
+			arg2 = args[2].(time.Duration)
+		}
+		var arg3 time.Duration
+		if args[3] != nil {
+			arg3 = args[3].(time.Duration)
+		}
+		var arg4 []string
+		var variadicArgs []string
+		if len(args) > 4 {
+			variadicArgs = args[4].([]string)
+		}
+		arg4 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProcessService_StartProcessWithHealthCheck_Call) Return(err error) *MockProcessService_StartProcessWithHealthCheck_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockProcessService_StartProcessWithHealthCheck_Call) RunAndReturn(run func(path string, port *int, timeout time.Duration, checkInterval time.Duration, startParams ...string) error) *MockProcessService_StartProcessWithHealthCheck_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StopProcess provides a mock function for the type MockProcessService
 func (_mock *MockProcessService) StopProcess(pathOfBinary string) error {
 	ret := _mock.Called(pathOfBinary)
@@ -316,6 +515,156 @@ func (_c *MockProcessService_StopProcess_Call) Return(err error) *MockProcessSer
 }
 
 func (_c *MockProcessService_StopProcess_Call) RunAndReturn(run func(pathOfBinary string) error) *MockProcessService_StopProcess_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitForPort provides a mock function for the type MockProcessService
+func (_mock *MockProcessService) WaitForPort(host string, port int, timeout time.Duration, checkInterval time.Duration) (bool, error) {
+	ret := _mock.Called(host, port, timeout, checkInterval)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitForPort")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, int, time.Duration, time.Duration) (bool, error)); ok {
+		return returnFunc(host, port, timeout, checkInterval)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, int, time.Duration, time.Duration) bool); ok {
+		r0 = returnFunc(host, port, timeout, checkInterval)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, int, time.Duration, time.Duration) error); ok {
+		r1 = returnFunc(host, port, timeout, checkInterval)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockProcessService_WaitForPort_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitForPort'
+type MockProcessService_WaitForPort_Call struct {
+	*mock.Call
+}
+
+// WaitForPort is a helper method to define mock.On call
+//   - host string
+//   - port int
+//   - timeout time.Duration
+//   - checkInterval time.Duration
+func (_e *MockProcessService_Expecter) WaitForPort(host interface{}, port interface{}, timeout interface{}, checkInterval interface{}) *MockProcessService_WaitForPort_Call {
+	return &MockProcessService_WaitForPort_Call{Call: _e.mock.On("WaitForPort", host, port, timeout, checkInterval)}
+}
+
+func (_c *MockProcessService_WaitForPort_Call) Run(run func(host string, port int, timeout time.Duration, checkInterval time.Duration)) *MockProcessService_WaitForPort_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 time.Duration
+		if args[2] != nil {
+			arg2 = args[2].(time.Duration)
+		}
+		var arg3 time.Duration
+		if args[3] != nil {
+			arg3 = args[3].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProcessService_WaitForPort_Call) Return(b bool, err error) *MockProcessService_WaitForPort_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *MockProcessService_WaitForPort_Call) RunAndReturn(run func(host string, port int, timeout time.Duration, checkInterval time.Duration) (bool, error)) *MockProcessService_WaitForPort_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitForProcess provides a mock function for the type MockProcessService
+func (_mock *MockProcessService) WaitForProcess(path string, timeout time.Duration, checkInterval time.Duration) (bool, error) {
+	ret := _mock.Called(path, timeout, checkInterval)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitForProcess")
+	}
+
+	var r0 bool
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, time.Duration, time.Duration) (bool, error)); ok {
+		return returnFunc(path, timeout, checkInterval)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, time.Duration, time.Duration) bool); ok {
+		r0 = returnFunc(path, timeout, checkInterval)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, time.Duration, time.Duration) error); ok {
+		r1 = returnFunc(path, timeout, checkInterval)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockProcessService_WaitForProcess_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitForProcess'
+type MockProcessService_WaitForProcess_Call struct {
+	*mock.Call
+}
+
+// WaitForProcess is a helper method to define mock.On call
+//   - path string
+//   - timeout time.Duration
+//   - checkInterval time.Duration
+func (_e *MockProcessService_Expecter) WaitForProcess(path interface{}, timeout interface{}, checkInterval interface{}) *MockProcessService_WaitForProcess_Call {
+	return &MockProcessService_WaitForProcess_Call{Call: _e.mock.On("WaitForProcess", path, timeout, checkInterval)}
+}
+
+func (_c *MockProcessService_WaitForProcess_Call) Run(run func(path string, timeout time.Duration, checkInterval time.Duration)) *MockProcessService_WaitForProcess_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 time.Duration
+		if args[1] != nil {
+			arg1 = args[1].(time.Duration)
+		}
+		var arg2 time.Duration
+		if args[2] != nil {
+			arg2 = args[2].(time.Duration)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockProcessService_WaitForProcess_Call) Return(b bool, err error) *MockProcessService_WaitForProcess_Call {
+	_c.Call.Return(b, err)
+	return _c
+}
+
+func (_c *MockProcessService_WaitForProcess_Call) RunAndReturn(run func(path string, timeout time.Duration, checkInterval time.Duration) (bool, error)) *MockProcessService_WaitForProcess_Call {
 	_c.Call.Return(run)
 	return _c
 }

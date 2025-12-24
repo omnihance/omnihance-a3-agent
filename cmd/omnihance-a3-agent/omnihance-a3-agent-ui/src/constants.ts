@@ -30,4 +30,6 @@ export const queryKeys = {
     return ['users', page, pageSize] as const;
   },
   userStatuses: ['user-statuses'] as const,
+  serverProcesses: ['server-processes'] as const,
+  serverProcessStatus: (id: number) => ['server-process-status', id] as const,
 } as const;

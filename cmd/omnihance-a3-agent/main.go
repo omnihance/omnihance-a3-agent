@@ -66,6 +66,7 @@ func main() {
 
 	fileEditor := services.NewFileEditorService(log)
 	processService := services.NewProcessService(log)
+	serverManagerService := services.NewServerManagerService(internalDB, processService, log)
 	server := server.NewServer(
 		cfg, log,
 		frontendFiles,
@@ -74,6 +75,7 @@ func main() {
 		internalDB,
 		fileEditor,
 		processService,
+		serverManagerService,
 	)
 	if err := server.ListenAndServe(); err != nil {
 		log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})
