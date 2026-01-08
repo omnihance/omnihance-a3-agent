@@ -206,7 +206,7 @@ func (s *Server) handleDeleteDirectoryShortcut(w http.ResponseWriter, r *http.Re
 
 	if shortcut.UserID != userID {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusForbidden, map[string]interface{}{
-			"errorCode": constants.ErrorCodeUnauthorized,
+			"errorCode": constants.ErrorCodeForbidden,
 			"context":   "directory-shortcuts",
 			"errors":    []string{"Not authorized to delete this shortcut"},
 		})
