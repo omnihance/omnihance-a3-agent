@@ -8,6 +8,7 @@ import {
   Loader2,
   AlertCircle,
   Eye,
+  Pin,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -43,6 +44,8 @@ import {
   getServerProcesses,
   deleteServerProcess,
   getProcessStatus,
+  getDirectoryShortcuts,
+  createDirectoryShortcut,
   APIError,
   type FileNode,
   type FileTreeResponse,
@@ -115,6 +118,8 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addDialogName, setAddDialogName] = useState('');
   const [addDialogPort, setAddDialogPort] = useState('');
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [pinDialogName, setPinDialogName] = useState('');
 
   const rawCurrentPath =
     internalPath !== null ? internalPath : (initialPath ?? '');
@@ -163,6 +168,11 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const { data: serverProcesses } = useQuery<ServerProcess[]>({
     queryKey: queryKeys.serverProcesses,
     queryFn: getServerProcesses,
+  });
+
+  const { data: directoryShortcutsData } = useQuery({
+    queryKey: queryKeys.directoryShortcuts,
+    queryFn: getDirectoryShortcuts,
   });
 
   const fileNode = fileTreeResponse?.file_tree;
@@ -368,6 +378,117 @@ export function FileTree({ initialPath }: FileTreeProps) {
     });
   };
 
+  const createShortcutMutation = useMutation({
+    mutationFn: async (data: { name: string; path: string }) => {
+      return createDirectoryShortcut(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.directoryShortcuts });
+      toast.success('Directory added to shortcuts');
+      setShowPinDialog(false);
+      setPinDialogName('');
+    },
+    onError: (error: APIError) => {
+      toast.error(error.getErrorMessage());
+    },
+  });
+
+  const generateSuggestedName = (): string => {
+    if (!currentPath || currentPath === '') {
+      return '';
+    }
+
+    const shortcuts = directoryShortcutsData?.shortcuts || [];
+    const existingNames = new Set(shortcuts.map((s) => s.name.toLowerCase()));
+
+    const currentPathParts = pathParts;
+    const baseName =
+      currentPathParts.length > 0
+        ? currentPathParts[currentPathParts.length - 1]
+        : '';
+
+    if (!baseName) {
+      return '';
+    }
+
+    if (!existingNames.has(baseName.toLowerCase())) {
+      return baseName;
+    }
+
+    for (let i = currentPathParts.length - 2; i >= 0; i--) {
+      const parentName = currentPathParts[i];
+      const suggested = `${baseName} (${parentName})`;
+      if (!existingNames.has(suggested.toLowerCase())) {
+        return suggested;
+      }
+    }
+
+    let counter = 2;
+    while (existingNames.has(`${baseName} (${counter})`.toLowerCase())) {
+      counter++;
+    }
+
+    return `${baseName} (${counter})`;
+  };
+
+  const handlePinClick = () => {
+    const suggested = generateSuggestedName();
+    setPinDialogName(suggested);
+    setShowPinDialog(true);
+  };
+
+  const handlePinDialogSubmit = () => {
+    if (!pinDialogName.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    if (!currentPath || currentPath === '') {
+      toast.error('Cannot pin root directory');
+      return;
+    }
+
+    createShortcutMutation.mutate({
+      name: pinDialogName.trim(),
+      path: currentPath,
+    });
+  };
+
+  const isCurrentPathInShortcuts = (): boolean => {
+    if (!currentPath || currentPath === '') {
+      return false;
+    }
+
+    const shortcuts = directoryShortcutsData?.shortcuts || [];
+    const normalizedCurrent = currentPath
+      .replace(/\\/g, '/')
+      .toLowerCase()
+      .trim();
+    return shortcuts.some(
+      (s) =>
+        s.path.replace(/\\/g, '/').toLowerCase().trim() === normalizedCurrent,
+    );
+  };
+
+  const canPinCurrentPath = (): boolean => {
+    if (!currentPath || currentPath === '') {
+      return false;
+    }
+
+    if (isCurrentPathInShortcuts()) {
+      return false;
+    }
+
+    const limit = directoryShortcutsData?.limit || 0;
+    const count = directoryShortcutsData?.shortcuts?.length || 0;
+
+    if (limit > 0 && count >= limit) {
+      return false;
+    }
+
+    return true;
+  };
+
   if (error) {
     const errorMessage =
       error instanceof APIError
@@ -437,6 +558,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
           >
             Show dotfiles
           </Label>
+          {canPinCurrentPath() && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePinClick}
+              className="gap-2"
+              aria-label="Add to your shortcuts"
+              title="Add to your shortcuts"
+            >
+              <Pin className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -623,6 +756,54 @@ export function FileTree({ initialPath }: FileTreeProps) {
               disabled={addToServerMutation.isPending || !addDialogName.trim()}
             >
               {addToServerMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Shortcuts</DialogTitle>
+            <DialogDescription>
+              Add this directory to your shortcuts for easy access
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="pin-name">Name</Label>
+              <Input
+                id="pin-name"
+                value={pinDialogName}
+                onChange={(e) => setPinDialogName(e.target.value)}
+                placeholder="Shortcut name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowPinDialog(false);
+                setPinDialogName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePinDialogSubmit}
+              disabled={
+                createShortcutMutation.isPending || !pinDialogName.trim()
+              }
+            >
+              {createShortcutMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...

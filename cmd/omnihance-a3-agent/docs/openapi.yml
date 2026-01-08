@@ -22,6 +22,8 @@ tags:
     name: user-management
   - description: Server process management operations
     name: server-management
+  - description: Directory shortcuts operations
+    name: directory-shortcuts
 
 paths:
   /api/auth/sign-in:
@@ -1761,6 +1763,129 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/directory-shortcuts:
+    get:
+      tags:
+        - directory-shortcuts
+      summary: Get directory shortcuts
+      description: Returns all directory shortcuts for the current user, including the configured limit and whether the user has exceeded the limit.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Directory shortcuts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryShortcutsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - directory-shortcuts
+      summary: Create directory shortcut
+      description: Creates a new directory shortcut for the current user. Validates that the path is not root, not already in shortcuts, and that the user has not exceeded the limit. The path is normalized to prevent duplicates.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectoryShortcutRequest'
+      responses:
+        '200':
+          description: Directory shortcut created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryShortcut'
+        '400':
+          description: Bad Request - Invalid request body, validation failed, path is root, directory already in shortcuts, or shortcut limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/directory-shortcuts/{id}:
+    delete:
+      tags:
+        - directory-shortcuts
+      summary: Delete directory shortcut
+      description: Deletes a directory shortcut by ID. Only the owner of the shortcut can delete it.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Directory shortcut ID
+          example: 1
+      responses:
+        '200':
+          description: Directory shortcut deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Shortcut deleted successfully"
+        '400':
+          description: Bad Request - Invalid shortcut ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Not authorized to delete this shortcut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shortcut not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -2493,3 +2618,73 @@ components:
           nullable: true
           description: Last uptime in seconds (from start_time to end_time). Only present if the process is not running and has both start_time and end_time.
           example: 3600
+    DirectoryShortcut:
+      type: object
+      description: Directory shortcut information
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Directory shortcut ID
+          example: 1
+        user_id:
+          type: integer
+          format: int64
+          description: User ID who owns this shortcut
+          example: 1
+        name:
+          type: string
+          description: Display name for the shortcut
+          example: "My Documents"
+        path:
+          type: string
+          description: Full path to the directory
+          example: "C:\\Users\\user\\Documents"
+        normalized_path:
+          type: string
+          description: Normalized path used for duplicate detection (internal use)
+          example: "c:/users/user/documents"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the shortcut was created
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the shortcut was last updated
+          example: "2024-01-01T00:00:00Z"
+    DirectoryShortcutsResponse:
+      type: object
+      description: Response containing directory shortcuts with limit information
+      properties:
+        shortcuts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryShortcut'
+          description: Array of directory shortcuts for the current user
+        limit:
+          type: integer
+          description: Maximum number of shortcuts allowed (configured via DIRECTORY_SHORTCUTS_LIMIT env var)
+          example: 5
+        over_limit_by:
+          type: integer
+          description: Number of shortcuts over the limit (0 if within limit)
+          example: 0
+    CreateDirectoryShortcutRequest:
+      type: object
+      required:
+        - name
+        - path
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Display name for the shortcut
+          example: "My Documents"
+        path:
+          type: string
+          minLength: 1
+          description: Full path to the directory to pin
+          example: "C:\\Users\\user\\Documents"
