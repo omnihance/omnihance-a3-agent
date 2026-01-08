@@ -241,6 +241,13 @@ func (s *Server) isRootPath(path string) bool {
 		return true
 	}
 
+	if len(normalized) == 2 && normalized[1] == ':' {
+		firstChar := normalized[0]
+		if firstChar >= 'a' && firstChar <= 'z' {
+			return true
+		}
+	}
+
 	return false
 }
 
