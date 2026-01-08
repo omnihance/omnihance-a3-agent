@@ -3,12 +3,11 @@ package db
 import (
 	"fmt"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 )
 
 type DirectoryShortcut struct {
@@ -19,24 +18,6 @@ type DirectoryShortcut struct {
 	NormalizedPath string     `db:"normalized_path" json:"normalized_path"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      *time.Time `db:"updated_at" json:"updated_at"`
-}
-
-func normalizePathForShortcut(path string) string {
-	normalized := strings.ReplaceAll(path, "\\", "/")
-	normalized = strings.TrimSpace(normalized)
-	normalized = strings.ToLower(normalized)
-	normalized = strings.TrimSuffix(normalized, "/")
-
-	if runtime.GOOS == "windows" {
-		if len(normalized) == 2 && normalized[1] == ':' {
-			return normalized
-		}
-		if len(normalized) == 3 && normalized[1] == ':' && normalized[2] == '/' {
-			return normalized[:2]
-		}
-	}
-
-	return normalized
 }
 
 func (s *sqliteInternalDB) GetDirectoryShortcuts(userID int64) ([]DirectoryShortcut, error) {
@@ -121,7 +102,7 @@ func (s *sqliteInternalDB) GetDirectoryShortcutByNormalizedPath(userID int64, no
 }
 
 func (s *sqliteInternalDB) CreateDirectoryShortcut(userID int64, name, path string) (*DirectoryShortcut, error) {
-	normalizedPath := normalizePathForShortcut(path)
+	normalizedPath := utils.NormalizePathForShortcut(path)
 	cleanPath := filepath.Clean(path)
 
 	insertRecord := goqu.Record{

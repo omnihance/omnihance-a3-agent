@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -109,7 +107,7 @@ func (s *Server) handleCreateDirectoryShortcut(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	normalizedPath := normalizePathForShortcut(cleanPath)
+	normalizedPath := utils.NormalizePathForShortcut(cleanPath)
 	existing, err := s.internalDB.GetDirectoryShortcutByNormalizedPath(userID, normalizedPath)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -217,42 +215,18 @@ func (s *Server) handleDeleteDirectoryShortcut(w http.ResponseWriter, r *http.Re
 	})
 }
 
-func normalizePathForShortcut(path string) string {
-	normalized := strings.ReplaceAll(path, "\\", "/")
-	normalized = strings.TrimSpace(normalized)
-	normalized = strings.ToLower(normalized)
-	normalized = strings.TrimSuffix(normalized, "/")
-
-	if runtime.GOOS == "windows" {
-		if len(normalized) == 2 && normalized[1] == ':' {
-			return normalized
-		}
-		if len(normalized) == 3 && normalized[1] == ':' && normalized[2] == '/' {
-			return normalized[:2]
-		}
-	}
-
-	return normalized
-}
-
 func (s *Server) isRootPath(path string) bool {
 	if path == "" {
 		return true
 	}
 
-	normalized := normalizePathForShortcut(path)
+	normalized := utils.NormalizePathForShortcut(path)
 	if normalized == "" {
 		return true
 	}
 
-	if runtime.GOOS == "windows" {
-		if normalized == "/" {
-			return true
-		}
-	} else {
-		if normalized == "/" {
-			return true
-		}
+	if normalized == "/" {
+		return true
 	}
 
 	return false
