@@ -32,4 +32,5 @@ export const queryKeys = {
   userStatuses: ['user-statuses'] as const,
   serverProcesses: ['server-processes'] as const,
   serverProcessStatus: (id: number) => ['server-process-status', id] as const,
+  directoryShortcuts: ['directory-shortcuts'] as const,
 } as const;

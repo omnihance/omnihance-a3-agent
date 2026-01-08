@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Loader2, Folder, X, AlertTriangle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import {
   Card,
   CardContent,
@@ -15,8 +16,26 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { getSession, updatePassword, APIError } from '@/lib/api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  getSession,
+  updatePassword,
+  getDirectoryShortcuts,
+  deleteDirectoryShortcut,
+  APIError,
+  type DirectoryShortcutsResponse,
+} from '@/lib/api';
 import { queryKeys } from '@/constants';
+import { toast } from 'sonner';
 
 const changePasswordSchema = z
   .object({
@@ -45,6 +64,54 @@ export function SettingsPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [deleteShortcutId, setDeleteShortcutId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: directoryShortcutsData } = useQuery({
+    queryKey: queryKeys.directoryShortcuts,
+    queryFn: getDirectoryShortcuts,
+  });
+
+  const deleteShortcutMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return deleteDirectoryShortcut(id);
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.directoryShortcuts,
+      });
+      const previousData = queryClient.getQueryData<DirectoryShortcutsResponse>(
+        queryKeys.directoryShortcuts,
+      );
+      if (previousData) {
+        queryClient.setQueryData<DirectoryShortcutsResponse>(
+          queryKeys.directoryShortcuts,
+          {
+            ...previousData,
+            shortcuts: previousData.shortcuts.filter((s) => s.id !== id),
+            over_limit_by: Math.max(0, previousData.over_limit_by - 1),
+          },
+        );
+      }
+      return { previousData };
+    },
+    onError: (error: APIError, _id, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          queryKeys.directoryShortcuts,
+          context.previousData,
+        );
+      }
+      toast.error(error.getErrorMessage());
+    },
+    onSuccess: () => {
+      toast.success('Shortcut removed');
+      setDeleteShortcutId(null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.directoryShortcuts });
+    },
+  });
 
   const passwordForm = useForm<ChangePasswordFormData>({
     resolver: zodResolver(changePasswordSchema),
@@ -186,7 +253,110 @@ export function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        {/* Directory Shortcuts */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Directory Shortcuts</CardTitle>
+            <CardDescription>
+              Manage your pinned directory shortcuts
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {directoryShortcutsData?.over_limit_by &&
+              directoryShortcutsData.over_limit_by > 0 && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    You have {directoryShortcutsData.over_limit_by} shortcut(s)
+                    over the limit. Only the first{' '}
+                    {directoryShortcutsData.limit} shortcuts appear in the
+                    sidebar.
+                  </AlertDescription>
+                </Alert>
+              )}
+            {directoryShortcutsData?.shortcuts &&
+            directoryShortcutsData.shortcuts.length > 0 ? (
+              <div className="space-y-2">
+                {directoryShortcutsData.shortcuts.map((shortcut) => (
+                  <div
+                    key={shortcut.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div className="flex flex-1 items-center gap-3 min-w-0">
+                      <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">
+                          {shortcut.name}
+                        </div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {shortcut.path}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="ghost" size="sm" asChild className="h-8">
+                        <Link to="/file" search={{ path: shortcut.path }}>
+                          Open
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => setDeleteShortcutId(shortcut.id)}
+                        aria-label={`Remove ${shortcut.name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No shortcuts yet. Pin directories from the File Browser to add
+                them here.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <AlertDialog
+        open={deleteShortcutId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteShortcutId(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Shortcut</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this shortcut? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteShortcutMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteShortcutId !== null) {
+                  deleteShortcutMutation.mutate(deleteShortcutId);
+                }
+              }}
+              disabled={deleteShortcutMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

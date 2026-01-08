@@ -11,7 +11,7 @@ function FilePageWithLayout() {
   return (
     <DashboardLayout>
       <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden p-4 lg:p-6">
-        <FileTree initialPath={path} />
+        <FileTree key={path ?? '__root__'} initialPath={path} />
       </div>
     </DashboardLayout>
   );

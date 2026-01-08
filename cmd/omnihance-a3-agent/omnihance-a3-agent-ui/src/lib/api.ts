@@ -37,6 +37,8 @@ export const API_ROUTES = {
   SERVER_PROCESS_START: (id: number) => `/api/server/processes/${id}/start`,
   SERVER_PROCESS_STOP: (id: number) => `/api/server/processes/${id}/stop`,
   SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
+  DIRECTORY_SHORTCUTS: '/api/directory-shortcuts',
+  DIRECTORY_SHORTCUT: (id: number) => `/api/directory-shortcuts/${id}`,
 } as const;
 
 export class APIError extends Error {
@@ -1109,5 +1111,82 @@ export async function getProcessStatus(id: number): Promise<ProcessStatus> {
     ProcessStatusSchema,
     response.data,
     API_ROUTES.SERVER_PROCESS_STATUS(id),
+  );
+}
+
+const DirectoryShortcutSchema = z.object({
+  id: z.number().int(),
+  user_id: z.number().int(),
+  name: z.string(),
+  path: z.string(),
+  normalized_path: z.string(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type DirectoryShortcut = z.infer<typeof DirectoryShortcutSchema>;
+
+const DirectoryShortcutsResponseSchema = z.object({
+  shortcuts: z.array(DirectoryShortcutSchema),
+  limit: z.number().int(),
+  over_limit_by: z.number().int(),
+});
+
+export type DirectoryShortcutsResponse = z.infer<
+  typeof DirectoryShortcutsResponseSchema
+>;
+
+const CreateDirectoryShortcutRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+});
+
+export type CreateDirectoryShortcutRequest = z.infer<
+  typeof CreateDirectoryShortcutRequestSchema
+>;
+
+const DeleteDirectoryShortcutResponseSchema = z.object({
+  message: z.string(),
+});
+
+export type DeleteDirectoryShortcutResponse = z.infer<
+  typeof DeleteDirectoryShortcutResponseSchema
+>;
+
+export async function getDirectoryShortcuts(): Promise<DirectoryShortcutsResponse> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+  return validateResponse(
+    DirectoryShortcutsResponseSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+}
+
+export async function createDirectoryShortcut(
+  data: CreateDirectoryShortcutRequest,
+): Promise<DirectoryShortcut> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+    CreateDirectoryShortcutRequestSchema.parse(data),
+  );
+  return validateResponse(
+    DirectoryShortcutSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+}
+
+export async function deleteDirectoryShortcut(
+  id: number,
+): Promise<DeleteDirectoryShortcutResponse> {
+  const response = await axiosInstance.delete<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUT(id),
+  );
+  return validateResponse(
+    DeleteDirectoryShortcutResponseSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUT(id),
   );
 }
