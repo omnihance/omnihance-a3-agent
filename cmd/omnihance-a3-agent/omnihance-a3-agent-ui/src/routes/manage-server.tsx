@@ -1,14 +1,21 @@
 import { createRoute, redirect } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { ManageServerPage } from '@/components/manage-server-page';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
 
+const ManageServerPage = lazyNamed(
+  () => import('@/components/manage-server-page'),
+  'ManageServerPage',
+);
+
 function ManageServerPageWithLayout() {
   return (
     <DashboardLayout>
-      <ManageServerPage />
+      <LazySuspense>
+        <ManageServerPage />
+      </LazySuspense>
     </DashboardLayout>
   );
 }

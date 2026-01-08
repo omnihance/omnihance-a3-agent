@@ -1,7 +1,6 @@
 import { createRoute, redirect, useSearch } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { FileEdit } from '@/components/file-edit';
-import { PathError } from '@/components/path-error';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
@@ -27,23 +26,33 @@ function isAllowed(action: string, roles: string[]): boolean {
   return roles.some((role) => allowedRolesMap.has(normalizeRole(role)));
 }
 
+const FileEdit = lazyNamed(() => import('@/components/file-edit'), 'FileEdit');
+const PathError = lazyNamed(
+  () => import('@/components/path-error'),
+  'PathError',
+);
+
 function FileEditPageWithLayout() {
   const { path } = useSearch({ from: '/file/edit' });
 
   if (!path) {
     return (
       <DashboardLayout>
-        <PathError
-          title="File Path Required"
-          description="No file path was provided. Please select a file from the project directory to edit."
-        />
+        <LazySuspense>
+          <PathError
+            title="File Path Required"
+            description="No file path was provided. Please select a file from the project directory to edit."
+          />
+        </LazySuspense>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <FileEdit filePath={path} />
+      <LazySuspense>
+        <FileEdit filePath={path} />
+      </LazySuspense>
     </DashboardLayout>
   );
 }
