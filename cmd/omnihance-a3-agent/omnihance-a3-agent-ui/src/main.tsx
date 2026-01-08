@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import {
@@ -9,7 +9,6 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { Toaster } from '@/components/ui/sonner';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider';
 import authRoute from './routes/auth';
 import dashboardRoute from './routes/dashboard';
@@ -22,12 +21,32 @@ import usersRoute from './routes/users';
 import manageServerRoute from './routes/manage-server';
 import reportWebVitals from './reportWebVitals.ts';
 
+const TanStackRouterDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-router-devtools').then((res) => ({
+        default: res.TanStackRouterDevtools,
+      })),
+    )
+  : null;
+
+function DevtoolsWrapper() {
+  if (!TanStackRouterDevtools) {
+    return null;
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <TanStackRouterDevtools />
+    </Suspense>
+  );
+}
+
 const rootRoute = createRootRoute({
   component: () => (
     <>
       <HeadContent />
       <Outlet />
-      <TanStackRouterDevtools />
+      <DevtoolsWrapper />
       <Toaster />
     </>
   ),

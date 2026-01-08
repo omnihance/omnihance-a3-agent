@@ -1,14 +1,21 @@
 import { createRoute, redirect } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { SettingsPage } from '@/components/settings-page';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
 
+const SettingsPage = lazyNamed(
+  () => import('@/components/settings-page'),
+  'SettingsPage',
+);
+
 function SettingsPageWithLayout() {
   return (
     <DashboardLayout>
-      <SettingsPage />
+      <LazySuspense>
+        <SettingsPage />
+      </LazySuspense>
     </DashboardLayout>
   );
 }
