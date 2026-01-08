@@ -1,10 +1,13 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -184,10 +187,19 @@ func (s *Server) handleDeleteDirectoryShortcut(w http.ResponseWriter, r *http.Re
 
 	shortcut, err := s.internalDB.GetDirectoryShortcut(id)
 	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
-			"errorCode": constants.ErrorCodeNotFound,
+		if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "directory-shortcuts",
+				"errors":    []string{"Shortcut not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "directory-shortcuts",
-			"errors":    []string{"Shortcut not found"},
+			"errors":    []string{err.Error()},
 		})
 		return
 	}
