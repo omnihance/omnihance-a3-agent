@@ -10,6 +10,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
+	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services/collectors"
 	"github.com/omnihance/omnihance-a3-agent/internal/services/echarts"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
@@ -32,6 +33,19 @@ func (s *Server) InitializeMetricsRoutes(r *chi.Mux) {
 }
 
 func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
+		return
+	}
+
+	if !s.cfg.MetricsEnabled {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "metrics",
+			"errors":    []string{"Metrics collection is disabled"},
+		})
+		return
+	}
+
 	samples, err := s.internalDB.GetLatestSamples()
 	if err != nil {
 		s.log.Error("Failed to get latest metric samples", logger.Field{Key: "error", Value: err})
@@ -61,7 +75,12 @@ func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	cards := make([]MetricCard, 0, 2)
+	processCount, err := s.processService.GetProcessCount()
+	if err != nil {
+		s.log.Warn("Failed to get process count", logger.Field{Key: "error", Value: err})
+	}
+
+	cards := make([]MetricCard, 0, 3)
 
 	if cpuSampleCount > 0 {
 		cpuUsageTotal := cpuUsagePerCore * float64(cpuSampleCount)
@@ -100,6 +119,14 @@ func (s *Server) getMetricsSummaryHandler(w http.ResponseWriter, r *http.Request
 		})
 	}
 
+	cards = append(cards, MetricCard{
+		Name:         "Processes",
+		MetricName:   "process_count",
+		Description:  "Running Processes",
+		Value:        float64(processCount),
+		DisplayValue: fmt.Sprintf("%d", processCount),
+	})
+
 	response := map[string]interface{}{
 		"cards": cards,
 	}
@@ -124,6 +151,19 @@ type ChartResponse struct {
 }
 
 func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
+		return
+	}
+
+	if !s.cfg.MetricsEnabled {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "metrics",
+			"errors":    []string{"Metrics collection is disabled"},
+		})
+		return
+	}
+
 	timeRange := r.URL.Query().Get("range")
 	if timeRange == "" {
 		timeRange = "1h"

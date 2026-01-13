@@ -18,6 +18,12 @@ tags:
     name: metrics
   - description: Game data operations
     name: game-data
+  - description: User management operations
+    name: user-management
+  - description: Server process management operations
+    name: server-management
+  - description: Directory shortcuts operations
+    name: directory-shortcuts
 
 paths:
   /api/auth/sign-in:
@@ -1078,6 +1084,808 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/users:
+    get:
+      tags:
+        - user-management
+      summary: List all users
+      description: Returns a paginated list of all users. Supports optional email search filtering. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based)
+          example: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of items per page
+          example: 10
+        - in: query
+          name: s
+          schema:
+            type: string
+          description: Optional search string to filter users by email (case-insensitive partial match)
+          example: "user@example.com"
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListUsersResponse'
+        '400':
+          description: Bad Request - Invalid pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/statuses:
+    get:
+      tags:
+        - user-management
+      summary: Get allowed user statuses
+      description: Returns a list of all allowed user status values. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User statuses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserStatusesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/{id}/status:
+    patch:
+      tags:
+        - user-management
+      summary: Update user status
+      description: Updates the status of a user. The new status must be different from the current status. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '200':
+          description: User status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "User status updated successfully"
+        '400':
+          description: Bad Request - Invalid request body, validation failed, or status unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/users/{id}/password:
+    patch:
+      tags:
+        - user-management
+      summary: Set user password
+      description: Sets a new password for a user. Only accessible by Super Admin.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: User ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUserPasswordRequest'
+      responses:
+        '200':
+          description: Password set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Password set successfully"
+        '400':
+          description: Bad Request - Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Insufficient permissions (Super Admin required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes:
+    get:
+      tags:
+        - server-management
+      summary: List all server processes
+      description: Returns a list of all server processes ordered by sequence order.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server processes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServerProcess'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - server-management
+      summary: Create a new server process
+      description: Creates a new server process with the specified name, path, and optional port. The process is added to the end of the sequence order.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServerProcessRequest'
+      responses:
+        '200':
+          description: Server process created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerProcess'
+        '400':
+          description: Bad Request - Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes/{id}:
+    get:
+      tags:
+        - server-management
+      summary: Get a server process
+      description: Returns the details of a specific server process by ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      responses:
+        '200':
+          description: Server process retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerProcess'
+        '400':
+          description: Bad Request - Invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Server process not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - server-management
+      summary: Update a server process
+      description: Updates the name, path, and optional port of a server process. The sequence order is not changed.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServerProcessRequest'
+      responses:
+        '200':
+          description: Server process updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerProcess'
+        '400':
+          description: Bad Request - Invalid request body, validation failed, or invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - server-management
+      summary: Delete a server process
+      description: Deletes a server process by ID. The process must be stopped before deletion.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      responses:
+        '200':
+          description: Server process deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Process deleted successfully"
+        '400':
+          description: Bad Request - Invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes/reorder:
+    post:
+      tags:
+        - server-management
+      summary: Reorder server processes
+      description: Updates the sequence order of multiple server processes. All processes must be provided with their new sequence orders.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderServerProcessesRequest'
+      responses:
+        '200':
+          description: Server processes reordered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Processes reordered successfully"
+        '400':
+          description: Bad Request - Invalid request body or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/start:
+    post:
+      tags:
+        - server-management
+      summary: Start full server sequence
+      description: Starts all server processes in sequence order. Each process is started and verified (by port check if available, or process check) before the next one is started. Processes are started with health checks that wait up to 60 seconds for the process to become ready.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Server started successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to start one or more processes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/stop:
+    post:
+      tags:
+        - server-management
+      summary: Stop full server sequence
+      description: Stops all server processes in reverse sequence order. Each process is stopped before moving to the previous one in the sequence.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Server stopped successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to stop one or more processes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes/{id}/start:
+    post:
+      tags:
+        - server-management
+      summary: Start an individual process
+      description: Starts a specific server process by ID. The process is started with a health check that waits up to 60 seconds for the process to become ready (verified by port check if available, or process check).
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      responses:
+        '200':
+          description: Process started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Process started successfully"
+        '400':
+          description: Bad Request - Invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to start the process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes/{id}/stop:
+    post:
+      tags:
+        - server-management
+      summary: Stop an individual process
+      description: Stops a specific server process by ID.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      responses:
+        '200':
+          description: Process stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Process stopped successfully"
+        '400':
+          description: Bad Request - Invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to stop the process
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server/processes/{id}/status:
+    get:
+      tags:
+        - server-management
+      summary: Get process status
+      description: Returns the current status of a server process including whether it is running, port status (if configured), start/end times, and uptime information.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Server process ID
+          example: 1
+      responses:
+        '200':
+          description: Process status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessStatus'
+        '400':
+          description: Bad Request - Invalid process ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/directory-shortcuts:
+    get:
+      tags:
+        - directory-shortcuts
+      summary: Get directory shortcuts
+      description: Returns all directory shortcuts for the current user, including the configured limit and whether the user has exceeded the limit.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Directory shortcuts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryShortcutsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - directory-shortcuts
+      summary: Create directory shortcut
+      description: Creates a new directory shortcut for the current user. Validates that the path is not root, not already in shortcuts, and that the user has not exceeded the limit. The path is normalized to prevent duplicates.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectoryShortcutRequest'
+      responses:
+        '200':
+          description: Directory shortcut created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryShortcut'
+        '400':
+          description: Bad Request - Invalid request body, validation failed, path is root, directory already in shortcuts, or shortcut limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/directory-shortcuts/{id}:
+    delete:
+      tags:
+        - directory-shortcuts
+      summary: Delete directory shortcut
+      description: Deletes a directory shortcut by ID. Only the owner of the shortcut can delete it.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: Directory shortcut ID
+          example: 1
+      responses:
+        '200':
+          description: Directory shortcut deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Shortcut deleted successfully"
+        '400':
+          description: Bad Request - Invalid shortcut ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Not authorized to delete this shortcut
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Shortcut not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -1572,3 +2380,311 @@ components:
           type: string
           description: Name of the game data entry
           example: "Goblin Warrior"
+    ListUsersResponse:
+      type: object
+      description: Paginated list of users
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserListItem'
+          description: Array of user items
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+    PaginationInfo:
+      type: object
+      description: Pagination metadata
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: Total number of items
+          example: 10
+        page:
+          type: integer
+          description: Current page number (1-based)
+          example: 1
+        pageSize:
+          type: integer
+          description: Number of items per page
+          example: 10
+    UserListItem:
+      type: object
+      description: User list item information
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: User ID
+          example: 1
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: "user@example.com"
+        roles:
+          type: array
+          items:
+            type: string
+          description: User roles
+          example: ["super_admin"]
+        status:
+          type: string
+          enum: [pending, active, inactive, banned]
+          description: User status
+          example: "active"
+        created_at:
+          type: string
+          format: date-time
+          description: User creation timestamp
+          example: "2024-01-01T00:00:00Z"
+    UpdateUserStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, active, inactive, banned]
+          description: New user status
+          example: "active"
+    SetUserPasswordRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 6
+          description: New password (minimum 6 characters)
+          example: "newpassword123"
+    GetUserStatusesResponse:
+      type: object
+      description: Response containing allowed user statuses
+      properties:
+        statuses:
+          type: array
+          items:
+            type: string
+            enum: [pending, active, inactive, banned]
+          description: List of allowed user status values
+          example: ["pending", "active", "inactive", "banned"]
+    ServerProcess:
+      type: object
+      description: Server process configuration and metadata
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Server process ID
+          example: 1
+        name:
+          type: string
+          description: Friendly name for the process
+          example: "Database Server"
+        path:
+          type: string
+          description: Path to the executable or batch file
+          example: "C:\\A3Server\\db_server.exe"
+        port:
+          type: integer
+          nullable: true
+          description: Optional TCP port number that the process listens on
+          example: 3306
+        sequence_order:
+          type: integer
+          description: Order in which this process should be started (lower numbers start first)
+          example: 1
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the process was last started
+          example: "2024-01-01T00:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the process was last stopped
+          example: "2024-01-01T01:00:00Z"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the process was created
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the process was last updated
+          example: "2024-01-01T00:00:00Z"
+    CreateServerProcessRequest:
+      type: object
+      required:
+        - name
+        - path
+      properties:
+        name:
+          type: string
+          description: Friendly name for the process
+          example: "Database Server"
+        path:
+          type: string
+          description: Path to the executable or batch file
+          example: "C:\\A3Server\\db_server.exe"
+        port:
+          type: integer
+          nullable: true
+          description: Optional TCP port number that the process listens on
+          example: 3306
+    UpdateServerProcessRequest:
+      type: object
+      required:
+        - name
+        - path
+      properties:
+        name:
+          type: string
+          description: Friendly name for the process
+          example: "Database Server"
+        path:
+          type: string
+          description: Path to the executable or batch file
+          example: "C:\\A3Server\\db_server.exe"
+        port:
+          type: integer
+          nullable: true
+          description: Optional TCP port number that the process listens on. Set to null to remove port configuration.
+          example: 3306
+    ReorderServerProcessesRequest:
+      type: object
+      required:
+        - updates
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReorderUpdate'
+          description: Array of process ID and new sequence order pairs
+    ReorderUpdate:
+      type: object
+      required:
+        - id
+        - sequence_order
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Server process ID
+          example: 1
+        sequence_order:
+          type: integer
+          description: New sequence order for this process
+          example: 2
+    ProcessStatus:
+      type: object
+      description: Current status information for a server process
+      properties:
+        running:
+          type: boolean
+          description: Whether the process is currently running
+          example: true
+        port_open:
+          type: boolean
+          nullable: true
+          description: Whether the configured port is open and listening (only present if port is configured)
+          example: true
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the process was last started (ISO 8601 format)
+          example: "2024-01-01T00:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the process was last stopped (ISO 8601 format). Only present if the process is not running and has been stopped.
+          example: "2024-01-01T01:00:00Z"
+        current_uptime_seconds:
+          type: integer
+          format: int64
+          nullable: true
+          description: Current uptime in seconds. Only present if the process is running and has a start_time.
+          example: 3600
+        last_uptime_seconds:
+          type: integer
+          format: int64
+          nullable: true
+          description: Last uptime in seconds (from start_time to end_time). Only present if the process is not running and has both start_time and end_time.
+          example: 3600
+    DirectoryShortcut:
+      type: object
+      description: Directory shortcut information
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Directory shortcut ID
+          example: 1
+        user_id:
+          type: integer
+          format: int64
+          description: User ID who owns this shortcut
+          example: 1
+        name:
+          type: string
+          description: Display name for the shortcut
+          example: "My Documents"
+        path:
+          type: string
+          description: Full path to the directory
+          example: "C:\\Users\\user\\Documents"
+        normalized_path:
+          type: string
+          description: Normalized path used for duplicate detection (internal use)
+          example: "c:/users/user/documents"
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the shortcut was created
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the shortcut was last updated
+          example: "2024-01-01T00:00:00Z"
+    DirectoryShortcutsResponse:
+      type: object
+      description: Response containing directory shortcuts with limit information
+      properties:
+        shortcuts:
+          type: array
+          items:
+            $ref: '#/components/schemas/DirectoryShortcut'
+          description: Array of directory shortcuts for the current user
+        limit:
+          type: integer
+          description: Maximum number of shortcuts allowed (configured via DIRECTORY_SHORTCUTS_LIMIT env var)
+          example: 5
+        over_limit_by:
+          type: integer
+          description: Number of shortcuts over the limit (0 if within limit)
+          example: 0
+    CreateDirectoryShortcutRequest:
+      type: object
+      required:
+        - name
+        - path
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Display name for the shortcut
+          example: "My Documents"
+        path:
+          type: string
+          minLength: 1
+          description: Full path to the directory to pin
+          example: "C:\\Users\\user\\Documents"

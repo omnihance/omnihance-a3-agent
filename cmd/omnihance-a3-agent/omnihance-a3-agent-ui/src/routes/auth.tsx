@@ -1,8 +1,18 @@
 import { createRoute, redirect } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { AuthPage } from '@/components/auth-page';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { getSession, APIError } from '@/lib/api';
 import { APP_NAME } from '@/constants';
+
+const AuthPage = lazyNamed(() => import('@/components/auth-page'), 'AuthPage');
+
+function AuthPageWithSuspense() {
+  return (
+    <LazySuspense>
+      <AuthPage />
+    </LazySuspense>
+  );
+}
 
 export default (parentRoute: AnyRootRoute) =>
   createRoute({
@@ -29,5 +39,5 @@ export default (parentRoute: AnyRootRoute) =>
         throw error;
       }
     },
-    component: AuthPage,
+    component: AuthPageWithSuspense,
   });

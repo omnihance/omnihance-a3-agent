@@ -2,6 +2,7 @@ package constants
 
 const (
 	ErrorCodeUnauthorized        = "UNAUTHORIZED"
+	ErrorCodeForbidden           = "FORBIDDEN"
 	ErrorCodeInternalServerError = "INTERNAL_SERVER_ERROR"
 	ErrorCodeSetupAlreadyDone    = "SETUP_ALREADY_DONE"
 	ErrorCodeBadRequest          = "BAD_REQUEST"

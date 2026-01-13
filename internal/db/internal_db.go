@@ -48,10 +48,12 @@ type InternalDB interface {
 	GetUserByIDIncludeDeleted(userID int64) (*User, error)
 	GetUserByEmailIncludeDeleted(email string) (*User, error)
 	GetUsers() ([]User, error)
+	GetUsersPaginated(page, pageSize int, search string) ([]User, int64, error)
 	CreateUser(email, password, roles string, createdBy *int64) (*User, error)
 	CreateUserWithStatus(email, password, roles, status string, createdBy *int64) (*User, error)
 	UpdateUserPassword(userID int64, newPassword string, updatedBy int64) error
 	UpdateUserRoles(userID int64, roles string, updatedBy int64) error
+	UpdateUserStatus(userID int64, status string, updatedBy int64) error
 	DeleteUser(userID int64, deletedBy int64) error
 	GetAdminUserCount() (int64, error)
 	SetDefaultSettings() error
@@ -61,6 +63,22 @@ type InternalDB interface {
 	GetAllMapClientData(search string) ([]MapClientData, error)
 	BulkReplaceItemClientData(data []ItemClientData) error
 	GetAllItemClientData(search string) ([]ItemClientData, error)
+	GetServerProcesses() ([]ServerProcess, error)
+	GetServerProcess(id int64) (*ServerProcess, error)
+	GetServerProcessByPath(path string) (*ServerProcess, error)
+	CreateServerProcess(name, path string, port *int, sequenceOrder int) (*ServerProcess, error)
+	UpdateServerProcess(id int64, name, path string, port *int) error
+	DeleteServerProcess(id int64) error
+	ReorderServerProcesses(updates []ReorderUpdate) error
+	GetMaxSequenceOrder() (int, error)
+	UpdateProcessStartTime(id int64, startTime time.Time) error
+	UpdateProcessEndTime(id int64, endTime time.Time) error
+	GetDirectoryShortcuts(userID int64) ([]DirectoryShortcut, error)
+	GetDirectoryShortcut(id int64) (*DirectoryShortcut, error)
+	GetDirectoryShortcutCount(userID int64) (int64, error)
+	GetDirectoryShortcutByNormalizedPath(userID int64, normalizedPath string) (*DirectoryShortcut, error)
+	CreateDirectoryShortcut(userID int64, name, path string) (*DirectoryShortcut, error)
+	DeleteDirectoryShortcut(id int64, userID int64) error
 }
 
 type sqliteInternalDB struct {
@@ -185,10 +203,26 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate009ServerProcessesTable(); err != nil {
+		return err
+	}
+
+	if err := s.migrate010DirectoryShortcutsTable(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback010DirectoryShortcutsTable(); err != nil {
+		return err
+	}
+
+	if err := s.rollback009ServerProcessesTable(); err != nil {
+		return err
+	}
+
 	if err := s.rollback008ItemClientDataTable(); err != nil {
 		return err
 	}
@@ -1054,6 +1088,185 @@ func (s *sqliteInternalDB) rollback008ItemClientDataTable() error {
 	_, err = s.db.Exec(migrationSQL)
 	if err != nil {
 		return fmt.Errorf("failed to rollback item_client_data table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate009ServerProcessesTable() error {
+	const migName = "009_server_processes_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS server_processes (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL,
+		path TEXT NOT NULL,
+		port INTEGER,
+		sequence_order INTEGER NOT NULL,
+		start_time TIMESTAMP,
+		end_time TIMESTAMP,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_processes_sequence_order ON server_processes (sequence_order);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create server_processes table: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback009ServerProcessesTable() error {
+	const migName = "009_server_processes_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	DROP TABLE IF EXISTS server_processes;
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback server_processes table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate010DirectoryShortcutsTable() error {
+	const migName = "010_directory_shortcuts_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS directory_shortcuts (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		name TEXT NOT NULL,
+		path TEXT NOT NULL,
+		normalized_path TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP,
+		UNIQUE(user_id, normalized_path)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_directory_shortcuts_user_id ON directory_shortcuts (user_id);
+
+	CREATE INDEX IF NOT EXISTS idx_directory_shortcuts_normalized_path ON directory_shortcuts (normalized_path);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create directory_shortcuts table: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback010DirectoryShortcutsTable() error {
+	const migName = "010_directory_shortcuts_table"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	DROP TABLE IF EXISTS directory_shortcuts;
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback directory_shortcuts table: %w", err)
 	}
 
 	if err := s.markMigrationRolledBack(migName); err != nil {

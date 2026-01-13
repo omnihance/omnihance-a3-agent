@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { usePermissions } from '@/hooks/use-permissions';
 import {
   ArrowLeft,
   Loader2,
@@ -50,6 +51,10 @@ interface FileViewProps {
 }
 
 export function FileView({ filePath }: FileViewProps) {
+  const { hasPermission } = usePermissions();
+  const canEditFiles = hasPermission('edit_files');
+  const canRevertFiles = hasPermission('revert_files');
+
   const {
     data: fileTreeResponse,
     isLoading: fileTreeLoading,
@@ -238,21 +243,24 @@ export function FileView({ filePath }: FileViewProps) {
             <p className="text-muted-foreground mt-1">{filePath}</p>
           </div>
           <div className="flex items-center gap-2">
-            {isEditable && revisionSummary && revisionSummary.count > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setShowRevertDialog(true)}
-                disabled={revertMutation.isPending}
-              >
-                {revertMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                )}
-                Revert
-              </Button>
-            )}
-            {isEditable && (
+            {isEditable &&
+              canRevertFiles &&
+              revisionSummary &&
+              revisionSummary.count > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRevertDialog(true)}
+                  disabled={revertMutation.isPending}
+                >
+                  {revertMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                  )}
+                  Revert
+                </Button>
+              )}
+            {isEditable && canEditFiles && (
               <Button variant="outline" asChild>
                 <Link to="/file/edit" search={{ path: filePath }}>
                   <Edit className="mr-2 h-4 w-4" />

@@ -73,6 +73,15 @@ func (s *Server) signInHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.Status == constants.UserStatusBanned {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
+			"errorCode": constants.ErrorCodeUnauthorized,
+			"context":   "authentication",
+			"errors":    []string{"Account is banned"},
+		})
+		return
+	}
+
 	if user.Status != constants.UserStatusActive {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
 			"errorCode": constants.ErrorCodeUnauthorized,

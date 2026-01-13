@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useMutation } from '@tanstack/react-query';
 import { Server, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -98,8 +99,10 @@ export function AuthPage() {
 
   const signUpMutation = useMutation({
     mutationFn: signUp,
-    onSuccess: () => {
-      router.navigate({ to: '/dashboard' });
+    onSuccess: (data) => {
+      toast.success(data.message);
+      signUpForm.reset();
+      setManualSignUpOverride(false);
     },
     onError: (err: unknown) => {
       if (err instanceof APIError) {

@@ -26,6 +26,7 @@ type EnvVars struct {
 	SessionTimeoutSeconds            int
 	CookieSecret                     string
 	MaxFileUploadSizeMb              int
+	DirectoryShortcutsLimit          int
 }
 
 var defaultEnvVars = map[string]string{
@@ -40,6 +41,7 @@ var defaultEnvVars = map[string]string{
 	"METRICS_ENABLED":                     "true",
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
 	"COOKIE_SECRET":                       utils.GenerateRandomToken(32),
+	"DIRECTORY_SHORTCUTS_LIMIT":           "5",
 }
 
 func New() *EnvVars {
@@ -77,6 +79,12 @@ func New() *EnvVars {
 		metricsEnabled = true
 	}
 
+	runningInDocker, _ := strconv.ParseBool(os.Getenv("RUNNING_IN_DOCKER"))
+	if runningInDocker {
+		metricsEnabled = false
+		slog.Info("Running in Docker, metrics collection disabled (host metrics unavailable)")
+	}
+
 	sessionTimeoutSeconds, err := strconv.Atoi(os.Getenv("SESSION_TIMEOUT_SECONDS"))
 	if err != nil {
 		slog.Warn("Could not get session timeout seconds: " + err.Error())
@@ -95,6 +103,16 @@ func New() *EnvVars {
 		maxFileUploadSizeMb = 2
 	}
 
+	directoryShortcutsLimit, err := strconv.Atoi(os.Getenv("DIRECTORY_SHORTCUTS_LIMIT"))
+	if err != nil {
+		slog.Warn("Could not get directory shortcuts limit: " + err.Error())
+		directoryShortcutsLimit = 5
+	}
+
+	if directoryShortcutsLimit <= 0 {
+		directoryShortcutsLimit = 0
+	}
+
 	return &EnvVars{
 		Port:                             os.Getenv("PORT"),
 		LogLevel:                         os.Getenv("LOG_LEVEL"),
@@ -108,6 +126,7 @@ func New() *EnvVars {
 		SessionTimeoutSeconds:            sessionTimeoutSeconds,
 		CookieSecret:                     cookieSecret,
 		MaxFileUploadSizeMb:              maxFileUploadSizeMb,
+		DirectoryShortcutsLimit:          directoryShortcutsLimit,
 	}
 }
 

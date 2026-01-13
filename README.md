@@ -15,11 +15,52 @@ Omnihance A3 Agent is a full-stack application consisting of:
 ### 🔐 Authentication & User Management
 
 - **User Registration**: Sign up with email and password
+  - First registered user automatically becomes super admin with active status
+  - Subsequent users are created with "viewer" role and "pending" status
+  - Email uniqueness validation
 - **User Login**: Secure authentication with bcrypt password hashing
+  - Only active users can sign in (pending, inactive, and banned users are blocked)
+  - Session creation with user agent and IP address tracking
 - **Session Management**: HTTP-only cookie-based sessions with configurable timeout
-- **Role-Based Access**: Support for different user roles (super admin, admin, user, viewer)
-- **User Status**: Active/pending status system for new user approval
-- **Auto Admin**: First registered user automatically becomes super admin
+  - Signed cookies with secret key for security
+  - Session expiration tracking
+  - Password update logs out all other sessions
+- **User Status Management**: Comprehensive status system for user lifecycle
+  - **Pending**: New users awaiting approval (cannot sign in)
+  - **Active**: Approved users who can sign in and access the system
+  - **Inactive**: Temporarily disabled users (cannot sign in)
+  - **Banned**: Permanently blocked users (cannot sign in)
+  - Super admin users cannot have their status changed
+- **User Administration** (Super Admin only):
+  - List all users with pagination (default 10 per page, configurable up to 100)
+  - Search users by email
+  - Update user status (pending → active → inactive/banned)
+  - Set/reset user passwords
+  - View user roles and creation timestamps
+- **Role-Based Access Control (RBAC)**: Fine-grained permission system
+  - **Super Admin** (`super_admin`): Full system access
+    - All permissions enabled
+    - Can manage users (list, update status, set passwords)
+    - Cannot have status changed by other admins
+  - **Admin** (`admin`): Administrative access
+    - Can view and edit files
+    - Can revert file changes
+    - Can upload game client data
+    - Can view metrics and game data
+    - Cannot manage users
+  - **Viewer** (`viewer`): Read-only access
+    - Can view files
+    - Can view metrics and game data
+    - Cannot edit files or upload data
+- **Permission Actions**:
+  - `view_files`: View file system and file contents (super_admin, admin, viewer)
+  - `edit_files`: Edit files (super_admin, admin)
+  - `revert_files`: Revert files to previous revisions (super_admin, admin)
+  - `upload_game_data`: Upload MON.ull and MC.ull files (super_admin, admin)
+  - `manage_users`: Manage user accounts (super_admin only)
+  - `manage_server`: Manage server processes and startup sequence (super_admin, admin)
+  - `view_metrics`: View system metrics dashboard (super_admin, admin, viewer)
+  - `view_game_data`: View monster, map, and item data (super_admin, admin, viewer)
 
 ### 📁 File System Management
 
@@ -100,6 +141,35 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Map name extraction from spawn file filenames (e.g., "0.n_ndt" → "Wolfreck")
   - Real-time updates when editing NPC IDs
 
+### 🚀 Server Process Management
+
+- **Sequential Server Startup/Shutdown**: Manage complex multi-process server startup sequences
+  - Configure multiple executables and batch files in a specific startup order
+  - Sequential startup with health checks (waits for each process to be ready before starting the next)
+  - Reverse-order shutdown for clean server stops
+  - Support for executables (.exe) and batch files (.bat, .cmd)
+- **Process Configuration**:
+  - Add processes via file tree context menu (right-click on .exe/.bat/.cmd files) or manage server page
+  - Friendly names for easy identification
+  - Optional port configuration for health verification
+  - Path validation (ensures file exists and is valid executable/batch file)
+  - Duplicate path prevention
+  - Drag-and-drop reordering of startup sequence
+- **Process Monitoring**:
+  - Real-time status display (Running/Stopped)
+  - Port status checking (if configured)
+  - Uptime tracking (current uptime for running processes, last uptime for stopped processes)
+  - Start/end time recording
+  - Automatic status polling when processes are running
+- **Individual Process Control**:
+  - Start/stop individual processes
+  - Start/stop entire server sequence
+  - Health check verification (port check if available, process check otherwise)
+  - Timeout handling (60 seconds per process)
+- **Access Control**:
+  - Admin and Super Admin: Full management (add, edit, delete, start, stop, reorder)
+  - Viewer: Read-only access (can view process status and uptime, cannot manage)
+
 ### 🔧 Additional Features
 
 - **API Documentation**: OpenAPI/Swagger documentation embedded
@@ -134,20 +204,28 @@ internal/
   │   └── item_client_data.go   # Item client data storage
   ├── logger/                    # Logging abstraction
   ├── mw/                        # Middleware (auth, IP checks)
+  ├── permissions/               # RBAC permission system
+  │   └── permissions.go        # Permission definitions and checks
   ├── server/                    # HTTP server and routes
   │   ├── routes.go             # Route registration
   │   ├── auth_routes.go        # Authentication endpoints
+  │   ├── users_routes.go       # User management endpoints
   │   ├── file_system_routes.go # File operations
   │   ├── game_client_data_routes.go # Game client data endpoints
   │   ├── metrics_routes.go     # Metrics endpoints
   │   ├── session_routes.go     # Session management
+  │   ├── server_routes.go      # Server process management endpoints
+  │   ├── permissions.go        # Permission checking utilities
   │   └── status_routes.go      # Status endpoint
   ├── services/                  # Business logic
   │   ├── file_editor_service.go
   │   ├── metrics_collector_service.go
+  │   ├── process_service.go    # Process management (start, stop, health checks)
+  │   ├── server_manager_service.go # Server sequence orchestration
   │   ├── collectors/           # Metric collectors (CPU, Memory)
   │   └── echarts/              # Chart generation
   └── utils/                     # Utility functions
+    └── port_checker.go          # TCP port availability checking
 ```
 
 ### Frontend Structure
@@ -169,12 +247,15 @@ omnihance-a3-agent-ui/
   │   │   ├── text-file-edit.tsx
   │   │   ├── metric-chart.tsx
   │   │   ├── client-data-page.tsx
+  │   │   ├── manage-server-page.tsx
   │   │   ├── client-data/
   │   │   │   ├── monster-file-upload.tsx
   │   │   │   └── map-file-upload.tsx
   │   │   └── ui/              # shadcn/ui components
   │   ├── routes/              # Route definitions
+  │   │   └── manage-server.tsx
   │   ├── hooks/               # Custom React hooks
+  │   │   └── use-permissions.ts
   │   ├── lib/                 # Utilities and API client
   │   ├── constants.ts         # Application constants and query keys
   │   └── integrations/        # Third-party integrations
@@ -299,6 +380,17 @@ The application uses environment variables for configuration. A `.env` file is a
 - `DELETE /api/session/sign-out` - Sign out current user
 - `POST /api/session/update-password` - Update user password (requires current password, logs out all other sessions)
 
+### User Management
+
+- `GET /api/users` - List users with pagination and search (requires `manage_users` permission)
+  - Query parameters: `page` (default: 1), `pageSize` (default: 10, max: 100), `s` (search by email)
+- `GET /api/users/statuses` - Get available user statuses (requires `manage_users` permission)
+- `PATCH /api/users/{id}/status` - Update user status (requires `manage_users` permission)
+  - Cannot update super admin status
+  - New status must be different from current status
+- `PATCH /api/users/{id}/password` - Set user password (requires `manage_users` permission)
+  - Password must be at least 6 characters
+
 ### Status
 
 - `GET /api/status` - Get application status and version
@@ -328,6 +420,20 @@ The application uses environment variables for configuration. A `.env` file is a
 - `POST /api/game-client-data/upload-mc-file` - Upload MC.ull file to populate map database
 - `GET /api/game-client-data/items` - Get item client data (supports optional `s` query parameter for search)
 
+### Server Management
+
+- `GET /api/server/processes` - List all server processes (ordered by sequence)
+- `POST /api/server/processes` - Create a new server process (requires `manage_server` permission)
+- `GET /api/server/processes/{id}` - Get a specific server process
+- `PUT /api/server/processes/{id}` - Update a server process (requires `manage_server` permission)
+- `DELETE /api/server/processes/{id}` - Delete a server process (requires `manage_server` permission)
+- `POST /api/server/processes/reorder` - Reorder server processes (requires `manage_server` permission)
+- `POST /api/server/start` - Start full server sequence (requires `manage_server` permission)
+- `POST /api/server/stop` - Stop full server sequence (requires `manage_server` permission)
+- `POST /api/server/processes/{id}/start` - Start an individual process (requires `manage_server` permission)
+- `POST /api/server/processes/{id}/stop` - Stop an individual process (requires `manage_server` permission)
+- `GET /api/server/processes/{id}/status` - Get process status (running, port status, uptime)
+
 ### Health
 
 - `GET /health` - Health check endpoint
@@ -343,6 +449,10 @@ The application uses SQLite with the following main tables:
 - **monster_client_data**: Monster data from MON.ull files (ID, name, timestamps)
 - **map_client_data**: Map data from MC.ull files (ID, name, timestamps)
 - **item_client_data**: Item data from client files (ID, name, timestamps)
+- **server_processes**: Server process configurations
+  - Stores process name, file path, optional port, sequence order
+  - Tracks start/end times for uptime calculation
+  - Enforces unique paths to prevent duplicates
 - **metric_names**: Metric definitions
 - **metric_series**: Metric time series
 - **metric_samples**: Metric data points
@@ -350,24 +460,41 @@ The application uses SQLite with the following main tables:
 
 ## Usage
 
-1. **First Run**: Start the application and register the first user. This user will automatically become a super admin.
+1. **First Run**: Start the application and register the first user. This user will automatically become a super admin with active status.
 
 2. **Access the Web Interface**: Open `http://localhost:8080` in your browser.
 
-3. **Sign In**: Use your registered credentials to sign in.
+3. **Sign In**: Use your registered credentials to sign in. Only users with "active" status can sign in.
 
-4. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases.
+4. **User Management** (Super Admin only):
 
-5. **Navigate Files**: Use the file tree sidebar to browse your server's file system.
+   - Navigate to the Users page to manage user accounts
+   - View all registered users with pagination and search
+   - Update user status (approve pending users, deactivate, or ban users)
+   - Set/reset user passwords
+   - Note: Super admin users cannot have their status changed
 
-6. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them.
+5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases (requires admin or super admin role).
+
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view).
+
+7. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them (requires admin or super admin role).
 
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
-7. **Monitor Metrics**: View system metrics on the dashboard with real-time charts.
+8. **Monitor Metrics**: View system metrics on the dashboard with real-time charts (all authenticated users can view).
 
-8. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed.
+9. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed (requires admin or super admin role).
+
+10. **Manage Server Processes** (Admin and Super Admin only):
+    - Navigate to the Server Management page
+    - Add processes by clicking "Add Process" or right-clicking executable/batch files in the file tree
+    - Configure friendly names, paths, and optional ports
+    - Reorder processes by clicking up/down arrows
+    - Start/stop individual processes or the entire server sequence
+    - Monitor real-time status and uptime for all processes
+    - Viewers can access the page to see process status but cannot manage processes
 
 ## Development Commands
 
@@ -386,14 +513,28 @@ The application uses SQLite with the following main tables:
 
 ## Security Features
 
-- Password hashing with bcrypt
-- HTTP-only cookies for session management
-- Signed cookies with secret key
-- Input validation on all endpoints
-- File path sanitization
-- SQL injection prevention (parameterized queries)
-- CORS configuration
-- Local IP checking middleware (optional)
+- **Authentication & Authorization**:
+  - Password hashing with bcrypt (cost factor: 10)
+  - HTTP-only cookies for session management (prevents XSS attacks)
+  - Signed cookies with secret key (prevents tampering)
+  - Role-based access control (RBAC) with permission checks on all endpoints
+  - Session validation on protected routes
+  - User status validation (only active users can sign in)
+- **Input Validation**:
+  - Input validation on all endpoints using go-playground/validator
+  - Email format validation
+  - Password strength requirements (minimum 6 characters)
+  - File path sanitization
+- **Database Security**:
+  - SQL injection prevention (parameterized queries with goqu)
+  - Soft delete support for users (is_deleted flag)
+- **Network Security**:
+  - CORS configuration
+  - Local IP checking middleware (optional)
+- **Access Control**:
+  - Permission-based endpoint protection
+  - Super admin protection (cannot modify own status)
+  - Status-based access restrictions
 
 ## License
 

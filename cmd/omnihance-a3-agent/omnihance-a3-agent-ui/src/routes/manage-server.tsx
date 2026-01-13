@@ -5,16 +5,16 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
 
-const DashboardPage = lazyNamed(
-  () => import('@/components/dashboard-page'),
-  'DashboardPage',
+const ManageServerPage = lazyNamed(
+  () => import('@/components/manage-server-page'),
+  'ManageServerPage',
 );
 
-function DashboardPageWithLayout() {
+function ManageServerPageWithLayout() {
   return (
     <DashboardLayout>
       <LazySuspense>
-        <DashboardPage />
+        <ManageServerPage />
       </LazySuspense>
     </DashboardLayout>
   );
@@ -23,11 +23,11 @@ function DashboardPageWithLayout() {
 export default (parentRoute: AnyRootRoute) =>
   createRoute({
     getParentRoute: () => parentRoute,
-    path: '/dashboard',
+    path: '/manage-server',
     head: () => ({
       meta: [
         {
-          title: `Dashboard - ${APP_NAME}`,
+          title: `Server Management - ${APP_NAME}`,
         },
       ],
     }),
@@ -43,5 +43,5 @@ export default (parentRoute: AnyRootRoute) =>
         });
       }
     },
-    component: DashboardPageWithLayout,
+    component: ManageServerPageWithLayout,
   });

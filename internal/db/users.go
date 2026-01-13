@@ -152,6 +152,44 @@ func (s *sqliteInternalDB) GetUsers() ([]User, error) {
 	return users, nil
 }
 
+func (s *sqliteInternalDB) GetUsersPaginated(page, pageSize int, search string) ([]User, int64, error) {
+	query := s.goqu.From("users").
+		Prepared(true).
+		Where(goqu.Ex{"is_deleted": false})
+
+	if search != "" {
+		query = query.Where(goqu.I("email").Like("%" + search + "%"))
+	}
+
+	var totalCount int64
+	countQuery := query.Select(goqu.COUNT("*"))
+	_, err := countQuery.ScanVal(&totalCount)
+	if err != nil {
+		s.logger.Error(
+			"failed to get users count",
+			logger.Field{Key: "error", Value: err},
+		)
+		return nil, 0, fmt.Errorf("failed to get users count: %w", err)
+	}
+
+	offset := (page - 1) * pageSize
+	var users []User
+	err = query.
+		Order(goqu.I("created_at").Desc()).
+		Limit(uint(pageSize)).
+		Offset(uint(offset)).
+		ScanStructs(&users)
+	if err != nil {
+		s.logger.Error(
+			"failed to get paginated users",
+			logger.Field{Key: "error", Value: err},
+		)
+		return nil, 0, fmt.Errorf("failed to get paginated users: %w", err)
+	}
+
+	return users, totalCount, nil
+}
+
 func (s *sqliteInternalDB) CreateUser(email string, password string, roles string, createdBy *int64) (*User, error) {
 	return s.CreateUserWithStatus(email, password, roles, constants.UserStatusPending, createdBy)
 }
@@ -243,6 +281,31 @@ func (s *sqliteInternalDB) UpdateUserRoles(userID int64, roles string, updatedBy
 			logger.Field{Key: "error", Value: err},
 		)
 		return fmt.Errorf("failed to update user roles: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) UpdateUserStatus(userID int64, status string, updatedBy int64) error {
+	_, err := s.goqu.Update("users").
+		Prepared(true).
+		Set(goqu.Record{
+			"status":     status,
+			"updated_by": updatedBy,
+			"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+		}).
+		Where(goqu.Ex{"id": userID, "is_deleted": false}).
+		Executor().
+		Exec()
+	if err != nil {
+		s.logger.Error(
+			"failed to update user status",
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "status", Value: status},
+			logger.Field{Key: "updated_by", Value: updatedBy},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to update user status: %w", err)
 	}
 
 	return nil

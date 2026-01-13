@@ -1,10 +1,15 @@
 import { createRoute, redirect, useSearch } from '@tanstack/react-router';
 import type { AnyRootRoute } from '@tanstack/react-router';
-import { FileView } from '@/components/file-view';
-import { PathError } from '@/components/path-error';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { getSession } from '@/lib/api';
 import { APP_NAME } from '@/constants';
+
+const FileView = lazyNamed(() => import('@/components/file-view'), 'FileView');
+const PathError = lazyNamed(
+  () => import('@/components/path-error'),
+  'PathError',
+);
 
 function FileViewPageWithLayout() {
   const { path } = useSearch({ from: '/file/view' });
@@ -12,17 +17,21 @@ function FileViewPageWithLayout() {
   if (!path) {
     return (
       <DashboardLayout>
-        <PathError
-          title="File Path Required"
-          description="No file path was provided. Please select a file from the project directory to view."
-        />
+        <LazySuspense>
+          <PathError
+            title="File Path Required"
+            description="No file path was provided. Please select a file from the project directory to view."
+          />
+        </LazySuspense>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <FileView filePath={path} />
+      <LazySuspense>
+        <FileView filePath={path} />
+      </LazySuspense>
     </DashboardLayout>
   );
 }

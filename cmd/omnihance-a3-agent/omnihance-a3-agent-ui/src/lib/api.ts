@@ -25,6 +25,20 @@ export const API_ROUTES = {
   GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
   GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
   GAME_CLIENT_DATA_ITEMS: '/api/game-client-data/items',
+  USERS: '/api/users',
+  USER_STATUSES: '/api/users/statuses',
+  USER_STATUS: (id: number) => `/api/users/${id}/status`,
+  USER_PASSWORD: (id: number) => `/api/users/${id}/password`,
+  SERVER_PROCESSES: '/api/server/processes',
+  SERVER_PROCESS: (id: number) => `/api/server/processes/${id}`,
+  SERVER_PROCESSES_REORDER: '/api/server/processes/reorder',
+  SERVER_START: '/api/server/start',
+  SERVER_STOP: '/api/server/stop',
+  SERVER_PROCESS_START: (id: number) => `/api/server/processes/${id}/start`,
+  SERVER_PROCESS_STOP: (id: number) => `/api/server/processes/${id}/stop`,
+  SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
+  DIRECTORY_SHORTCUTS: '/api/directory-shortcuts',
+  DIRECTORY_SHORTCUT: (id: number) => `/api/directory-shortcuts/${id}`,
 } as const;
 
 export class APIError extends Error {
@@ -365,6 +379,73 @@ const UploadFileResponseSchema = z.object({
 });
 
 export type UploadFileResponse = z.infer<typeof UploadFileResponseSchema>;
+
+const UserListItemSchema = z.object({
+  id: z.number().int(),
+  email: z.string().email(),
+  roles: z.array(z.string()),
+  status: z.enum(['pending', 'active', 'inactive', 'banned']),
+  created_at: z.string(),
+});
+
+export type UserListItem = z.infer<typeof UserListItemSchema>;
+
+const PaginationInfoSchema = z.object({
+  totalCount: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+});
+
+export type PaginationInfo = z.infer<typeof PaginationInfoSchema>;
+
+const ListUsersResponseSchema = z.object({
+  data: z.array(UserListItemSchema),
+  pagination: PaginationInfoSchema,
+});
+
+export type ListUsersResponse = z.infer<typeof ListUsersResponseSchema>;
+
+const UpdateUserStatusRequestSchema = z.object({
+  status: z.enum(['pending', 'active', 'inactive', 'banned']),
+});
+
+export type UpdateUserStatusRequest = z.infer<
+  typeof UpdateUserStatusRequestSchema
+>;
+
+const UpdateUserStatusResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type UpdateUserStatusResponse = z.infer<
+  typeof UpdateUserStatusResponseSchema
+>;
+
+const SetUserPasswordRequestSchema = z.object({
+  password: z.string().min(6),
+});
+
+export type SetUserPasswordRequest = z.infer<
+  typeof SetUserPasswordRequestSchema
+>;
+
+const SetUserPasswordResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type SetUserPasswordResponse = z.infer<
+  typeof SetUserPasswordResponseSchema
+>;
+
+const GetUserStatusesResponseSchema = z.object({
+  statuses: z.array(z.string()),
+});
+
+export type GetUserStatusesResponse = z.infer<
+  typeof GetUserStatusesResponseSchema
+>;
 
 const axiosInstance = axios.create({
   headers: {
@@ -774,5 +855,338 @@ export async function getItems(params?: {
     z.array(GameClientDataResponseSchema),
     response.data,
     API_ROUTES.GAME_CLIENT_DATA_ITEMS,
+  );
+}
+
+export async function getUsers(params?: {
+  page?: number;
+  pageSize?: number;
+  s?: string;
+}): Promise<ListUsersResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.USERS, {
+    params,
+  });
+  return validateResponse(
+    ListUsersResponseSchema,
+    response.data,
+    API_ROUTES.USERS,
+  );
+}
+
+export async function updateUserStatus(
+  id: number,
+  data: UpdateUserStatusRequest,
+): Promise<UpdateUserStatusResponse> {
+  const response = await axiosInstance.patch<unknown>(
+    API_ROUTES.USER_STATUS(id),
+    UpdateUserStatusRequestSchema.parse(data),
+  );
+  return validateResponse(
+    UpdateUserStatusResponseSchema,
+    response.data,
+    API_ROUTES.USER_STATUS(id),
+  );
+}
+
+export async function setUserPassword(
+  id: number,
+  data: SetUserPasswordRequest,
+): Promise<SetUserPasswordResponse> {
+  const response = await axiosInstance.patch<unknown>(
+    API_ROUTES.USER_PASSWORD(id),
+    SetUserPasswordRequestSchema.parse(data),
+  );
+  return validateResponse(
+    SetUserPasswordResponseSchema,
+    response.data,
+    API_ROUTES.USER_PASSWORD(id),
+  );
+}
+
+export async function getUserStatuses(): Promise<GetUserStatusesResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.USER_STATUSES);
+  return validateResponse(
+    GetUserStatusesResponseSchema,
+    response.data,
+    API_ROUTES.USER_STATUSES,
+  );
+}
+
+const ServerProcessSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  path: z.string(),
+  port: z.number().int().nullable(),
+  sequence_order: z.number().int(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type ServerProcess = z.infer<typeof ServerProcessSchema>;
+
+const CreateServerProcessRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  port: z.number().int().positive().optional(),
+});
+
+export type CreateServerProcessRequest = z.infer<
+  typeof CreateServerProcessRequestSchema
+>;
+
+const UpdateServerProcessRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+  port: z.number().int().positive().optional(),
+});
+
+export type UpdateServerProcessRequest = z.infer<
+  typeof UpdateServerProcessRequestSchema
+>;
+
+const ReorderUpdateSchema = z.object({
+  id: z.number().int(),
+  sequence_order: z.number().int(),
+});
+
+const ReorderServerProcessesRequestSchema = z.object({
+  updates: z.array(ReorderUpdateSchema),
+});
+
+export type ReorderServerProcessesRequest = z.infer<
+  typeof ReorderServerProcessesRequestSchema
+>;
+
+const ProcessStatusSchema = z.object({
+  running: z.boolean(),
+  port_open: z.boolean().optional(),
+  start_time: z.string().optional(),
+  end_time: z.string().optional(),
+  current_uptime_seconds: z.number().int().optional(),
+  last_uptime_seconds: z.number().int().optional(),
+});
+
+export type ProcessStatus = z.infer<typeof ProcessStatusSchema>;
+
+const GetServerProcessesResponseSchema = z.object({
+  processes: z.array(ServerProcessSchema),
+});
+
+export type GetServerProcessesResponse = z.infer<
+  typeof GetServerProcessesResponseSchema
+>;
+
+const MessageResponseSchema = z.object({
+  message: z.string(),
+});
+
+export type MessageResponse = z.infer<typeof MessageResponseSchema>;
+
+export async function getServerProcesses(): Promise<ServerProcess[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESSES,
+  );
+  const data = validateResponse(
+    GetServerProcessesResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES,
+  );
+  return data.processes;
+}
+
+export async function createServerProcess(
+  data: CreateServerProcessRequest,
+): Promise<ServerProcess> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESSES,
+    CreateServerProcessRequestSchema.parse(data),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES,
+  );
+}
+
+export async function getServerProcess(id: number): Promise<ServerProcess> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function updateServerProcess(
+  id: number,
+  data: UpdateServerProcessRequest,
+): Promise<ServerProcess> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+    UpdateServerProcessRequestSchema.parse(data),
+  );
+  return validateResponse(
+    ServerProcessSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function deleteServerProcess(
+  id: number,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.delete<unknown>(
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS(id),
+  );
+}
+
+export async function reorderServerProcesses(
+  data: ReorderServerProcessesRequest,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESSES_REORDER,
+    ReorderServerProcessesRequestSchema.parse(data),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESSES_REORDER,
+  );
+}
+
+export async function startFullServer(): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(API_ROUTES.SERVER_START);
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_START,
+  );
+}
+
+export async function stopFullServer(): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(API_ROUTES.SERVER_STOP);
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_STOP,
+  );
+}
+
+export async function startProcess(id: number): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESS_START(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_START(id),
+  );
+}
+
+export async function stopProcess(id: number): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_PROCESS_STOP(id),
+  );
+  return validateResponse(
+    MessageResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_STOP(id),
+  );
+}
+
+export async function getProcessStatus(id: number): Promise<ProcessStatus> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_PROCESS_STATUS(id),
+  );
+  return validateResponse(
+    ProcessStatusSchema,
+    response.data,
+    API_ROUTES.SERVER_PROCESS_STATUS(id),
+  );
+}
+
+const DirectoryShortcutSchema = z.object({
+  id: z.number().int(),
+  user_id: z.number().int(),
+  name: z.string(),
+  path: z.string(),
+  normalized_path: z.string(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type DirectoryShortcut = z.infer<typeof DirectoryShortcutSchema>;
+
+const DirectoryShortcutsResponseSchema = z.object({
+  shortcuts: z.array(DirectoryShortcutSchema),
+  limit: z.number().int(),
+  over_limit_by: z.number().int(),
+});
+
+export type DirectoryShortcutsResponse = z.infer<
+  typeof DirectoryShortcutsResponseSchema
+>;
+
+const CreateDirectoryShortcutRequestSchema = z.object({
+  name: z.string().min(1),
+  path: z.string().min(1),
+});
+
+export type CreateDirectoryShortcutRequest = z.infer<
+  typeof CreateDirectoryShortcutRequestSchema
+>;
+
+const DeleteDirectoryShortcutResponseSchema = z.object({
+  message: z.string(),
+});
+
+export type DeleteDirectoryShortcutResponse = z.infer<
+  typeof DeleteDirectoryShortcutResponseSchema
+>;
+
+export async function getDirectoryShortcuts(): Promise<DirectoryShortcutsResponse> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+  return validateResponse(
+    DirectoryShortcutsResponseSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+}
+
+export async function createDirectoryShortcut(
+  data: CreateDirectoryShortcutRequest,
+): Promise<DirectoryShortcut> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+    CreateDirectoryShortcutRequestSchema.parse(data),
+  );
+  return validateResponse(
+    DirectoryShortcutSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUTS,
+  );
+}
+
+export async function deleteDirectoryShortcut(
+  id: number,
+): Promise<DeleteDirectoryShortcutResponse> {
+  const response = await axiosInstance.delete<unknown>(
+    API_ROUTES.DIRECTORY_SHORTCUT(id),
+  );
+  return validateResponse(
+    DeleteDirectoryShortcutResponseSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_SHORTCUT(id),
   );
 }

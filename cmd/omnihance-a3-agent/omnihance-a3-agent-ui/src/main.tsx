@@ -9,7 +9,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { Toaster } from '@/components/ui/sonner';
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider';
 import authRoute from './routes/auth';
 import dashboardRoute from './routes/dashboard';
@@ -18,14 +18,35 @@ import fileViewRoute from './routes/file-view';
 import fileEditRoute from './routes/file-edit';
 import settingsRoute from './routes/settings';
 import clientDataRoute from './routes/client-data';
+import usersRoute from './routes/users';
+import manageServerRoute from './routes/manage-server';
 import reportWebVitals from './reportWebVitals.ts';
+
+const TanStackRouterDevtools = import.meta.env.DEV
+  ? lazyNamed(
+      () => import('@tanstack/react-router-devtools'),
+      'TanStackRouterDevtools',
+    )
+  : null;
+
+function DevtoolsWrapper() {
+  if (!TanStackRouterDevtools) {
+    return null;
+  }
+
+  return (
+    <LazySuspense fallback={null}>
+      <TanStackRouterDevtools />
+    </LazySuspense>
+  );
+}
 
 const rootRoute = createRootRoute({
   component: () => (
     <>
       <HeadContent />
       <Outlet />
-      <TanStackRouterDevtools />
+      <DevtoolsWrapper />
       <Toaster />
     </>
   ),
@@ -39,6 +60,8 @@ const routeTree = rootRoute.addChildren([
   fileEditRoute(rootRoute),
   settingsRoute(rootRoute),
   clientDataRoute(rootRoute),
+  usersRoute(rootRoute),
+  manageServerRoute(rootRoute),
 ]);
 
 const TanStackQueryProviderContext = TanStackQueryProvider.getContext();
