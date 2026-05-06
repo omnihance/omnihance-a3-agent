@@ -149,24 +149,26 @@ export function FileEdit({ filePath }: FileEditProps) {
         ? fileTreeError.message
         : 'Failed to load file information';
 
-  const fileContentErrorMessage =
-    textFileError instanceof APIError
-      ? textFileError.getErrorMessage()
-      : npcFileError instanceof APIError
-        ? npcFileError.getErrorMessage()
-        : spawnFileError instanceof APIError
-          ? spawnFileError.getErrorMessage()
-          : questFileError instanceof APIError
-            ? questFileError.getErrorMessage()
-            : textFileError instanceof Error
-              ? textFileError.message
-              : npcFileError instanceof Error
-                ? npcFileError.message
-                : spawnFileError instanceof Error
-                  ? spawnFileError.message
-                  : questFileError instanceof Error
-                    ? questFileError.message
-                    : 'Failed to load file content';
+  const getFirstErrorMessage = (errors: Array<unknown>): string => {
+    for (const error of errors) {
+      if (error instanceof APIError) {
+        return error.getErrorMessage();
+      }
+
+      if (error instanceof Error) {
+        return error.message;
+      }
+    }
+
+    return 'Failed to load file content';
+  };
+
+  const fileContentErrorMessage = getFirstErrorMessage([
+    textFileError,
+    npcFileError,
+    spawnFileError,
+    questFileError,
+  ]);
 
   return (
     <div className="p-4 lg:p-6">
