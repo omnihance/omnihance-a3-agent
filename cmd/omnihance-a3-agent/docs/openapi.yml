@@ -2495,13 +2495,13 @@ components:
           description: Number of kills required
         quest_item_id:
           type: integer
-          format: uint32
+          format: uint16
           description: Quest item ID
         drop_items:
           type: array
           items:
             type: integer
-            format: uint32
+            format: uint16
             nullable: true
           maxItems: 3
           description: Array of 3 drop item IDs (can be null for unused slots)
