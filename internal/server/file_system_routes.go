@@ -1174,6 +1174,15 @@ func setQuestRewardCount(count *uint8, value *uint8) {
 }
 
 func applyQuestObjectiveAPIData(objective *questfile.Objective, objAPI ObjectiveAPIData) {
+	if objAPI.Type == nil ||
+		objAPI.Location == nil ||
+		objAPI.Location.X == nil ||
+		objAPI.Location.Y == nil {
+		objective.Block = unusedQuestObjectiveBlock()
+		objective.Name = nil
+		return
+	}
+
 	objType := *objAPI.Type
 	if objType == questfile.TypeUnused || objAPI.IsUnused {
 		objective.Block = unusedQuestObjectiveBlock()
@@ -1630,6 +1639,16 @@ func validateQuestFileRequest(req QuestFileAPIData) []string {
 	}
 	for i := 0; i < 7 && i < len(req.Objectives); i++ {
 		obj := req.Objectives[i]
+		if obj.Type == nil {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: type is required", i))
+			continue
+		}
+
+		if obj.Location == nil || obj.Location.X == nil || obj.Location.Y == nil {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: location.x and location.y are required", i))
+			continue
+		}
+
 		t := *obj.Type
 		isUnused := t == questfile.TypeUnused || obj.IsUnused
 		if t > questfile.TypeFIND && t != questfile.TypeUnused {
@@ -1721,7 +1740,7 @@ type QuestFileAPIData struct {
 	ExpReward     *uint32            `json:"exp_reward" validate:"required"`
 	WoonzReward   *uint32            `json:"woonz_reward" validate:"required"`
 	LoreReward    *uint32            `json:"lore_reward" validate:"required"`
-	Objectives    []ObjectiveAPIData `json:"objectives" validate:"required,len=7"`
+	Objectives    []ObjectiveAPIData `json:"objectives" validate:"required,len=7,dive"`
 	Continuations []*uint32          `json:"continuations" validate:"required,len=3"`
 }
 
