@@ -14,6 +14,7 @@ export const API_ROUTES = {
   NPC_FILE: '/api/file-tree/npc-file',
   TEXT_FILE: '/api/file-tree/text-file',
   SPAWN_FILE: '/api/file-tree/spawn-file',
+  QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
   SETTINGS: '/api/settings',
@@ -223,7 +224,8 @@ type FileNode = {
     | 'a3_map_file'
     | 'a3_spawn_file'
     | 'a3_unknown_file'
-    | 'text_file';
+    | 'text_file'
+    | 'a3_quest_file';
   is_editable: boolean;
   is_viewable: boolean;
   api_endpoint?: string;
@@ -247,6 +249,7 @@ const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
         'a3_drop_file',
         'a3_map_file',
         'a3_spawn_file',
+        'a3_quest_file',
         'a3_unknown_file',
         'text_file',
       ])
@@ -281,6 +284,10 @@ export interface GetTextFileParams {
 }
 
 export interface GetSpawnFileParams {
+  path: string;
+}
+
+export interface GetQuestFileParams {
   path: string;
 }
 
@@ -322,6 +329,49 @@ const SpawnFileAPIDataSchema = z.object({
 });
 
 export type SpawnFileAPIData = z.infer<typeof SpawnFileAPIDataSchema>;
+
+export const UNUSED_CONTINUATION = 0xffffffff;
+
+const QuestLocationAPIDataSchema = z.object({
+  x: z.number().int().min(0).max(255),
+  y: z.number().int().min(0).max(255),
+});
+
+const ObjectiveAPIDataSchema = z.object({
+  type: z.number().int().min(0).max(255),
+  type_name: z.string().optional(),
+  map_id: z.number().int().nonnegative(),
+  location: QuestLocationAPIDataSchema,
+  radius: z.number().int().min(0).max(255),
+  target_id: z.number().int().nonnegative(),
+  kill_count: z.number().int().nonnegative(),
+  quest_item_id: z.number().int().min(0).max(65535),
+  drop_items: z.array(z.number().int().min(0).max(65535).nullable()).length(3),
+  required_item_count: z.number().int().nonnegative(),
+  drop_probs: z.array(z.number().int().min(0).max(255)).length(3),
+  name: z.string(),
+  is_unused: z.boolean().optional(),
+});
+
+export type ObjectiveAPIData = z.infer<typeof ObjectiveAPIDataSchema>;
+
+const QuestFileAPIDataSchema = z.object({
+  quest_id: z.number().int().nonnegative(),
+  giver_npc: z.number().int().nonnegative(),
+  target_npc: z.number().int().nonnegative(),
+  min_level: z.number().int().min(0).max(255),
+  max_level: z.number().int().min(0).max(255),
+  flags: z.number().int().nonnegative(),
+  reward_items: z.array(z.number().int().nonnegative().nullable()).length(4),
+  reward_counts: z.array(z.number().int().min(0).max(255).nullable()).length(4),
+  exp_reward: z.number().int().nonnegative(),
+  woonz_reward: z.number().int().nonnegative(),
+  lore_reward: z.number().int().nonnegative(),
+  objectives: z.array(ObjectiveAPIDataSchema).length(7),
+  continuations: z.array(z.number().int().nonnegative().nullable()).length(3),
+});
+
+export type QuestFileAPIData = z.infer<typeof QuestFileAPIDataSchema>;
 
 const MetricCardSchema = z.object({
   name: z.string(),
@@ -682,6 +732,37 @@ export async function updateSpawnFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.SPAWN_FILE,
+  );
+}
+
+export async function getQuestFile(
+  params: GetQuestFileParams,
+): Promise<QuestFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.QUEST_FILE, {
+    params,
+  });
+  return validateResponse(
+    QuestFileAPIDataSchema,
+    response.data,
+    API_ROUTES.QUEST_FILE,
+  );
+}
+
+export async function updateQuestFile(
+  params: GetQuestFileParams,
+  data: QuestFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.QUEST_FILE,
+    QuestFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.QUEST_FILE,
   );
 }
 

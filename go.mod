@@ -3,6 +3,7 @@ module github.com/omnihance/omnihance-a3-agent
 go 1.25
 
 require (
+	github.com/cyberinferno/go-utils v0.2.0
 	github.com/doug-martin/goqu/v9 v9.19.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-chi/cors v1.2.2
@@ -10,6 +11,7 @@ require (
 	github.com/go-playground/validator/v10 v10.29.0
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
+	github.com/project-agonyl/agonyl-utils-go v0.2.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil/v3 v3.24.5
