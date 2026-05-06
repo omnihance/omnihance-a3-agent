@@ -1182,6 +1182,8 @@ func applyQuestObjectiveAPIData(objective *questfile.Objective, objAPI Objective
 	}
 
 	blk := &objective.Block
+	template := unusedQuestObjectiveBlock()
+	copy(blk[:], template[:])
 	blk[0] = objType
 	binary.LittleEndian.PutUint16(blk[4:6], *objAPI.MapID)
 	locationID := uint16(*objAPI.Location.X) | (uint16(*objAPI.Location.Y) << 8)
