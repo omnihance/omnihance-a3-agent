@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouter } from '@tanstack/react-router';
@@ -161,12 +161,9 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
     defaultValues: toQuestFormData(defaultData),
   });
 
-  const hasInitialized = useRef(false);
-
   useEffect(() => {
-    if (!hasInitialized.current && defaultData) {
+    if (defaultData) {
       form.reset(toQuestFormData(defaultData));
-      hasInitialized.current = true;
     }
   }, [defaultData, form]);
 
