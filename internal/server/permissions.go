@@ -30,4 +30,3 @@ func (s *Server) requireUserPermission(w http.ResponseWriter, r *http.Request, a
 
 	return true
 }
-
