@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 
+	externalUtils "github.com/cyberinferno/go-utils/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
@@ -22,6 +23,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
+	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
 func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
@@ -34,6 +36,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Put("/text-file", s.handleUpdateTextFile)
 		r.Get("/spawn-file", s.handleSpawnFileData)
 		r.Put("/spawn-file", s.handleUpdateSpawnFile)
+		r.Get("/quest-file", s.handleQuestFileData)
+		r.Put("/quest-file", s.handleUpdateQuestFile)
 		r.Post("/revert-file", s.handleRevertFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
 	})
@@ -293,7 +297,7 @@ func (s *Server) handleNPCFileData(w http.ResponseWriter, r *http.Request) {
 	greyAttackDefense := npcData.GreyAttackDefense
 	mercenaryExp := npcData.MercenaryExp
 	apiData := NPCFileAPIData{
-		Name:                utils.ReadStringFromBytes(npcData.Name[:]),
+		Name:                externalUtils.ReadStringFromBytes(npcData.Name[:]),
 		Id:                  &id,
 		RespawnRate:         &respawnRate,
 		AttackTypeInfo:      &attackTypeInfo,
@@ -943,6 +947,412 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleQuestFileData(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Path parameter is required"},
+		})
+		return
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return
+	}
+
+	if info.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return
+	}
+
+	fileType := s.fileEditor.GetFileType(cleanPath, info)
+	if fileType != services.FileTypeQuest {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"File is not a quest file"},
+		})
+		return
+	}
+
+	qf, err := s.fileEditor.ReadQuestFileData(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read quest file data: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, questFileToAPIData(qf))
+}
+
+const maxQuestObjectiveNameLen = 255
+
+func getQuestObjectiveTypeName(objectiveType uint8) string {
+	switch objectiveType {
+	case questfile.TypeKILL:
+		return "KILL"
+	case questfile.TypeQUESTITEM:
+		return "QUESTITEM"
+	case questfile.TypeBRINGNPC:
+		return "BRINGNPC"
+	case questfile.TypeDROP:
+		return "DROP"
+	case questfile.TypeFIND:
+		return "FIND"
+	case questfile.TypeUnused:
+		return "UNUSED"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func questFileToAPIData(qf questfile.QuestFile) QuestFileAPIData {
+	h := &qf.Header
+	questID := h.QuestID()
+	giverNPC := h.GivenNPCID()
+	targetNPC := binary.LittleEndian.Uint16(h.TargetNPCBlock[:2])
+	minLevel := h.MinLevel
+	maxLevel := h.MaxLevel
+	flags := h.QuestFlags
+	expReward := h.EXP
+	woonzReward := h.Woonz
+	loreReward := h.Lore
+
+	rewardItems := make([]*uint16, 4)
+	rewardCounts := make([]*uint8, 4)
+	setQuestRewardAPIData(rewardItems, rewardCounts, 0, binary.LittleEndian.Uint16(h.RewardSlot1[:2]), h.Count1)
+	setQuestRewardAPIData(rewardItems, rewardCounts, 1, binary.LittleEndian.Uint16(h.RewardSlot2[:2]), h.Count2)
+	setQuestRewardAPIData(rewardItems, rewardCounts, 2, binary.LittleEndian.Uint16(h.RewardSlot3[:2]), h.Count3)
+
+	objectives := make([]ObjectiveAPIData, questfile.NumObjectives)
+	for i := range qf.Objectives {
+		objectives[i] = questObjectiveToAPIData(qf.Objectives[i])
+	}
+
+	continuations := make([]*uint32, 3)
+	for i := range qf.Continuation {
+		continuation := qf.Continuation[i]
+		if continuation != questfile.UnusedContinuation {
+			continuations[i] = &continuation
+		}
+	}
+
+	return QuestFileAPIData{
+		QuestID:       &questID,
+		GiverNPC:      &giverNPC,
+		TargetNPC:     &targetNPC,
+		MinLevel:      &minLevel,
+		MaxLevel:      &maxLevel,
+		Flags:         &flags,
+		RewardItems:   rewardItems,
+		RewardCounts:  rewardCounts,
+		ExpReward:     &expReward,
+		WoonzReward:   &woonzReward,
+		LoreReward:    &loreReward,
+		Objectives:    objectives,
+		Continuations: continuations,
+	}
+}
+
+func setQuestRewardAPIData(items []*uint16, counts []*uint8, index int, item uint16, count uint8) {
+	if item == questfile.UnusedRewardItemCode {
+		return
+	}
+
+	items[index] = &item
+	counts[index] = &count
+}
+
+func questObjectiveToAPIData(objective questfile.Objective) ObjectiveAPIData {
+	blk := &objective.Block
+	objType := blk[0]
+	mapID := binary.LittleEndian.Uint16(blk[4:6])
+	locationID := binary.LittleEndian.Uint16(blk[8:10])
+	locationX := uint8(locationID)
+	locationY := uint8(locationID >> 8)
+	radius := blk[12]
+	targetID := binary.LittleEndian.Uint16(blk[16:18])
+	killCount := binary.LittleEndian.Uint16(blk[20:22])
+	questItemID := binary.LittleEndian.Uint16(blk[24:26])
+	requiredItemCount := binary.LittleEndian.Uint16(blk[56:58])
+	dropItems := make([]*uint16, 3)
+	dropProbs := make([]*uint8, 3)
+
+	for j := range 3 {
+		item := binary.LittleEndian.Uint16(blk[28+j*2:][:2])
+		probability := blk[76+j*4]
+		dropItems[j] = &item
+		dropProbs[j] = &probability
+	}
+
+	return ObjectiveAPIData{
+		Type:              &objType,
+		TypeName:          getQuestObjectiveTypeName(objType),
+		MapID:             &mapID,
+		Location:          &QuestLocationAPIData{X: &locationX, Y: &locationY},
+		Radius:            &radius,
+		TargetID:          &targetID,
+		KillCount:         &killCount,
+		QuestItemID:       &questItemID,
+		DropItems:         dropItems,
+		RequiredItemCount: &requiredItemCount,
+		DropProbs:         dropProbs,
+		Name:              string(objective.Name),
+		IsUnused:          objType == questfile.TypeUnused,
+	}
+}
+
+func applyQuestFileAPIData(qf *questfile.QuestFile, req QuestFileAPIData) {
+	qf.Header.SetQuestID(*req.QuestID)
+	qf.Header.SetGivenNPCID(*req.GiverNPC)
+	binary.LittleEndian.PutUint16(qf.Header.TargetNPCBlock[:2], *req.TargetNPC)
+	qf.Header.MinLevel = *req.MinLevel
+	qf.Header.MaxLevel = *req.MaxLevel
+	qf.Header.QuestFlags = *req.Flags
+	qf.Header.EXP = *req.ExpReward
+	qf.Header.Woonz = *req.WoonzReward
+	qf.Header.Lore = *req.LoreReward
+
+	setQuestRewardItem(qf.Header.RewardSlot1[:], req.RewardItems[0])
+	setQuestRewardItem(qf.Header.RewardSlot2[:], req.RewardItems[1])
+	setQuestRewardItem(qf.Header.RewardSlot3[:], req.RewardItems[2])
+	setQuestRewardCount(&qf.Header.Count1, req.RewardCounts[0])
+	setQuestRewardCount(&qf.Header.Count2, req.RewardCounts[1])
+	setQuestRewardCount(&qf.Header.Count3, req.RewardCounts[2])
+
+	for i := range questfile.NumObjectives {
+		applyQuestObjectiveAPIData(&qf.Objectives[i], req.Objectives[i])
+	}
+
+	for i := range qf.Continuation {
+		if req.Continuations[i] != nil {
+			qf.Continuation[i] = *req.Continuations[i]
+		} else {
+			qf.Continuation[i] = questfile.UnusedContinuation
+		}
+	}
+}
+
+func setQuestRewardItem(slot []byte, item *uint16) {
+	if item != nil {
+		binary.LittleEndian.PutUint16(slot[:2], *item)
+		return
+	}
+
+	binary.LittleEndian.PutUint16(slot[:2], questfile.UnusedRewardItemCode)
+}
+
+func setQuestRewardCount(count *uint8, value *uint8) {
+	if value != nil {
+		*count = *value
+	}
+}
+
+func applyQuestObjectiveAPIData(objective *questfile.Objective, objAPI ObjectiveAPIData) {
+	if objAPI.Type == nil ||
+		objAPI.Location == nil ||
+		objAPI.Location.X == nil ||
+		objAPI.Location.Y == nil {
+		objective.Block = unusedQuestObjectiveBlock()
+		objective.Name = nil
+		return
+	}
+
+	objType := *objAPI.Type
+	if objType == questfile.TypeUnused || objAPI.IsUnused {
+		objective.Block = unusedQuestObjectiveBlock()
+		objective.Name = nil
+		return
+	}
+
+	blk := &objective.Block
+	template := unusedQuestObjectiveBlock()
+	copy(blk[:], template[:])
+	blk[0] = objType
+	binary.LittleEndian.PutUint16(blk[4:6], *objAPI.MapID)
+	locationID := uint16(*objAPI.Location.X) | (uint16(*objAPI.Location.Y) << 8)
+	binary.LittleEndian.PutUint16(blk[8:10], locationID)
+	blk[12] = *objAPI.Radius
+	binary.LittleEndian.PutUint16(blk[16:18], *objAPI.TargetID)
+	binary.LittleEndian.PutUint16(blk[20:22], *objAPI.KillCount)
+	binary.LittleEndian.PutUint16(blk[24:26], *objAPI.QuestItemID)
+	binary.LittleEndian.PutUint16(blk[56:58], *objAPI.RequiredItemCount)
+
+	for j := range 3 {
+		if objAPI.DropItems[j] != nil {
+			binary.LittleEndian.PutUint16(blk[28+j*2:][:2], *objAPI.DropItems[j])
+		} else {
+			binary.LittleEndian.PutUint16(blk[28+j*2:][:2], questfile.UnusedRewardItemCode)
+		}
+
+		if objAPI.DropProbs[j] != nil {
+			blk[76+j*4] = *objAPI.DropProbs[j]
+		} else {
+			blk[76+j*4] = 0xff
+		}
+	}
+
+	if objType != questfile.TypeDROP && objType != questfile.TypeFIND {
+		blk[92] = 0
+		objective.Name = nil
+		return
+	}
+
+	nameLen := min(len(objAPI.Name), maxQuestObjectiveNameLen)
+	blk[92] = byte(nameLen)
+	if nameLen == 0 {
+		objective.Name = nil
+		return
+	}
+
+	objective.Name = []byte(objAPI.Name[:nameLen])
+}
+
+func unusedQuestObjectiveBlock() [questfile.ObjectiveBlockSize]byte {
+	var block [questfile.ObjectiveBlockSize]byte
+	for i := range block {
+		block[i] = 0xff
+	}
+
+	block[9] = 0xfe
+	block[92] = 0
+	block[93] = 0
+	block[94] = 0
+	block[95] = 0
+	return block
+}
+
+func (s *Server) handleUpdateQuestFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeQuest, "quest")
+	if !ok {
+		return
+	}
+
+	var req QuestFileAPIData
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		var errors []string
+		for _, err := range err.(validator.ValidationErrors) {
+			errors = append(errors, err.Field()+" is required")
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    errors,
+		})
+		return
+	}
+
+	if validationErrs := validateQuestFileRequest(req); len(validationErrs) > 0 {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    validationErrs,
+		})
+		return
+	}
+
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read file: " + err.Error()},
+		})
+		return
+	}
+
+	qf, err := s.fileEditor.ReadQuestFileData(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read quest file data: " + err.Error()},
+		})
+		return
+	}
+
+	applyQuestFileAPIData(&qf, req)
+
+	var currentDataBuffer bytes.Buffer
+	if err := questfile.Write(&currentDataBuffer, qf); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to serialize quest data: " + err.Error()},
+		})
+		return
+	}
+
+	currentData := currentDataBuffer.Bytes()
+	if _, err := questfile.Read(bytes.NewReader(currentData)); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to validate quest data: " + err.Error()},
+		})
+		return
+	}
+
+	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	if !ok {
+		return
+	}
+
+	if err = s.fileEditor.WriteQuestFileData(ctx.cleanPath, qf); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":     "File updated successfully",
+		"revision_id": revisionID,
+	})
+}
+
 func (s *Server) acquireFileLock(fileID string) (string, error) {
 	locksDir := filepath.Join(s.cfg.RevisionsDirectory, "locks")
 	if err := s.fileEditor.MkdirAll(locksDir, 0755); err != nil {
@@ -1222,6 +1632,41 @@ func (s *Server) releaseFileLock(lockPath string) {
 	}
 }
 
+func validateQuestFileRequest(req QuestFileAPIData) []string {
+	var errs []string
+	if *req.MinLevel != 0xff && *req.MaxLevel != 0xff && *req.MinLevel > *req.MaxLevel {
+		errs = append(errs, "min_level must be less than or equal to max_level")
+	}
+	for i := 0; i < 7 && i < len(req.Objectives); i++ {
+		obj := req.Objectives[i]
+		if obj.Type == nil {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: type is required", i))
+			continue
+		}
+
+		if obj.Location == nil || obj.Location.X == nil || obj.Location.Y == nil {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: location.x and location.y are required", i))
+			continue
+		}
+
+		t := *obj.Type
+		isUnused := t == questfile.TypeUnused || obj.IsUnused
+		if t > questfile.TypeFIND && t != questfile.TypeUnused {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: objective type must be 0-4 (KILL, QUESTITEM, BRINGNPC, DROP, FIND) or 255 (UNUSED)", i))
+		}
+		if obj.IsUnused && t != questfile.TypeUnused {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: unused objectives must use type 255", i))
+		}
+		if !isUnused && t <= questfile.TypeBRINGNPC && len(obj.Name) > 0 {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: name must be empty for objective type %d (KILL/QUESTITEM/BRINGNPC)", i, t))
+		}
+		if (t == questfile.TypeDROP || t == questfile.TypeFIND) && len(obj.Name) > maxQuestObjectiveNameLen {
+			errs = append(errs, fmt.Sprintf("objectives[%d]: name length must not exceed %d bytes", i, maxQuestObjectiveNameLen))
+		}
+	}
+	return errs
+}
+
 type FileNode struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
@@ -1281,6 +1726,43 @@ type NPCSpawnAPIData struct {
 	Unknown1    *uint16 `json:"unknown1" validate:"required"`
 	Orientation *byte   `json:"orientation" validate:"required"`
 	SpwanStep   *byte   `json:"spwan_step" validate:"required"`
+}
+
+type QuestFileAPIData struct {
+	QuestID       *uint16            `json:"quest_id" validate:"required"`
+	GiverNPC      *uint16            `json:"giver_npc" validate:"required"`
+	TargetNPC     *uint16            `json:"target_npc" validate:"required"`
+	MinLevel      *uint8             `json:"min_level" validate:"required"`
+	MaxLevel      *uint8             `json:"max_level" validate:"required"`
+	Flags         *uint32            `json:"flags" validate:"required"`
+	RewardItems   []*uint16          `json:"reward_items" validate:"required,len=4"`
+	RewardCounts  []*uint8           `json:"reward_counts" validate:"required,len=4"`
+	ExpReward     *uint32            `json:"exp_reward" validate:"required"`
+	WoonzReward   *uint32            `json:"woonz_reward" validate:"required"`
+	LoreReward    *uint32            `json:"lore_reward" validate:"required"`
+	Objectives    []ObjectiveAPIData `json:"objectives" validate:"required,len=7,dive"`
+	Continuations []*uint32          `json:"continuations" validate:"required,len=3"`
+}
+
+type ObjectiveAPIData struct {
+	Type              *uint8                `json:"type" validate:"required"`
+	TypeName          string                `json:"type_name"`
+	MapID             *uint16               `json:"map_id" validate:"required"`
+	Location          *QuestLocationAPIData `json:"location" validate:"required"`
+	Radius            *uint8                `json:"radius" validate:"required"`
+	TargetID          *uint16               `json:"target_id" validate:"required"`
+	KillCount         *uint16               `json:"kill_count" validate:"required"`
+	QuestItemID       *uint16               `json:"quest_item_id" validate:"required"`
+	DropItems         []*uint16             `json:"drop_items" validate:"required,len=3"`
+	RequiredItemCount *uint16               `json:"required_item_count" validate:"required"`
+	DropProbs         []*uint8              `json:"drop_probs" validate:"required,len=3"`
+	Name              string                `json:"name"`
+	IsUnused          bool                  `json:"is_unused"`
+}
+
+type QuestLocationAPIData struct {
+	X *uint8 `json:"x" validate:"required"`
+	Y *uint8 `json:"y" validate:"required"`
 }
 
 type fileUpdateContext struct {

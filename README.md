@@ -68,11 +68,12 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Cross-Platform Support**: Works on Windows (drive letters) and Unix-like systems
 - **File Type Detection**: Automatic detection of A3-specific file types:
   - NPC files (78-byte binary files)
+  - Quest files (.dat)
   - Spawn files (.n_ndt)
   - Drop files (.itm)
   - Map files (.map)
   - Text files (MIME type detection)
-- **File Viewing**: View NPC files, spawn files, and text files in the browser
+- **File Viewing**: View NPC files, quest files, spawn files, and text files in the browser
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -81,6 +82,17 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Movement and attack speeds
     - HP, Level, Experience values
     - Appearance and other attributes
+  - **Quest File Editor**: Edit A3 quest file configurations:
+    - Quest header configuration (Quest ID, Giver NPC, Target NPC, Min/Max Level, Flags)
+    - Reward configuration with add/remove controls for 3 item reward slots, plus Experience, Woonz, and Lore rewards
+    - Type-driven objective management for 7 objective slots:
+      - KILL, QUESTITEM, BRINGNPC, DROP, FIND, and UNUSED objective types
+      - Objective type selection enables only the fields used by that type
+      - Add/remove controls for unused objective slots, drop item slots, and quest item requirements
+      - Target monster/NPC IDs, kill counts, quest item IDs, required item counts, drop item probabilities, and optional DROP/FIND names
+    - Continuation quest configuration with add/remove controls for 3 chain quest IDs
+    - Form-based interface with validation
+    - Binary-safe save behavior that preserves existing padding and unknown bytes while writing proper A3 sentinel values for removed slots
   - **Spawn File Editor**: Edit NPC spawn point configurations:
     - Add, remove, and modify spawn points
     - Configure NPC ID, X/Y coordinates, orientation
@@ -242,6 +254,8 @@ omnihance-a3-agent-ui/
   │   │   ├── file-view.tsx
   │   │   ├── npc-file-edit.tsx
   │   │   ├── npc-file-view.tsx
+  │   │   ├── quest-file-edit.tsx
+  │   │   ├── quest-file-view.tsx
   │   │   ├── spawn-file-edit.tsx
   │   │   ├── spawn-file-view.tsx
   │   │   ├── text-file-edit.tsx
@@ -400,6 +414,8 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/file-tree` - Get file tree for a path
 - `GET /api/file-tree/npc-file` - Read NPC file data
 - `PUT /api/file-tree/npc-file` - Update NPC file
+- `GET /api/file-tree/quest-file` - Read quest file data
+- `PUT /api/file-tree/quest-file` - Update quest file
 - `GET /api/file-tree/spawn-file` - Read spawn file data
 - `PUT /api/file-tree/spawn-file` - Update spawn file
 - `GET /api/file-tree/text-file` - Read text file content
@@ -478,8 +494,9 @@ The application uses SQLite with the following main tables:
 
 6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view).
 
-7. **Edit Files**: Click on editable files (NPC files, spawn files, or text files) to view and edit them (requires admin or super admin role).
+7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
 
+   - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 

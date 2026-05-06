@@ -55,4 +55,3 @@ func GetTimeRangeStartTimestamp(timeRange string) (int64, error) {
 	now := time.Now().Unix()
 	return now - seconds, nil
 }
-

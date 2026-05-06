@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
 type FileType string
@@ -21,6 +22,7 @@ const (
 	FileTypeMap     FileType = "a3_map_file"
 	FileTypeUnknown FileType = "a3_unknown_file"
 	FileTypeSpawn   FileType = "a3_spawn_file"
+	FileTypeQuest   FileType = "a3_quest_file"
 	FileTypeText    FileType = "text_file"
 )
 
@@ -32,6 +34,7 @@ const (
 	DropFileExtension  = ".itm"
 	MapFileExtension   = ".map"
 	SpawnFileExtension = ".n_ndt"
+	QuestFileExtension = ".dat"
 )
 
 type FileEditorService interface {
@@ -59,6 +62,8 @@ type FileEditorService interface {
 	ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error)
 	ReadClientMapFileData(path string) ([]MapClientData, error)
 	ReadClientMapFileBytes(data []byte) ([]MapClientData, error)
+	ReadQuestFileData(path string) (questfile.QuestFile, error)
+	WriteQuestFileData(path string, data questfile.QuestFile) error
 }
 
 type fileEditorService struct {
@@ -77,6 +82,8 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeSpawn:
 		return true
+	case FileTypeQuest:
+		return true
 	default:
 		return false
 	}
@@ -91,6 +98,8 @@ func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) Fil
 		return FileTypeMap
 	case SpawnFileExtension:
 		return FileTypeSpawn
+	case QuestFileExtension:
+		return FileTypeQuest
 	default:
 		if fileInfo.Size() == NPCFileSize {
 			return FileTypeNPC
@@ -113,6 +122,8 @@ func (fes *fileEditorService) IsFileViewable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeSpawn:
 		return true
+	case FileTypeQuest:
+		return true
 	default:
 		return false
 	}
@@ -126,6 +137,8 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 		return "/file-tree/text-file"
 	case FileTypeSpawn:
 		return "/file-tree/spawn-file"
+	case FileTypeQuest:
+		return "/file-tree/quest-file"
 	default:
 		return ""
 	}
@@ -320,6 +333,47 @@ func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientDa
 	}
 
 	return mapData, nil
+}
+
+func (fes *fileEditorService) ReadQuestFileData(path string) (questfile.QuestFile, error) {
+	questFile, err := os.Open(path)
+	if err != nil {
+		return questfile.QuestFile{}, err
+	}
+
+	defer func() {
+		if closeErr := questFile.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return questfile.Read(questFile)
+}
+
+func (fes *fileEditorService) WriteQuestFileData(path string, data questfile.QuestFile) error {
+	var buf bytes.Buffer
+	if err := questfile.Write(&buf, data); err != nil {
+		return err
+	}
+
+	_, err := questfile.Read(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	_, err = file.Write(buf.Bytes())
+	return err
 }
 
 type NPCFileData struct {

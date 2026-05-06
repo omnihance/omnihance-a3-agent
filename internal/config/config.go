@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	externalUtils "github.com/cyberinferno/go-utils/utils"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/rs/zerolog"
 )
 
@@ -40,7 +40,7 @@ var defaultEnvVars = map[string]string{
 	"REVISIONS_DIRECTORY":                 ".revisions",
 	"METRICS_ENABLED":                     "true",
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
-	"COOKIE_SECRET":                       utils.GenerateRandomToken(32),
+	"COOKIE_SECRET":                       externalUtils.GenerateRandomString(32),
 	"DIRECTORY_SHORTCUTS_LIMIT":           "5",
 }
 
@@ -94,7 +94,7 @@ func New() *EnvVars {
 	cookieSecret := os.Getenv("COOKIE_SECRET")
 	if cookieSecret == "" {
 		slog.Warn("Cookie secret is not set, generating a new one")
-		cookieSecret = utils.GenerateRandomToken(32)
+		cookieSecret = externalUtils.GenerateRandomString(32)
 	}
 
 	maxFileUploadSizeMb, err := strconv.Atoi(os.Getenv("MAX_FILE_UPLOAD_SIZE_MB"))
@@ -161,7 +161,7 @@ func (e *EnvVars) GetLogLevel() zerolog.Level {
 func writeEnvFile(path string, envVars map[string]string) error {
 	var builder strings.Builder
 	for key, value := range envVars {
-		builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		_, _ = fmt.Fprintf(&builder, "%s=%s\n", key, value)
 	}
 
 	return os.WriteFile(path, []byte(builder.String()), 0644)

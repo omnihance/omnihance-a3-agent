@@ -229,4 +229,3 @@ func TestNormalizeRole(t *testing.T) {
 		})
 	}
 }
-

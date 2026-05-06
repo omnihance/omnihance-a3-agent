@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"time"
 
+	externalUtils "github.com/cyberinferno/go-utils/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
+	agonylUtils "github.com/project-agonyl/agonyl-utils-go/utils"
 )
 
 func (s *Server) InitializeGameClientDataRoutes(r *chi.Mux) {
@@ -163,7 +165,7 @@ func (s *Server) handleUploadMONFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.DecodeULL(&fileData, len(fileData))
+	agonylUtils.DecodeULL(fileData, len(fileData))
 	monsterData, err := s.fileEditor.ReadClientMonsterFileBytes(fileData)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
@@ -178,7 +180,7 @@ func (s *Server) handleUploadMONFile(w http.ResponseWriter, r *http.Request) {
 	dbMonsterData := make([]db.MonsterClientData, 0, len(monsterData))
 	uniqueMonsterMap := make(map[uint32]bool)
 	for _, monster := range monsterData {
-		name := utils.ReadStringFromBytes(monster.Name[:])
+		name := externalUtils.ReadStringFromBytes(monster.Name[:])
 		if _, ok := uniqueMonsterMap[monster.ID]; ok {
 			continue
 		}
@@ -271,7 +273,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	utils.DecodeULL(&fileData, len(fileData))
+	agonylUtils.DecodeULL(fileData, len(fileData))
 	mapData, err := s.fileEditor.ReadClientMapFileBytes(fileData)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
@@ -285,7 +287,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 	dbMapData := make([]db.MapClientData, 0, len(mapData))
 	uniqueMapMap := make(map[uint32]bool)
 	for _, mapItem := range mapData {
-		name := utils.ReadStringFromBytes(mapItem.Name[:])
+		name := externalUtils.ReadStringFromBytes(mapItem.Name[:])
 		if _, ok := uniqueMapMap[mapItem.ID]; ok {
 			continue
 		}

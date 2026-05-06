@@ -21,12 +21,14 @@ import {
   getTextFile,
   getNPCFile,
   getSpawnFile,
+  getQuestFile,
   getMaps,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/utils';
 import { TextFileEdit } from './text-file-edit';
 import { NPCFileEdit } from './npc-file-edit';
 import { SpawnFileEdit } from './spawn-file-edit';
+import { QuestFileEdit } from './quest-file-edit';
 import { queryKeys } from '@/constants';
 import { useMemo } from 'react';
 
@@ -39,19 +41,6 @@ export function FileEdit({ filePath }: FileEditProps) {
   const { hasPermission } = usePermissions();
   const canEditFiles = hasPermission('edit_files');
 
-  useEffect(() => {
-    if (!canEditFiles) {
-      navigate({
-        to: '/file/view',
-        search: { path: filePath },
-      });
-    }
-  }, [canEditFiles, navigate, filePath]);
-
-  if (!canEditFiles) {
-    return null;
-  }
-
   const {
     data: fileTreeResponse,
     isLoading: fileTreeLoading,
@@ -61,7 +50,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     queryFn: () => {
       return getFileTree({ path: filePath });
     },
-    enabled: !!filePath,
+    enabled: !!filePath && canEditFiles,
   });
 
   const fileNode: FileNode | undefined = fileTreeResponse?.file_tree;
@@ -76,7 +65,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     queryFn: () => {
       return getTextFile({ path: filePath });
     },
-    enabled: !!filePath && fileType === 'text_file',
+    enabled: !!filePath && fileType === 'text_file' && canEditFiles,
   });
 
   const {
@@ -88,7 +77,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     queryFn: () => {
       return getNPCFile({ path: filePath });
     },
-    enabled: !!filePath && fileType === 'a3_npc_file',
+    enabled: !!filePath && fileType === 'a3_npc_file' && canEditFiles,
   });
 
   const {
@@ -100,13 +89,25 @@ export function FileEdit({ filePath }: FileEditProps) {
     queryFn: () => {
       return getSpawnFile({ path: filePath });
     },
-    enabled: !!filePath && fileType === 'a3_spawn_file',
+    enabled: !!filePath && fileType === 'a3_spawn_file' && canEditFiles,
+  });
+
+  const {
+    data: questFileData,
+    isLoading: questFileLoading,
+    error: questFileError,
+  } = useQuery({
+    queryKey: queryKeys.questFile(filePath),
+    queryFn: () => {
+      return getQuestFile({ path: filePath });
+    },
+    enabled: !!filePath && fileType === 'a3_quest_file' && canEditFiles,
   });
 
   const { data: maps } = useQuery({
     queryKey: queryKeys.maps,
     queryFn: () => getMaps(),
-    enabled: fileType === 'a3_spawn_file',
+    enabled: fileType === 'a3_spawn_file' && canEditFiles,
   });
 
   const mapName = useMemo(() => {
@@ -128,6 +129,19 @@ export function FileEdit({ filePath }: FileEditProps) {
     return map?.name || null;
   }, [fileType, maps, fileNode?.name]);
 
+  useEffect(() => {
+    if (!canEditFiles) {
+      navigate({
+        to: '/file/view',
+        search: { path: filePath },
+      });
+    }
+  }, [canEditFiles, navigate, filePath]);
+
+  if (!canEditFiles) {
+    return null;
+  }
+
   const fileTreeErrorMessage =
     fileTreeError instanceof APIError
       ? fileTreeError.getErrorMessage()
@@ -135,20 +149,26 @@ export function FileEdit({ filePath }: FileEditProps) {
         ? fileTreeError.message
         : 'Failed to load file information';
 
-  const fileContentErrorMessage =
-    textFileError instanceof APIError
-      ? textFileError.getErrorMessage()
-      : npcFileError instanceof APIError
-        ? npcFileError.getErrorMessage()
-        : spawnFileError instanceof APIError
-          ? spawnFileError.getErrorMessage()
-          : textFileError instanceof Error
-            ? textFileError.message
-            : npcFileError instanceof Error
-              ? npcFileError.message
-              : spawnFileError instanceof Error
-                ? spawnFileError.message
-                : 'Failed to load file content';
+  const getFirstErrorMessage = (errors: Array<unknown>): string => {
+    for (const error of errors) {
+      if (error instanceof APIError) {
+        return error.getErrorMessage();
+      }
+
+      if (error instanceof Error) {
+        return error.message;
+      }
+    }
+
+    return 'Failed to load file content';
+  };
+
+  const fileContentErrorMessage = getFirstErrorMessage([
+    textFileError,
+    npcFileError,
+    spawnFileError,
+    questFileError,
+  ]);
 
   return (
     <div className="p-4 lg:p-6">
@@ -190,7 +210,7 @@ export function FileEdit({ filePath }: FileEditProps) {
         </Alert>
       )}
 
-      {(textFileError || npcFileError || spawnFileError) && (
+      {(textFileError || npcFileError || spawnFileError || questFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
         </Alert>
@@ -309,10 +329,26 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
             </>
           )}
+          {fileType === 'a3_quest_file' && (
+            <>
+              {questFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {questFileData && !questFileError && (
+                <QuestFileEdit
+                  filePath={filePath}
+                  defaultData={questFileData}
+                />
+              )}
+            </>
+          )}
           {fileType &&
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
-            fileType !== 'a3_spawn_file' && (
+            fileType !== 'a3_spawn_file' &&
+            fileType !== 'a3_quest_file' && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   File type "{fileType}" is not yet supported for editing.
