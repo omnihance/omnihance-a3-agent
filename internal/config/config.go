@@ -161,7 +161,7 @@ func (e *EnvVars) GetLogLevel() zerolog.Level {
 func writeEnvFile(path string, envVars map[string]string) error {
 	var builder strings.Builder
 	for key, value := range envVars {
-		builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		_, _ = fmt.Fprintf(&builder, "%s=%s\n", key, value)
 	}
 
 	return os.WriteFile(path, []byte(builder.String()), 0644)
