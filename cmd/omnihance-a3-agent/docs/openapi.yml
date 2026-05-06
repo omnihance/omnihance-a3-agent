@@ -2519,6 +2519,10 @@ components:
         name:
           type: string
           description: Objective name (optional, can be empty)
+        is_unused:
+          type: boolean
+          nullable: false
+          description: Whether this objective slot is marked as unused
     MetricCard:
       type: object
       description: A metric card containing metric information for display
