@@ -18,8 +18,6 @@ export const API_ROUTES = {
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
-  SETTINGS: '/api/settings',
-  SETTING: (key: string) => `/api/settings/${key}`,
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
   GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
@@ -157,24 +155,6 @@ const StatusResponseSchema = z.object({
 });
 
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;
-
-export interface SetupResponse {
-  access_token: string;
-}
-
-const SettingsSchema = z.object({
-  key: z.string(),
-  value: z.string(),
-  updated_at: z.string(),
-});
-
-export type Settings = z.infer<typeof SettingsSchema>;
-
-const UpsertSettingRequestSchema = z.object({
-  value: z.string(),
-});
-
-export type UpsertSettingRequest = z.infer<typeof UpsertSettingRequestSchema>;
 
 const NPCAttackSchema = z.object({
   range: z.number().int().nonnegative(),
@@ -822,39 +802,6 @@ export async function duplicateFile(
     DuplicateFileResponseSchema,
     response.data,
     API_ROUTES.DUPLICATE_FILE,
-  );
-}
-
-export async function getAllSettings(): Promise<Settings[]> {
-  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTINGS);
-  return validateResponse(
-    z.array(SettingsSchema),
-    response.data,
-    API_ROUTES.SETTINGS,
-  );
-}
-
-export async function getSetting(key: string): Promise<Settings> {
-  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTING(key));
-  return validateResponse(
-    SettingsSchema,
-    response.data,
-    API_ROUTES.SETTING(key),
-  );
-}
-
-export async function upsertSetting(
-  key: string,
-  data: UpsertSettingRequest,
-): Promise<Settings> {
-  const response = await axiosInstance.put<unknown>(
-    API_ROUTES.SETTING(key),
-    UpsertSettingRequestSchema.parse(data),
-  );
-  return validateResponse(
-    SettingsSchema,
-    response.data,
-    API_ROUTES.SETTING(key),
   );
 }
 

@@ -26,6 +26,19 @@ tags:
     name: directory-shortcuts
 
 paths:
+  /health:
+    get:
+      tags:
+        - status
+      summary: Health check endpoint
+      description: Returns plain text heartbeat response used for service liveness checks.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/auth/sign-in:
     post:
       tags:
