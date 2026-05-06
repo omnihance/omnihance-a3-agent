@@ -378,12 +378,12 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
 
   const isQuestItemRequirementActive = (objectiveIndex: number) => {
     const questItemID = objectives[objectiveIndex]?.quest_item_id;
-    const requiredItemCount =
-      objectives[objectiveIndex]?.required_item_count;
+    const requiredItemCount = objectives[objectiveIndex]?.required_item_count;
     return (
       questItemID != null &&
       requiredItemCount != null &&
-      questItemID !== UNUSED_UINT16 && requiredItemCount !== UNUSED_UINT16
+      questItemID !== UNUSED_UINT16 &&
+      requiredItemCount !== UNUSED_UINT16
     );
   };
 
@@ -549,16 +549,12 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                       Slot {index + 1}
                     </TableCell>
                     <TableCell>
-                      {nullableNumberField(
-                        `reward_items.${index}`,
-                        'Item ID',
-                        {
-                          min: 0,
-                          max: MAX_UINT16_FORM,
-                          disabled: !isActive,
-                          emptyValue: 0,
-                        },
-                      )}
+                      {nullableNumberField(`reward_items.${index}`, 'Item ID', {
+                        min: 0,
+                        max: MAX_UINT16_FORM,
+                        disabled: !isActive,
+                        emptyValue: 0,
+                      })}
                     </TableCell>
                     <TableCell>
                       {nullableNumberField(`reward_counts.${index}`, 'Count', {
@@ -611,8 +607,7 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
               const supportsTarget =
                 objectiveType === QUEST_OBJECTIVE_TYPE.KILL ||
                 objectiveType === QUEST_OBJECTIVE_TYPE.BRINGNPC;
-              const supportsKill =
-                objectiveType === QUEST_OBJECTIVE_TYPE.KILL;
+              const supportsKill = objectiveType === QUEST_OBJECTIVE_TYPE.KILL;
               const supportsQuestItem =
                 objectiveType === QUEST_OBJECTIVE_TYPE.QUESTITEM ||
                 objectiveType === QUEST_OBJECTIVE_TYPE.BRINGNPC;

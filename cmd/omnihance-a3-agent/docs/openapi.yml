@@ -750,6 +750,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/duplicate-file:
+    post:
+      tags:
+        - file-system
+      summary: Duplicate file in same directory
+      description: Duplicates an existing file into the same directory with a new file name. Requires edit file permission. The new file name must not contain path separators and must not already exist.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuplicateFileRequest'
+      responses:
+        '200':
+          description: File duplicated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateFileResponse'
+        '400':
+          description: Bad Request - Invalid request body, invalid destination file name, destination already exists, or source path is a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Source path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/revision-summary:
     get:
       tags:
@@ -2308,6 +2353,30 @@ components:
           type: string
           description: The text content of the file
           example: "Hello, World!\nThis is a text file."
+    DuplicateFileRequest:
+      type: object
+      required:
+        - source_path
+        - new_file_name
+      properties:
+        source_path:
+          type: string
+          description: Full path to the source file to duplicate
+          example: "C:\\A3Server\\configs\\server.ini"
+        new_file_name:
+          type: string
+          description: New file name for the duplicate in the same directory
+          example: "server (copy).ini"
+    DuplicateFileResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "File duplicated successfully"
+        duplicated_path:
+          type: string
+          description: Full path of the newly created duplicate file
+          example: "C:\\A3Server\\configs\\server (copy).ini"
     SpawnFileAPIData:
       type: object
       description: Parsed binary data from a spawn file (API request/response format). All fields are required when used as a request body.

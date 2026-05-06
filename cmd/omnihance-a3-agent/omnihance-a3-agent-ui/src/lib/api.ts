@@ -16,6 +16,7 @@ export const API_ROUTES = {
   SPAWN_FILE: '/api/file-tree/spawn-file',
   QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
+  DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
   SETTINGS: '/api/settings',
   SETTING: (key: string) => `/api/settings/${key}`,
@@ -306,6 +307,20 @@ const RevisionSummaryResponseSchema = z.object({
 export type RevisionSummaryResponse = z.infer<
   typeof RevisionSummaryResponseSchema
 >;
+
+const DuplicateFileRequestSchema = z.object({
+  source_path: z.string().min(1),
+  new_file_name: z.string().min(1),
+});
+
+export type DuplicateFileRequest = z.infer<typeof DuplicateFileRequestSchema>;
+
+const DuplicateFileResponseSchema = z.object({
+  message: z.string(),
+  duplicated_path: z.string(),
+});
+
+export type DuplicateFileResponse = z.infer<typeof DuplicateFileResponseSchema>;
 
 const TextFileAPIDataSchema = z.object({
   content: z.string(),
@@ -793,6 +808,20 @@ export async function getRevisionSummary(
     RevisionSummaryResponseSchema,
     response.data,
     API_ROUTES.REVISION_COUNT,
+  );
+}
+
+export async function duplicateFile(
+  data: DuplicateFileRequest,
+): Promise<DuplicateFileResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.DUPLICATE_FILE,
+    DuplicateFileRequestSchema.parse(data),
+  );
+  return validateResponse(
+    DuplicateFileResponseSchema,
+    response.data,
+    API_ROUTES.DUPLICATE_FILE,
   );
 }
 

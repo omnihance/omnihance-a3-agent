@@ -290,9 +290,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                   probability: objective.drop_probs[idx],
                   idx,
                 }))
-                .filter((drop) =>
-                  hasDropValue(drop.item, drop.probability),
-                );
+                .filter((drop) => hasDropValue(drop.item, drop.probability));
 
               return (
                 <Card key={index} className="border-l-4">
@@ -309,7 +307,9 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                   <CardContent>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div>
-                        <div className="text-sm text-muted-foreground">Type</div>
+                        <div className="text-sm text-muted-foreground">
+                          Type
+                        </div>
                         <div className="text-lg font-semibold">
                           {objective.type_name
                             ? `${objective.type_name} (${objective.type})`
@@ -378,9 +378,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                               Required Items
                             </div>
                             <div className="text-lg font-semibold">
-                              {formatUInt16Value(
-                                objective.required_item_count,
-                              )}
+                              {formatUInt16Value(objective.required_item_count)}
                             </div>
                           </div>
                         </>

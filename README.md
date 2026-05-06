@@ -74,6 +74,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Map files (.map)
   - Text files (MIME type detection)
 - **File Viewing**: View NPC files, quest files, spawn files, and text files in the browser
+- **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -421,6 +422,7 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/file-tree/text-file` - Read text file content
 - `PUT /api/file-tree/text-file` - Update text file
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
+- `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
 
 ### Metrics
@@ -492,7 +494,7 @@ The application uses SQLite with the following main tables:
 
 5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view).
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Right-click files to duplicate them quickly.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
 
