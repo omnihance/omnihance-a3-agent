@@ -117,7 +117,10 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Metrics Dashboard**: Visual representation of system performance
   - Metric cards showing current CPU and RAM usage
   - Interactive charts with ECharts integration
-  - Time range filters (1h, 6h, 1d, 7d)
+  - Global dashboard time window selector (default: last hour)
+  - Preset ranges: 1h, 6h, 1d, 7d
+  - Adaptive server-side aggregation to prevent overcrowded x-axis labels
+  - Extensible time-window model ready for future custom from/to filtering
   - Smooth line charts with tooltips
 - **Metrics Retention**: Configurable data retention with automatic cleanup
 - **Historical Data**: Query metrics by time range for trend analysis
@@ -428,7 +431,8 @@ The application uses environment variables for configuration. A `.env` file is a
 ### Metrics
 
 - `GET /api/metrics/summary` - Get current metric values (CPU, RAM)
-- `GET /api/metrics/charts` - Get metric charts with time range filter
+- `GET /api/metrics/charts` - Get metric charts with time window filtering and adaptive aggregation
+  - Query parameters: `range` (default `1h`, supports `1h`, `6h`, `1d`, `7d`), optional `from` and `to` (Unix seconds, must be provided together)
 
 ### Game Client Data
 
@@ -503,6 +507,8 @@ The application uses SQLite with the following main tables:
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
 8. **Monitor Metrics**: View system metrics on the dashboard with real-time charts (all authenticated users can view).
+   - Use the top-right range selector above charts (default last hour) to switch between presets.
+   - Chart density is automatically adjusted based on selected window to keep x-axis readable.
 
 9. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed (requires admin or super admin role).
 

@@ -903,7 +903,7 @@ paths:
       tags:
         - metrics
       summary: Get metrics charts configuration
-      description: Returns ECharts configuration options for CPU and RAM usage line charts. Includes chart data for the specified time range and available time range filters for the frontend. The endpoint accepts an optional time range query parameter (defaults to 1h).
+      description: Returns ECharts configuration options for CPU and RAM usage line charts. Includes chart data for the selected time window and available time range filters for the frontend. The endpoint supports preset ranges and optional custom from/to timestamps. Server-side adaptive aggregation is applied to keep chart points readable across larger windows.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -913,7 +913,19 @@ paths:
             type: string
             default: "1h"
             enum: ["1h", "6h", "1d", "7d"]
-          description: Time range for the chart data. Supported values: 1h (1 hour), 6h (6 hours), 1d (1 day), 7d (7 days). Defaults to 1h.
+          description: Preset time range for chart data. Supported values are 1h (1 hour), 6h (6 hours), 1d (1 day), and 7d (7 days). Defaults to 1h. Ignored when from and to are both provided.
+        - in: query
+          name: from
+          schema:
+            type: integer
+            format: int64
+          description: Optional custom start timestamp (Unix seconds). Must be provided together with to.
+        - in: query
+          name: to
+          schema:
+            type: integer
+            format: int64
+          description: Optional custom end timestamp (Unix seconds). Must be provided together with from and be greater than from.
       responses:
         '200':
           description: Charts configuration with ECharts options

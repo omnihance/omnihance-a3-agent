@@ -528,3 +528,62 @@ func (s *sqliteInternalDB) GetMetricSamplesByTimeRange(metricName string, startT
 
 	return results, nil
 }
+
+func (s *sqliteInternalDB) GetMetricSamplesByTimeWindow(
+	metricName string,
+	startTime, endTime, stepSeconds int64,
+) ([]MetricSampleWithLabels, error) {
+	if stepSeconds <= 0 {
+		stepSeconds = 1
+	}
+
+	var results []MetricSampleWithLabels
+	bucketExpr := fmt.Sprintf("(ms.timestamp / %d) * %d", stepSeconds, stepSeconds)
+
+	err := s.goqu.Select(
+		goqu.I("ms.series_id"),
+		goqu.I("mn.name").As("metric_name"),
+		goqu.L("COALESCE(GROUP_CONCAT(l.key || '=\"' || l.value || '\"', ', '), '')").As("labels"),
+		goqu.L(bucketExpr).As("timestamp"),
+		goqu.AVG(goqu.I("ms.value")).As("value"),
+		goqu.I("mn.unit").As("metric_unit"),
+	).
+		Prepared(true).
+		From(goqu.T("metric_samples").As("ms")).
+		InnerJoin(goqu.T("metric_series").As("ser"), goqu.On(goqu.I("ms.series_id").Eq(goqu.I("ser.id")))).
+		InnerJoin(goqu.T("metric_names").As("mn"), goqu.On(goqu.I("ser.metric_id").Eq(goqu.I("mn.id")))).
+		LeftJoin(goqu.T("series_labels").As("sl"), goqu.On(goqu.I("ser.id").Eq(goqu.I("sl.series_id")))).
+		LeftJoin(goqu.T("labels").As("l"), goqu.On(goqu.I("sl.label_id").Eq(goqu.I("l.id")))).
+		Where(
+			goqu.I("mn.name").Eq(metricName),
+			goqu.I("ms.timestamp").Gte(startTime),
+			goqu.I("ms.timestamp").Lte(endTime),
+		).
+		GroupBy(
+			goqu.I("ms.series_id"),
+			goqu.I("mn.name"),
+			goqu.L(bucketExpr),
+			goqu.I("mn.unit"),
+		).
+		Order(goqu.L(bucketExpr).Asc()).
+		ScanStructs(&results)
+	if err != nil {
+		s.logger.Error(
+			"failed to query metric samples by time window",
+			logger.Field{Key: "metric_name", Value: metricName},
+			logger.Field{Key: "start_time", Value: startTime},
+			logger.Field{Key: "end_time", Value: endTime},
+			logger.Field{Key: "step_seconds", Value: stepSeconds},
+			logger.Field{Key: "error", Value: err},
+		)
+		return nil, fmt.Errorf("failed to query metric samples by time window: %w", err)
+	}
+
+	for i := range results {
+		if results[i].MetricUnit != nil && *results[i].MetricUnit == "" {
+			results[i].MetricUnit = nil
+		}
+	}
+
+	return results, nil
+}

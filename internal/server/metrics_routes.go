@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -150,6 +151,13 @@ type ChartResponse struct {
 	Charts []ChartConfig `json:"charts"`
 }
 
+const (
+	defaultMetricsRange      = "1h"
+	metricsChartTargetPoints = int64(60)
+)
+
+var metricsRangeOptions = []string{"1h", "6h", "1d", "7d"}
+
 func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request) {
 	if !s.requireUserPermission(w, r, permissions.ActionViewMetrics) {
 		return
@@ -164,29 +172,31 @@ func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	timeRange := r.URL.Query().Get("range")
-	if timeRange == "" {
-		timeRange = "1h"
-	}
-
-	startTime, err := utils.GetTimeRangeStartTimestamp(timeRange)
+	timeWindow, err := parseMetricsTimeWindow(r, metricsRangeOptions, defaultMetricsRange)
 	if err != nil {
-		s.log.Error("Failed to parse time range", logger.Field{Key: "time_range", Value: timeRange}, logger.Field{Key: "error", Value: err})
+		s.log.Error("Failed to parse metrics time window", logger.Field{Key: "error", Value: err})
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
 			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "time_range",
-			"errors":    []string{fmt.Sprintf("Invalid time range: %s", timeRange)},
+			"context":   "time_window",
+			"errors":    []string{err.Error()},
 		})
 		return
 	}
 
-	endTime := time.Now().Unix()
-
-	availableRanges := []string{"1h", "6h", "1d", "7d"}
+	stepSeconds := calculateMetricsStepSeconds(
+		timeWindow.DurationSeconds,
+		int64(s.cfg.MetricsCollectionIntervalSeconds),
+		metricsChartTargetPoints,
+	)
 
 	charts := make([]ChartConfig, 0, 2)
 
-	cpuSamples, err := s.internalDB.GetMetricSamplesByTimeRange(collectors.CPUUsagePercentageMetricName, startTime, endTime)
+	cpuSamples, err := s.internalDB.GetMetricSamplesByTimeWindow(
+		collectors.CPUUsagePercentageMetricName,
+		timeWindow.StartTime,
+		timeWindow.EndTime,
+		stepSeconds,
+	)
 	if err != nil {
 		s.log.Error("Failed to get CPU metric samples", logger.Field{Key: "error", Value: err})
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -215,13 +225,18 @@ func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request)
 		Filters: []TimeRangeFilter{
 			{
 				Key:             fmt.Sprintf("%s_range", collectors.CPUUsagePercentageMetricName),
-				AvailableValues: availableRanges,
-				DefaultValue:    "1h",
+				AvailableValues: metricsRangeOptions,
+				DefaultValue:    defaultMetricsRange,
 			},
 		},
 	})
 
-	ramSamples, err := s.internalDB.GetMetricSamplesByTimeRange(collectors.MemoryUsagePercentageMetricName, startTime, endTime)
+	ramSamples, err := s.internalDB.GetMetricSamplesByTimeWindow(
+		collectors.MemoryUsagePercentageMetricName,
+		timeWindow.StartTime,
+		timeWindow.EndTime,
+		stepSeconds,
+	)
 	if err != nil {
 		s.log.Error("Failed to get RAM metric samples", logger.Field{Key: "error", Value: err})
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -250,8 +265,8 @@ func (s *Server) getMetricsChartsHandler(w http.ResponseWriter, r *http.Request)
 		Filters: []TimeRangeFilter{
 			{
 				Key:             fmt.Sprintf("%s_range", collectors.MemoryUsagePercentageMetricName),
-				AvailableValues: availableRanges,
-				DefaultValue:    "1h",
+				AvailableValues: metricsRangeOptions,
+				DefaultValue:    defaultMetricsRange,
 			},
 		},
 	})
@@ -375,4 +390,105 @@ func (s *Server) aggregateCPUSamples(samples []db.MetricSampleWithLabels) []Aggr
 	}
 
 	return result
+}
+
+type metricsTimeWindow struct {
+	StartTime       int64
+	EndTime         int64
+	DurationSeconds int64
+	Range           string
+}
+
+func parseMetricsTimeWindow(r *http.Request, allowedRanges []string, defaultRange string) (metricsTimeWindow, error) {
+	rangeValue := r.URL.Query().Get("range")
+	fromValue := r.URL.Query().Get("from")
+	toValue := r.URL.Query().Get("to")
+
+	if fromValue != "" || toValue != "" {
+		if fromValue == "" || toValue == "" {
+			return metricsTimeWindow{}, fmt.Errorf("both from and to must be provided for custom time window")
+		}
+
+		fromTimestamp, err := strconv.ParseInt(fromValue, 10, 64)
+		if err != nil {
+			return metricsTimeWindow{}, fmt.Errorf("invalid from timestamp: %s", fromValue)
+		}
+
+		toTimestamp, err := strconv.ParseInt(toValue, 10, 64)
+		if err != nil {
+			return metricsTimeWindow{}, fmt.Errorf("invalid to timestamp: %s", toValue)
+		}
+
+		if toTimestamp <= fromTimestamp {
+			return metricsTimeWindow{}, fmt.Errorf("to must be greater than from")
+		}
+
+		return metricsTimeWindow{
+			StartTime:       fromTimestamp,
+			EndTime:         toTimestamp,
+			DurationSeconds: toTimestamp - fromTimestamp,
+			Range:           "",
+		}, nil
+	}
+
+	if rangeValue == "" {
+		rangeValue = defaultRange
+	}
+
+	if !isSupportedRange(rangeValue, allowedRanges) {
+		return metricsTimeWindow{}, fmt.Errorf("invalid time range: %s", rangeValue)
+	}
+
+	durationSeconds, err := utils.ParseTimeRangeToSeconds(rangeValue)
+	if err != nil {
+		return metricsTimeWindow{}, fmt.Errorf("invalid time range: %s", rangeValue)
+	}
+
+	now := time.Now().Unix()
+
+	return metricsTimeWindow{
+		StartTime:       now - durationSeconds,
+		EndTime:         now,
+		DurationSeconds: durationSeconds,
+		Range:           rangeValue,
+	}, nil
+}
+
+func isSupportedRange(rangeValue string, allowedRanges []string) bool {
+	for _, allowedRange := range allowedRanges {
+		if rangeValue == allowedRange {
+			return true
+		}
+	}
+
+	return false
+}
+
+func calculateMetricsStepSeconds(
+	durationSeconds int64,
+	collectionIntervalSeconds int64,
+	targetPoints int64,
+) int64 {
+	if durationSeconds <= 0 {
+		return 1
+	}
+
+	if collectionIntervalSeconds <= 0 {
+		collectionIntervalSeconds = 1
+	}
+
+	if targetPoints <= 0 {
+		targetPoints = 1
+	}
+
+	windowBasedStep := (durationSeconds + targetPoints - 1) / targetPoints
+	if windowBasedStep < 1 {
+		windowBasedStep = 1
+	}
+
+	if windowBasedStep < collectionIntervalSeconds {
+		return collectionIntervalSeconds
+	}
+
+	return windowBasedStep
 }

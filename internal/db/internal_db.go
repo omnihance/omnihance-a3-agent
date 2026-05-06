@@ -26,6 +26,7 @@ type InternalDB interface {
 	GetSeriesWithLabels() ([]SeriesWithLabels, error)
 	GetLatestSamples() ([]LatestSample, error)
 	GetMetricSamplesByTimeRange(metricName string, startTime, endTime int64) ([]MetricSampleWithLabels, error)
+	GetMetricSamplesByTimeWindow(metricName string, startTime, endTime, stepSeconds int64) ([]MetricSampleWithLabels, error)
 	DeleteOldMetrics(retentionDays int) error
 	BeginTx() (*goqu.TxDatabase, error)
 	CreateFileRevision(tx *goqu.TxDatabase, fileID, originalPath, revisionPath string, previousHash, currentHash string, createdBy int64) (int64, error)

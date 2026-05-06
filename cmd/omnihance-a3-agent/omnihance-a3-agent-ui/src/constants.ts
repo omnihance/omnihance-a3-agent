@@ -7,7 +7,13 @@ export const queryKeys = {
   status: ['status'] as const,
   session: ['session'] as const,
   metricsSummary: ['metrics-summary'] as const,
-  metricsCharts: ['metrics-charts'] as const,
+  metricsCharts: (params?: { range?: string; from?: number; to?: number }) => {
+    if (params !== undefined) {
+      return ['metrics-charts', params] as const;
+    }
+
+    return ['metrics-charts'] as const;
+  },
   monsters: ['monsters'] as const,
   maps: ['maps'] as const,
   fileTree: (path?: string, showDotfiles?: boolean) => {

@@ -815,7 +815,9 @@ export async function getMetricsSummary(): Promise<MetricsSummaryResponse> {
 }
 
 export async function getMetricsCharts(params?: {
-  range?: '1h' | '6h' | '1d' | '7d';
+  range?: string;
+  from?: number;
+  to?: number;
 }): Promise<MetricsChartsResponse> {
   const response = await axiosInstance.get<unknown>(API_ROUTES.METRICS_CHARTS, {
     params,
