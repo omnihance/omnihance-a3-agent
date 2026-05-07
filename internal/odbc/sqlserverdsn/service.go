@@ -128,12 +128,18 @@ func (s *Service) TestConnection(ctx context.Context, dsn DSN) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 
 	testCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	return db.PingContext(testCtx)
+	if err := db.PingContext(testCtx); err != nil {
+		if closeErr := db.Close(); closeErr != nil {
+			return errors.Join(err, closeErr)
+		}
+		return err
+	}
+
+	return db.Close()
 }
 
 func validateDSN(dsn DSN) error {

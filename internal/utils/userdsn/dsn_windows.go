@@ -21,6 +21,17 @@ func New() Manager {
 	return &windowsManager{}
 }
 
+// validate checks the required fields of a Config.
+func validate(cfg Config) error {
+	if cfg.Name == "" {
+		return ErrDSNNameRequired
+	}
+	if cfg.Driver == "" {
+		return ErrDriverRequired
+	}
+	return nil
+}
+
 // List returns all User DSN names from the ODBC Data Sources registry key.
 func (m *windowsManager) List() ([]string, error) {
 	key, err := registry.OpenKey(registry.CURRENT_USER, odbcDataSources, registry.QUERY_VALUE)

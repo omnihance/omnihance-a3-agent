@@ -45,14 +45,3 @@ type Manager interface {
 	// Delete removes a User DSN. Returns ErrDSNNotFound if missing.
 	Delete(name string) error
 }
-
-// validate checks the required fields of a Config.
-func validate(cfg Config) error {
-	if cfg.Name == "" {
-		return ErrDSNNameRequired
-	}
-	if cfg.Driver == "" {
-		return ErrDriverRequired
-	}
-	return nil
-}
