@@ -92,8 +92,13 @@ export function SQLServerODBCPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ name, payload }: { name: string; payload: SQLServerODBCDSNRequest }) =>
-      updateSQLServerODBCDSN(name, payload),
+    mutationFn: ({
+      name,
+      payload,
+    }: {
+      name: string;
+      payload: SQLServerODBCDSNRequest;
+    }) => updateSQLServerODBCDSN(name, payload),
     onSuccess: () => {
       invalidate();
       toast.success('DSN updated');
@@ -128,7 +133,9 @@ export function SQLServerODBCPage() {
       !form.login_id.trim() ||
       !form.password.trim()
     ) {
-      toast.error('Name, server, database, login id, and password are required');
+      toast.error(
+        'Name, server, database, login id, and password are required',
+      );
       return null;
     }
 
@@ -221,6 +228,7 @@ export function SQLServerODBCPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              aria-label={`Edit DSN ${dsn.name}`}
                               onClick={() => openEdit(dsn)}
                             >
                               <Edit className="h-4 w-4" />
@@ -228,6 +236,7 @@ export function SQLServerODBCPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              aria-label={`Delete DSN ${dsn.name}`}
                               onClick={() => {
                                 setSelectedDSN(dsn);
                                 setDeleteDialogOpen(true);
@@ -344,7 +353,8 @@ export function SQLServerODBCPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DSN</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete &quot;{selectedDSN?.name}&quot;? This action cannot be undone.
+              Delete &quot;{selectedDSN?.name}&quot;? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
