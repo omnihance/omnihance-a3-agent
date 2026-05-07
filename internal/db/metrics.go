@@ -539,21 +539,14 @@ func (s *sqliteInternalDB) GetMetricSamplesByTimeWindow(
 
 	var results []MetricSampleWithLabels
 	bucketExpr := fmt.Sprintf("(ms.timestamp / %d) * %d", stepSeconds, stepSeconds)
-
-	err := s.goqu.Select(
+	bucketedSamples := s.goqu.Select(
 		goqu.I("ms.series_id"),
-		goqu.I("mn.name").As("metric_name"),
-		goqu.L("COALESCE(GROUP_CONCAT(l.key || '=\"' || l.value || '\"', ', '), '')").As("labels"),
 		goqu.L(bucketExpr).As("timestamp"),
 		goqu.AVG(goqu.I("ms.value")).As("value"),
-		goqu.I("mn.unit").As("metric_unit"),
 	).
-		Prepared(true).
 		From(goqu.T("metric_samples").As("ms")).
 		InnerJoin(goqu.T("metric_series").As("ser"), goqu.On(goqu.I("ms.series_id").Eq(goqu.I("ser.id")))).
 		InnerJoin(goqu.T("metric_names").As("mn"), goqu.On(goqu.I("ser.metric_id").Eq(goqu.I("mn.id")))).
-		LeftJoin(goqu.T("series_labels").As("sl"), goqu.On(goqu.I("ser.id").Eq(goqu.I("sl.series_id")))).
-		LeftJoin(goqu.T("labels").As("l"), goqu.On(goqu.I("sl.label_id").Eq(goqu.I("l.id")))).
 		Where(
 			goqu.I("mn.name").Eq(metricName),
 			goqu.I("ms.timestamp").Gte(startTime),
@@ -561,11 +554,32 @@ func (s *sqliteInternalDB) GetMetricSamplesByTimeWindow(
 		).
 		GroupBy(
 			goqu.I("ms.series_id"),
-			goqu.I("mn.name"),
 			goqu.L(bucketExpr),
+		)
+
+	err := s.goqu.Select(
+		goqu.I("bs.series_id"),
+		goqu.I("mn.name").As("metric_name"),
+		goqu.L("COALESCE(GROUP_CONCAT(l.key || '=\"' || l.value || '\"', ', '), '')").As("labels"),
+		goqu.I("bs.timestamp"),
+		goqu.I("bs.value"),
+		goqu.I("mn.unit").As("metric_unit"),
+	).
+		Prepared(true).
+		With("bucketed_samples", bucketedSamples).
+		From(goqu.T("bucketed_samples").As("bs")).
+		InnerJoin(goqu.T("metric_series").As("ser"), goqu.On(goqu.I("bs.series_id").Eq(goqu.I("ser.id")))).
+		InnerJoin(goqu.T("metric_names").As("mn"), goqu.On(goqu.I("ser.metric_id").Eq(goqu.I("mn.id")))).
+		LeftJoin(goqu.T("series_labels").As("sl"), goqu.On(goqu.I("ser.id").Eq(goqu.I("sl.series_id")))).
+		LeftJoin(goqu.T("labels").As("l"), goqu.On(goqu.I("sl.label_id").Eq(goqu.I("l.id")))).
+		GroupBy(
+			goqu.I("bs.series_id"),
+			goqu.I("mn.name"),
+			goqu.I("bs.timestamp"),
+			goqu.I("bs.value"),
 			goqu.I("mn.unit"),
 		).
-		Order(goqu.L(bucketExpr).Asc()).
+		Order(goqu.I("bs.timestamp").Asc()).
 		ScanStructs(&results)
 	if err != nil {
 		s.logger.Error(
