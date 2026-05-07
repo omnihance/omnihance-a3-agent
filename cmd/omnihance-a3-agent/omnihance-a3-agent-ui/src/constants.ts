@@ -40,4 +40,5 @@ export const queryKeys = {
   serverProcesses: ['server-processes'] as const,
   serverProcessStatus: (id: number) => ['server-process-status', id] as const,
   directoryShortcuts: ['directory-shortcuts'] as const,
+  sqlServerOdbcDsns: ['sql-server-odbc-dsns'] as const,
 } as const;

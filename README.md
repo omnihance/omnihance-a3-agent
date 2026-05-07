@@ -186,6 +186,21 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Admin and Super Admin: Full management (add, edit, delete, start, stop, reorder)
   - Viewer: Read-only access (can view process status and uptime, cannot manage)
 
+### 🗄️ SQL Server ODBC User DSN Management
+
+- **32-bit User DSN management** for legacy SQL Server ODBC driver (`SQL Server`)
+- **Full CRUD support**:
+  - List SQL Server DSNs
+  - View DSN details
+  - Create and update DSN settings
+  - Delete DSNs
+- **Connection testing** before save:
+  - Test SQL auth/server/database connectivity using submitted form values
+- **Registry parity** with Windows ODBC UI:
+  - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\ODBC Data Sources`
+  - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\<dsnName>`
+  - Persists `Driver`, `Server`, `Database`, `Trusted_Connection`, `UID`, and `PWD`
+
 ### 🔧 Additional Features
 
 - **API Documentation**: OpenAPI/Swagger documentation embedded
@@ -456,6 +471,15 @@ The application uses environment variables for configuration. A `.env` file is a
 - `POST /api/server/processes/{id}/stop` - Stop an individual process (requires `manage_server` permission)
 - `GET /api/server/processes/{id}/status` - Get process status (running, port status, uptime)
 
+### SQL Server ODBC
+
+- `GET /api/odbc/sqlserver-dsns` - List SQL Server User DSNs (requires `manage_server` permission)
+- `GET /api/odbc/sqlserver-dsns/{name}` - Get SQL Server User DSN details (requires `manage_server` permission)
+- `POST /api/odbc/sqlserver-dsns` - Create SQL Server User DSN (requires `manage_server` permission)
+- `PUT /api/odbc/sqlserver-dsns/{name}` - Update SQL Server User DSN (requires `manage_server` permission)
+- `DELETE /api/odbc/sqlserver-dsns/{name}` - Delete SQL Server User DSN (requires `manage_server` permission)
+- `POST /api/odbc/sqlserver-dsns/test` - Test SQL Server connection using request payload (requires `manage_server` permission)
+
 ### Health
 
 - `GET /health` - Health check endpoint
@@ -520,6 +544,12 @@ The application uses SQLite with the following main tables:
     - Start/stop individual processes or the entire server sequence
     - Monitor real-time status and uptime for all processes
     - Viewers can access the page to see process status but cannot manage processes
+
+11. **Manage SQL Server ODBC DSNs** (Admin and Super Admin only):
+    - Navigate to the SQL ODBC page
+    - Add DSN name, SQL Server name, login ID, password, and default database
+    - Test connection before saving
+    - Update or delete DSNs as needed
 
 ## Development Commands
 

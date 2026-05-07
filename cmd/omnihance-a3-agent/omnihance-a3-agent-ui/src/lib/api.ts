@@ -39,6 +39,10 @@ export const API_ROUTES = {
   SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
   DIRECTORY_SHORTCUTS: '/api/directory-shortcuts',
   DIRECTORY_SHORTCUT: (id: number) => `/api/directory-shortcuts/${id}`,
+  ODBC_SQLSERVER_DSNS: '/api/odbc/sqlserver-dsns',
+  ODBC_SQLSERVER_DSN: (name: string) =>
+    `/api/odbc/sqlserver-dsns/${encodeURIComponent(name)}`,
+  ODBC_SQLSERVER_DSN_TEST: '/api/odbc/sqlserver-dsns/test',
 } as const;
 
 export class APIError extends Error {
@@ -1247,5 +1251,102 @@ export async function deleteDirectoryShortcut(
     DeleteDirectoryShortcutResponseSchema,
     response.data,
     API_ROUTES.DIRECTORY_SHORTCUT(id),
+  );
+}
+
+const SQLServerODBCDSNSchema = z.object({
+  name: z.string(),
+  server: z.string(),
+  database: z.string(),
+  login_id: z.string(),
+  description: z.string().optional(),
+  last_user: z.string().optional(),
+});
+
+export type SQLServerODBCDSN = z.infer<typeof SQLServerODBCDSNSchema>;
+
+const SQLServerODBCDSNsResponseSchema = z.object({
+  dsns: z.array(SQLServerODBCDSNSchema),
+});
+
+const SQLServerODBCDSNRequestSchema = z.object({
+  name: z.string().min(1),
+  server: z.string().min(1),
+  database: z.string().min(1),
+  login_id: z.string().min(1),
+  password: z.string().min(1),
+  description: z.string().optional(),
+  last_user: z.string().optional(),
+});
+
+export type SQLServerODBCDSNRequest = z.infer<typeof SQLServerODBCDSNRequestSchema>;
+
+const SQLServerODBCDSNTestResponseSchema = z.object({
+  message: z.string(),
+});
+
+export async function getSQLServerODBCDSNs(): Promise<SQLServerODBCDSN[]> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.ODBC_SQLSERVER_DSNS);
+  const data = validateResponse(
+    SQLServerODBCDSNsResponseSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
+  return data.dsns;
+}
+
+export async function getSQLServerODBCDSN(
+  name: string,
+): Promise<SQLServerODBCDSN> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.get<unknown>(route);
+  return validateResponse(SQLServerODBCDSNSchema, response.data, route);
+}
+
+export async function createSQLServerODBCDSN(
+  payload: SQLServerODBCDSNRequest,
+): Promise<SQLServerODBCDSN> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    SQLServerODBCDSNSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
+}
+
+export async function updateSQLServerODBCDSN(
+  name: string,
+  payload: SQLServerODBCDSNRequest,
+): Promise<SQLServerODBCDSN> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.put<unknown>(
+    route,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(SQLServerODBCDSNSchema, response.data, route);
+}
+
+export async function deleteSQLServerODBCDSN(
+  name: string,
+): Promise<MessageResponse> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.delete<unknown>(route);
+  return validateResponse(MessageResponseSchema, response.data, route);
+}
+
+export async function testSQLServerODBCDSNConnection(
+  payload: SQLServerODBCDSNRequest,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    SQLServerODBCDSNTestResponseSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
   );
 }

@@ -41,6 +41,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	s.InitializeUserManagementRoutes(r)
 	s.InitializeServerRoutes(r)
 	s.InitializeDirectoryShortcutsRoutes(r)
+	s.InitializeSQLServerODBCDSNRoutes(r)
 	r.Handle("/*", s.FrontendHandler())
 
 	return r

@@ -1722,7 +1722,7 @@ func (s *Server) handleDuplicateFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = utils.WriteJSONResponse(w, map[string]interface{}{
-		"message":        "File duplicated successfully",
+		"message":         "File duplicated successfully",
 		"duplicated_path": targetPath,
 	})
 }

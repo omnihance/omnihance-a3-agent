@@ -24,6 +24,8 @@ tags:
     name: server-management
   - description: Directory shortcuts operations
     name: directory-shortcuts
+  - description: SQL Server ODBC User DSN management operations
+    name: odbc-sqlserver
 
 paths:
   /health:
@@ -2062,6 +2064,251 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns:
+    get:
+      tags:
+        - odbc-sqlserver
+      summary: List SQL Server User DSNs
+      description: Returns all SQL Server 32-bit User DSNs managed under the current user registry hive.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: SQL Server DSNs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSNsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - odbc-sqlserver
+      summary: Create SQL Server User DSN
+      description: Creates a new SQL Server 32-bit User DSN with SQL authentication fields and persists values in registry.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: SQL Server DSN created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '400':
+          description: Bad Request - Invalid body, validation failure, or DSN already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns/{name}:
+    get:
+      tags:
+        - odbc-sqlserver
+      summary: Get SQL Server User DSN
+      description: Returns one SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      responses:
+        '200':
+          description: SQL Server DSN retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - odbc-sqlserver
+      summary: Update SQL Server User DSN
+      description: Updates an existing SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: SQL Server DSN updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '400':
+          description: Bad Request - Invalid body or validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - odbc-sqlserver
+      summary: Delete SQL Server User DSN
+      description: Deletes a SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      responses:
+        '200':
+          description: SQL Server DSN deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "DSN deleted successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns/test:
+    post:
+      tags:
+        - odbc-sqlserver
+      summary: Test SQL Server connection
+      description: Tests SQL Server connectivity using SQL authentication fields without requiring DSN persistence.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: Connection test passed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Connection successful"
+        '400':
+          description: Bad Request - Validation failed or connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -2987,6 +3234,86 @@ components:
           nullable: true
           description: Last uptime in seconds (from start_time to end_time). Only present if the process is not running and has both start_time and end_time.
           example: 3600
+    SQLServerODBCDSN:
+      type: object
+      description: SQL Server User DSN configuration
+      properties:
+        name:
+          type: string
+          description: DSN name
+          example: "A3GameDB"
+        server:
+          type: string
+          description: SQL Server host or instance name
+          example: "localhost\\SQLEXPRESS"
+        database:
+          type: string
+          description: Default database name
+          example: "A3Game"
+        login_id:
+          type: string
+          description: SQL authentication login id
+          example: "sa"
+        description:
+          type: string
+          nullable: true
+          description: Optional DSN description
+          example: "A3 database DSN"
+        last_user:
+          type: string
+          nullable: true
+          description: Optional last user value stored in registry
+          example: "sa"
+    SQLServerODBCDSNRequest:
+      type: object
+      required:
+        - name
+        - server
+        - database
+        - login_id
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: DSN name
+          example: "A3GameDB"
+        server:
+          type: string
+          minLength: 1
+          description: SQL Server host or instance name
+          example: "localhost\\SQLEXPRESS"
+        database:
+          type: string
+          minLength: 1
+          description: Default database name
+          example: "A3Game"
+        login_id:
+          type: string
+          minLength: 1
+          description: SQL authentication login id
+          example: "sa"
+        password:
+          type: string
+          minLength: 1
+          description: SQL authentication password
+          example: "StrongPassword123"
+        description:
+          type: string
+          description: Optional DSN description
+          example: "A3 database DSN"
+        last_user:
+          type: string
+          description: Optional last user value stored in registry
+          example: "sa"
+    SQLServerODBCDSNsResponse:
+      type: object
+      properties:
+        dsns:
+          type: array
+          items:
+            $ref: '#/components/schemas/SQLServerODBCDSN'
+          description: Array of SQL Server User DSNs
     DirectoryShortcut:
       type: object
       description: Directory shortcut information
