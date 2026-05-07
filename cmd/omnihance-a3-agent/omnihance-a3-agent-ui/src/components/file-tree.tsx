@@ -46,6 +46,7 @@ import {
   getProcessStatus,
   getDirectoryShortcuts,
   createDirectoryShortcut,
+  duplicateFile as duplicateFileAPI,
   APIError,
   type FileNode,
   type FileTreeResponse,
@@ -62,15 +63,21 @@ interface FileTreeProps {
 }
 
 interface ProcessContextMenuWrapperProps {
+  item: FileNode;
   existingProcess: ServerProcess | undefined;
   fileItem: React.ReactElement;
+  canManageServer: boolean;
+  onDuplicate: (item: FileNode) => void;
   onAdd: () => void;
   onRemove: () => void;
 }
 
 function ProcessContextMenuWrapper({
+  item,
   existingProcess,
   fileItem,
+  canManageServer,
+  onDuplicate,
   onAdd,
   onRemove,
 }: ProcessContextMenuWrapperProps) {
@@ -87,21 +94,28 @@ function ProcessContextMenuWrapper({
     <ContextMenu>
       <ContextMenuTrigger asChild>{fileItem}</ContextMenuTrigger>
       <ContextMenuContent>
-        {existingProcess ? (
-          <ContextMenuItem
-            onClick={onRemove}
-            variant="destructive"
-            disabled={isRunning}
-          >
-            {isRunning
-              ? 'Remove from Server Startup List (Stop process first)'
-              : 'Remove from Server Startup List'}
-          </ContextMenuItem>
-        ) : (
-          <ContextMenuItem onClick={onAdd}>
-            Add to Server Startup List
+        {item.kind === 'file' && (
+          <ContextMenuItem onClick={() => onDuplicate(item)}>
+            Duplicate
           </ContextMenuItem>
         )}
+        {canManageServer &&
+          item.kind === 'file' &&
+          (existingProcess ? (
+            <ContextMenuItem
+              onClick={onRemove}
+              variant="destructive"
+              disabled={isRunning}
+            >
+              {isRunning
+                ? 'Remove from Server Startup List (Stop process first)'
+                : 'Remove from Server Startup List'}
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuItem onClick={onAdd}>
+              Add to Server Startup List
+            </ContextMenuItem>
+          ))}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -120,6 +134,9 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const [addDialogPort, setAddDialogPort] = useState('');
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [pinDialogName, setPinDialogName] = useState('');
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateDialogName, setDuplicateDialogName] = useState('');
+  const [duplicateSourcePath, setDuplicateSourcePath] = useState('');
 
   const rawCurrentPath =
     internalPath !== null ? internalPath : (initialPath ?? '');
@@ -325,6 +342,55 @@ export function FileTree({ initialPath }: FileTreeProps) {
     }
   };
 
+  const splitFileName = (
+    name: string,
+  ): { baseName: string; extension: string } => {
+    const lastDotIndex = name.lastIndexOf('.');
+    if (lastDotIndex <= 0) {
+      return { baseName: name, extension: '' };
+    }
+
+    return {
+      baseName: name.slice(0, lastDotIndex),
+      extension: name.slice(lastDotIndex),
+    };
+  };
+
+  const getSuggestedDuplicateName = (fileName: string): string => {
+    const existingNames = new Set(
+      (files || [])
+        .filter((entry) => entry.kind === 'file')
+        .map((entry) => entry.name.toLowerCase()),
+    );
+    const { baseName, extension } = splitFileName(fileName);
+    const firstCandidate = `${baseName} (copy)${extension}`;
+
+    if (!existingNames.has(firstCandidate.toLowerCase())) {
+      return firstCandidate;
+    }
+
+    let counter = 2;
+    while (
+      existingNames.has(
+        `${baseName} (copy ${counter})${extension}`.toLowerCase(),
+      )
+    ) {
+      counter++;
+    }
+
+    return `${baseName} (copy ${counter})${extension}`;
+  };
+
+  const handleOpenDuplicateDialog = (item: FileNode) => {
+    if (item.kind !== 'file') {
+      return;
+    }
+
+    setDuplicateSourcePath(getFullPath(item));
+    setDuplicateDialogName(getSuggestedDuplicateName(item.name));
+    setShowDuplicateDialog(true);
+  };
+
   const addToServerMutation = useMutation({
     mutationFn: async (data: { name: string; path: string; port?: number }) => {
       return createServerProcess(data);
@@ -337,8 +403,15 @@ export function FileTree({ initialPath }: FileTreeProps) {
       setAddDialogName('');
       setAddDialogPort('');
     },
-    onError: (error: APIError) => {
-      toast.error(error.getErrorMessage());
+    onError: (error) => {
+      console.error('Failed to duplicate file', error);
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to duplicate file';
+      toast.error(errorMessage);
     },
   });
 
@@ -387,6 +460,27 @@ export function FileTree({ initialPath }: FileTreeProps) {
       toast.success('Directory added to shortcuts');
       setShowPinDialog(false);
       setPinDialogName('');
+    },
+    onError: (error: APIError) => {
+      toast.error(error.getErrorMessage());
+    },
+  });
+
+  const duplicateFileMutation = useMutation({
+    mutationFn: async (data: { sourcePath: string; newFileName: string }) => {
+      return duplicateFileAPI({
+        source_path: data.sourcePath,
+        new_file_name: data.newFileName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.fileTree(queryPath, showDotfiles),
+      });
+      toast.success('File duplicated successfully');
+      setShowDuplicateDialog(false);
+      setDuplicateDialogName('');
+      setDuplicateSourcePath('');
     },
     onError: (error: APIError) => {
       toast.error(error.getErrorMessage());
@@ -451,6 +545,24 @@ export function FileTree({ initialPath }: FileTreeProps) {
     createShortcutMutation.mutate({
       name: pinDialogName.trim(),
       path: currentPath,
+    });
+  };
+
+  const handleDuplicateDialogSubmit = () => {
+    const trimmedName = duplicateDialogName.trim();
+    if (!duplicateSourcePath) {
+      toast.error('Source file is required');
+      return;
+    }
+
+    if (!trimmedName) {
+      toast.error('File name is required');
+      return;
+    }
+
+    duplicateFileMutation.mutate({
+      sourcePath: duplicateSourcePath,
+      newFileName: trimmedName,
     });
   };
 
@@ -692,19 +804,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
                 </div>
               );
 
-              if (isExecutable && canManageServer) {
-                return (
-                  <ProcessContextMenuWrapper
-                    key={item.id}
-                    existingProcess={existingProcess}
-                    fileItem={fileItem}
-                    onAdd={() => handleAddToServer(item)}
-                    onRemove={() => handleRemoveFromServer(item)}
-                  />
-                );
-              }
-
-              return fileItem;
+              return (
+                <ProcessContextMenuWrapper
+                  key={item.id}
+                  item={item}
+                  existingProcess={existingProcess}
+                  fileItem={fileItem}
+                  canManageServer={Boolean(isExecutable && canManageServer)}
+                  onDuplicate={handleOpenDuplicateDialog}
+                  onAdd={() => handleAddToServer(item)}
+                  onRemove={() => handleRemoveFromServer(item)}
+                />
+              );
             })}
           </div>
         )}
@@ -810,6 +921,55 @@ export function FileTree({ initialPath }: FileTreeProps) {
                 </>
               ) : (
                 'Add'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate File</DialogTitle>
+            <DialogDescription>
+              Enter a name for the duplicated file
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="duplicate-file-name">File Name</Label>
+              <Input
+                id="duplicate-file-name"
+                value={duplicateDialogName}
+                onChange={(e) => setDuplicateDialogName(e.target.value)}
+                placeholder="Duplicated file name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDuplicateDialog(false);
+                setDuplicateDialogName('');
+                setDuplicateSourcePath('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDuplicateDialogSubmit}
+              disabled={
+                duplicateFileMutation.isPending || !duplicateDialogName.trim()
+              }
+            >
+              {duplicateFileMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Duplicating...
+                </>
+              ) : (
+                'Duplicate'
               )}
             </Button>
           </DialogFooter>

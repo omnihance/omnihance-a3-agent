@@ -16,12 +16,12 @@ export const API_ROUTES = {
   SPAWN_FILE: '/api/file-tree/spawn-file',
   QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
+  DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
-  SETTINGS: '/api/settings',
-  SETTING: (key: string) => `/api/settings/${key}`,
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
   GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
+  GAME_CLIENT_DATA_COUNTS: '/api/game-client-data/counts',
   GAME_CLIENT_DATA_UPLOAD_MON_FILE: '/api/game-client-data/upload-mon-file',
   GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
   GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
@@ -40,6 +40,10 @@ export const API_ROUTES = {
   SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
   DIRECTORY_SHORTCUTS: '/api/directory-shortcuts',
   DIRECTORY_SHORTCUT: (id: number) => `/api/directory-shortcuts/${id}`,
+  ODBC_SQLSERVER_DSNS: '/api/odbc/sqlserver-dsns',
+  ODBC_SQLSERVER_DSN: (name: string) =>
+    `/api/odbc/sqlserver-dsns/${encodeURIComponent(name)}`,
+  ODBC_SQLSERVER_DSN_TEST: '/api/odbc/sqlserver-dsns/test',
 } as const;
 
 export class APIError extends Error {
@@ -156,24 +160,6 @@ const StatusResponseSchema = z.object({
 });
 
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;
-
-export interface SetupResponse {
-  access_token: string;
-}
-
-const SettingsSchema = z.object({
-  key: z.string(),
-  value: z.string(),
-  updated_at: z.string(),
-});
-
-export type Settings = z.infer<typeof SettingsSchema>;
-
-const UpsertSettingRequestSchema = z.object({
-  value: z.string(),
-});
-
-export type UpsertSettingRequest = z.infer<typeof UpsertSettingRequestSchema>;
 
 const NPCAttackSchema = z.object({
   range: z.number().int().nonnegative(),
@@ -307,6 +293,20 @@ export type RevisionSummaryResponse = z.infer<
   typeof RevisionSummaryResponseSchema
 >;
 
+const DuplicateFileRequestSchema = z.object({
+  source_path: z.string().min(1),
+  new_file_name: z.string().min(1),
+});
+
+export type DuplicateFileRequest = z.infer<typeof DuplicateFileRequestSchema>;
+
+const DuplicateFileResponseSchema = z.object({
+  message: z.string(),
+  duplicated_path: z.string(),
+});
+
+export type DuplicateFileResponse = z.infer<typeof DuplicateFileResponseSchema>;
+
 const TextFileAPIDataSchema = z.object({
   content: z.string(),
 });
@@ -421,6 +421,15 @@ const GameClientDataResponseSchema = z.object({
 
 export type GameClientDataResponse = z.infer<
   typeof GameClientDataResponseSchema
+>;
+
+const GameClientDataCountsResponseSchema = z.object({
+  monsters: z.number().int().nonnegative(),
+  maps: z.number().int().nonnegative(),
+});
+
+export type GameClientDataCountsResponse = z.infer<
+  typeof GameClientDataCountsResponseSchema
 >;
 
 const UploadFileResponseSchema = z.object({
@@ -796,36 +805,17 @@ export async function getRevisionSummary(
   );
 }
 
-export async function getAllSettings(): Promise<Settings[]> {
-  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTINGS);
-  return validateResponse(
-    z.array(SettingsSchema),
-    response.data,
-    API_ROUTES.SETTINGS,
-  );
-}
-
-export async function getSetting(key: string): Promise<Settings> {
-  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTING(key));
-  return validateResponse(
-    SettingsSchema,
-    response.data,
-    API_ROUTES.SETTING(key),
-  );
-}
-
-export async function upsertSetting(
-  key: string,
-  data: UpsertSettingRequest,
-): Promise<Settings> {
-  const response = await axiosInstance.put<unknown>(
-    API_ROUTES.SETTING(key),
-    UpsertSettingRequestSchema.parse(data),
+export async function duplicateFile(
+  data: DuplicateFileRequest,
+): Promise<DuplicateFileResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.DUPLICATE_FILE,
+    DuplicateFileRequestSchema.parse(data),
   );
   return validateResponse(
-    SettingsSchema,
+    DuplicateFileResponseSchema,
     response.data,
-    API_ROUTES.SETTING(key),
+    API_ROUTES.DUPLICATE_FILE,
   );
 }
 
@@ -839,7 +829,9 @@ export async function getMetricsSummary(): Promise<MetricsSummaryResponse> {
 }
 
 export async function getMetricsCharts(params?: {
-  range?: '1h' | '6h' | '1d' | '7d';
+  range?: string;
+  from?: number;
+  to?: number;
 }): Promise<MetricsChartsResponse> {
   const response = await axiosInstance.get<unknown>(API_ROUTES.METRICS_CHARTS, {
     params,
@@ -864,6 +856,17 @@ export async function getMonsters(params?: {
     z.array(GameClientDataResponseSchema),
     response.data,
     API_ROUTES.GAME_CLIENT_DATA_MONSTERS,
+  );
+}
+
+export async function getGameClientDataCounts(): Promise<GameClientDataCountsResponse> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_COUNTS,
+  );
+  return validateResponse(
+    GameClientDataCountsResponseSchema,
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_COUNTS,
   );
 }
 
@@ -1269,5 +1272,106 @@ export async function deleteDirectoryShortcut(
     DeleteDirectoryShortcutResponseSchema,
     response.data,
     API_ROUTES.DIRECTORY_SHORTCUT(id),
+  );
+}
+
+const SQLServerODBCDSNSchema = z.object({
+  name: z.string(),
+  server: z.string(),
+  database: z.string(),
+  login_id: z.string(),
+  description: z.string().optional(),
+  last_user: z.string().optional(),
+});
+
+export type SQLServerODBCDSN = z.infer<typeof SQLServerODBCDSNSchema>;
+
+const SQLServerODBCDSNsResponseSchema = z.object({
+  dsns: z.array(SQLServerODBCDSNSchema),
+});
+
+const SQLServerODBCDSNRequestSchema = z.object({
+  name: z.string().min(1),
+  server: z.string().min(1),
+  database: z.string().min(1),
+  login_id: z.string().min(1),
+  password: z.string().min(1),
+  description: z.string().optional(),
+  last_user: z.string().optional(),
+});
+
+export type SQLServerODBCDSNRequest = z.infer<
+  typeof SQLServerODBCDSNRequestSchema
+>;
+
+const SQLServerODBCDSNTestResponseSchema = z.object({
+  message: z.string(),
+});
+
+export async function getSQLServerODBCDSNs(): Promise<SQLServerODBCDSN[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
+  const data = validateResponse(
+    SQLServerODBCDSNsResponseSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
+  return data.dsns;
+}
+
+export async function getSQLServerODBCDSN(
+  name: string,
+): Promise<SQLServerODBCDSN> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.get<unknown>(route);
+  return validateResponse(SQLServerODBCDSNSchema, response.data, route);
+}
+
+export async function createSQLServerODBCDSN(
+  payload: SQLServerODBCDSNRequest,
+): Promise<SQLServerODBCDSN> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    SQLServerODBCDSNSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
+}
+
+export async function updateSQLServerODBCDSN(
+  name: string,
+  payload: SQLServerODBCDSNRequest,
+): Promise<SQLServerODBCDSN> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.put<unknown>(
+    route,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(SQLServerODBCDSNSchema, response.data, route);
+}
+
+export async function deleteSQLServerODBCDSN(
+  name: string,
+): Promise<MessageResponse> {
+  const route = API_ROUTES.ODBC_SQLSERVER_DSN(name);
+  const response = await axiosInstance.delete<unknown>(route);
+  return validateResponse(MessageResponseSchema, response.data, route);
+}
+
+export async function testSQLServerODBCDSNConnection(
+  payload: SQLServerODBCDSNRequest,
+): Promise<MessageResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
+    SQLServerODBCDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    SQLServerODBCDSNTestResponseSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
   );
 }

@@ -7,7 +7,14 @@ export const queryKeys = {
   status: ['status'] as const,
   session: ['session'] as const,
   metricsSummary: ['metrics-summary'] as const,
-  metricsCharts: ['metrics-charts'] as const,
+  metricsCharts: (params?: { range?: string; from?: number; to?: number }) => {
+    if (params !== undefined) {
+      return ['metrics-charts', params] as const;
+    }
+
+    return ['metrics-charts'] as const;
+  },
+  gameClientDataCounts: ['game-client-data-counts'] as const,
   monsters: ['monsters'] as const,
   maps: ['maps'] as const,
   fileTree: (path?: string, showDotfiles?: boolean) => {
@@ -34,4 +41,5 @@ export const queryKeys = {
   serverProcesses: ['server-processes'] as const,
   serverProcessStatus: (id: number) => ['server-process-status', id] as const,
   directoryShortcuts: ['directory-shortcuts'] as const,
+  sqlServerOdbcDsns: ['sql-server-odbc-dsns'] as const,
 } as const;

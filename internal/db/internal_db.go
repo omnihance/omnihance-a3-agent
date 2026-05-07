@@ -26,6 +26,7 @@ type InternalDB interface {
 	GetSeriesWithLabels() ([]SeriesWithLabels, error)
 	GetLatestSamples() ([]LatestSample, error)
 	GetMetricSamplesByTimeRange(metricName string, startTime, endTime int64) ([]MetricSampleWithLabels, error)
+	GetMetricSamplesByTimeWindow(metricName string, startTime, endTime, stepSeconds int64) ([]MetricSampleWithLabels, error)
 	DeleteOldMetrics(retentionDays int) error
 	BeginTx() (*goqu.TxDatabase, error)
 	CreateFileRevision(tx *goqu.TxDatabase, fileID, originalPath, revisionPath string, previousHash, currentHash string, createdBy int64) (int64, error)
@@ -59,8 +60,10 @@ type InternalDB interface {
 	SetDefaultSettings() error
 	BulkReplaceMonsterClientData(data []MonsterClientData) error
 	GetAllMonsterClientData(search string) ([]MonsterClientData, error)
+	GetMonsterClientDataCount() (int64, error)
 	BulkReplaceMapClientData(data []MapClientData) error
 	GetAllMapClientData(search string) ([]MapClientData, error)
+	GetMapClientDataCount() (int64, error)
 	BulkReplaceItemClientData(data []ItemClientData) error
 	GetAllItemClientData(search string) ([]ItemClientData, error)
 	GetServerProcesses() ([]ServerProcess, error)

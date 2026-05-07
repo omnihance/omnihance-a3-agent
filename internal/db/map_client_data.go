@@ -96,3 +96,18 @@ func (s *sqliteInternalDB) GetAllMapClientData(search string) ([]MapClientData, 
 
 	return data, nil
 }
+
+func (s *sqliteInternalDB) GetMapClientDataCount() (int64, error) {
+	count, err := s.goqu.From("map_client_data").
+		Prepared(true).
+		Count()
+	if err != nil {
+		s.logger.Error(
+			"failed to get map client data count",
+			logger.Field{Key: "error", Value: err},
+		)
+		return 0, fmt.Errorf("failed to get map client data count: %w", err)
+	}
+
+	return count, nil
+}

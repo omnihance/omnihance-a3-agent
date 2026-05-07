@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/project-agonyl/agonyl-utils-go/questfile"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -986,6 +987,66 @@ func (_c *MockFileEditorService_ReadNPCFileData_Call) RunAndReturn(run func(path
 	return _c
 }
 
+// ReadQuestFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadQuestFileData(path string) (questfile.QuestFile, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadQuestFileData")
+	}
+
+	var r0 questfile.QuestFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (questfile.QuestFile, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) questfile.QuestFile); ok {
+		r0 = returnFunc(path)
+	} else {
+		r0 = ret.Get(0).(questfile.QuestFile)
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadQuestFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadQuestFileData'
+type MockFileEditorService_ReadQuestFileData_Call struct {
+	*mock.Call
+}
+
+// ReadQuestFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadQuestFileData(path interface{}) *MockFileEditorService_ReadQuestFileData_Call {
+	return &MockFileEditorService_ReadQuestFileData_Call{Call: _e.mock.On("ReadQuestFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadQuestFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadQuestFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadQuestFileData_Call) Return(questFile questfile.QuestFile, err error) *MockFileEditorService_ReadQuestFileData_Call {
+	_c.Call.Return(questFile, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadQuestFileData_Call) RunAndReturn(run func(path string) (questfile.QuestFile, error)) *MockFileEditorService_ReadQuestFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadSpawnFileData provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) ReadSpawnFileData(path string) ([]NPCSpawnData, error) {
 	ret := _mock.Called(path)
@@ -1328,6 +1389,63 @@ func (_c *MockFileEditorService_WriteNPCFileData_Call) Return(err error) *MockFi
 }
 
 func (_c *MockFileEditorService_WriteNPCFileData_Call) RunAndReturn(run func(path string, data *NPCFileData) error) *MockFileEditorService_WriteNPCFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteQuestFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteQuestFileData(path string, data questfile.QuestFile) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteQuestFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, questfile.QuestFile) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteQuestFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteQuestFileData'
+type MockFileEditorService_WriteQuestFileData_Call struct {
+	*mock.Call
+}
+
+// WriteQuestFileData is a helper method to define mock.On call
+//   - path string
+//   - data questfile.QuestFile
+func (_e *MockFileEditorService_Expecter) WriteQuestFileData(path interface{}, data interface{}) *MockFileEditorService_WriteQuestFileData_Call {
+	return &MockFileEditorService_WriteQuestFileData_Call{Call: _e.mock.On("WriteQuestFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteQuestFileData_Call) Run(run func(path string, data questfile.QuestFile)) *MockFileEditorService_WriteQuestFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 questfile.QuestFile
+		if args[1] != nil {
+			arg1 = args[1].(questfile.QuestFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteQuestFileData_Call) Return(err error) *MockFileEditorService_WriteQuestFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteQuestFileData_Call) RunAndReturn(run func(path string, data questfile.QuestFile) error) *MockFileEditorService_WriteQuestFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }

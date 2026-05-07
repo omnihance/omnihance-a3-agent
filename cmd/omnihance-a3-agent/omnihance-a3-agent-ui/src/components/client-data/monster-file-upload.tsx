@@ -13,8 +13,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadMonFile, APIError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/constants';
+import { ClientDataCountBadge } from '@/components/client-data/client-data-count-badge';
 
-export function MonsterFileUpload() {
+type MonsterFileUploadProps = {
+  existingCount?: number;
+  countLoading: boolean;
+  countError: boolean;
+};
+
+export function MonsterFileUpload({
+  existingCount,
+  countLoading,
+  countError,
+}: MonsterFileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,6 +40,9 @@ export function MonsterFileUpload() {
       }
       queryClient.invalidateQueries({
         queryKey: queryKeys.monsters,
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.gameClientDataCounts,
       });
     },
   });
@@ -84,9 +98,16 @@ export function MonsterFileUpload() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Monster Client Data
+        <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Monster Client Data
+          </span>
+          <ClientDataCountBadge
+            count={existingCount}
+            isLoading={countLoading}
+            isError={countError}
+          />
         </CardTitle>
         <CardDescription>
           Upload MON.ull file to populate monster client data in the database

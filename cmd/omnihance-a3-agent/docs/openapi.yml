@@ -24,8 +24,23 @@ tags:
     name: server-management
   - description: Directory shortcuts operations
     name: directory-shortcuts
+  - description: SQL Server ODBC User DSN management operations
+    name: odbc-sqlserver
 
 paths:
+  /health:
+    get:
+      tags:
+        - status
+      summary: Health check endpoint
+      description: Returns plain text heartbeat response used for service liveness checks.
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/auth/sign-in:
     post:
       tags:
@@ -750,6 +765,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/duplicate-file:
+    post:
+      tags:
+        - file-system
+      summary: Duplicate file in same directory
+      description: Duplicates an existing file into the same directory with a new file name. Requires edit file permission. The new file name must not contain path separators and must not already exist.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DuplicateFileRequest'
+      responses:
+        '200':
+          description: File duplicated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DuplicateFileResponse'
+        '400':
+          description: Bad Request - Invalid request body, invalid destination file name, destination already exists, or source path is a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Source path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/revision-summary:
     get:
       tags:
@@ -845,7 +905,7 @@ paths:
       tags:
         - metrics
       summary: Get metrics charts configuration
-      description: Returns ECharts configuration options for CPU and RAM usage line charts. Includes chart data for the specified time range and available time range filters for the frontend. The endpoint accepts an optional time range query parameter (defaults to 1h).
+      description: Returns ECharts configuration options for CPU and RAM usage line charts. Includes chart data for the selected time window and available time range filters for the frontend. The endpoint supports preset ranges and optional custom from/to timestamps. Server-side adaptive aggregation is applied to keep chart points readable across larger windows.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -855,7 +915,19 @@ paths:
             type: string
             default: "1h"
             enum: ["1h", "6h", "1d", "7d"]
-          description: Time range for the chart data. Supported values: 1h (1 hour), 6h (6 hours), 1d (1 day), 7d (7 days). Defaults to 1h.
+          description: Preset time range for chart data. Supported values are 1h (1 hour), 6h (6 hours), 1d (1 day), and 7d (7 days). Defaults to 1h. Ignored when from and to are both provided.
+        - in: query
+          name: from
+          schema:
+            type: integer
+            format: int64
+          description: Optional custom start timestamp (Unix seconds). Must be provided together with to.
+        - in: query
+          name: to
+          schema:
+            type: integer
+            format: int64
+          description: Optional custom end timestamp (Unix seconds). Must be provided together with from and be greater than from.
       responses:
         '200':
           description: Charts configuration with ECharts options
@@ -945,6 +1017,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/counts:
+    get:
+      tags:
+        - game-data
+      summary: Get game client data counts
+      description: Returns total existing monster and map client data counts.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Game client data counts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameClientDataCountsResponse'
+              example:
+                monsters: 125
+                maps: 42
         '401':
           description: Unauthorized
           content:
@@ -1992,6 +2094,251 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns:
+    get:
+      tags:
+        - odbc-sqlserver
+      summary: List SQL Server User DSNs
+      description: Returns all SQL Server 32-bit User DSNs managed under the current user registry hive.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: SQL Server DSNs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSNsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - odbc-sqlserver
+      summary: Create SQL Server User DSN
+      description: Creates a new SQL Server 32-bit User DSN with SQL authentication fields and persists values in registry.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: SQL Server DSN created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '400':
+          description: Bad Request - Invalid body, validation failure, or DSN already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns/{name}:
+    get:
+      tags:
+        - odbc-sqlserver
+      summary: Get SQL Server User DSN
+      description: Returns one SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      responses:
+        '200':
+          description: SQL Server DSN retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - odbc-sqlserver
+      summary: Update SQL Server User DSN
+      description: Updates an existing SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: SQL Server DSN updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLServerODBCDSN'
+        '400':
+          description: Bad Request - Invalid body or validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - odbc-sqlserver
+      summary: Delete SQL Server User DSN
+      description: Deletes a SQL Server User DSN by DSN name.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: DSN name
+          example: "A3GameDB"
+      responses:
+        '200':
+          description: SQL Server DSN deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "DSN deleted successfully"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: DSN not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/odbc/sqlserver-dsns/test:
+    post:
+      tags:
+        - odbc-sqlserver
+      summary: Test SQL Server connection
+      description: Tests SQL Server connectivity using SQL authentication fields without requiring DSN persistence.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQLServerODBCDSNRequest'
+      responses:
+        '200':
+          description: Connection test passed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Connection successful"
+        '400':
+          description: Bad Request - Validation failed or connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
                 
 components:
   securitySchemes:
@@ -2308,6 +2655,30 @@ components:
           type: string
           description: The text content of the file
           example: "Hello, World!\nThis is a text file."
+    DuplicateFileRequest:
+      type: object
+      required:
+        - source_path
+        - new_file_name
+      properties:
+        source_path:
+          type: string
+          description: Full path to the source file to duplicate
+          example: "C:\\A3Server\\configs\\server.ini"
+        new_file_name:
+          type: string
+          description: New file name for the duplicate in the same directory
+          example: "server (copy).ini"
+    DuplicateFileResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "File duplicated successfully"
+        duplicated_path:
+          type: string
+          description: Full path of the newly created duplicate file
+          example: "C:\\A3Server\\configs\\server (copy).ini"
     SpawnFileAPIData:
       type: object
       description: Parsed binary data from a spawn file (API request/response format). All fields are required when used as a request body.
@@ -2655,6 +3026,20 @@ components:
           type: string
           description: Name of the game data entry
           example: "Goblin Warrior"
+    GameClientDataCountsResponse:
+      type: object
+      description: Total existing client data counts for uploadable datasets
+      properties:
+        monsters:
+          type: integer
+          format: int64
+          description: Total monster client data records
+          example: 125
+        maps:
+          type: integer
+          format: int64
+          description: Total map client data records
+          example: 42
     ListUsersResponse:
       type: object
       description: Paginated list of users
@@ -2893,6 +3278,86 @@ components:
           nullable: true
           description: Last uptime in seconds (from start_time to end_time). Only present if the process is not running and has both start_time and end_time.
           example: 3600
+    SQLServerODBCDSN:
+      type: object
+      description: SQL Server User DSN configuration
+      properties:
+        name:
+          type: string
+          description: DSN name
+          example: "A3GameDB"
+        server:
+          type: string
+          description: SQL Server host or instance name
+          example: "localhost\\SQLEXPRESS"
+        database:
+          type: string
+          description: Default database name
+          example: "A3Game"
+        login_id:
+          type: string
+          description: SQL authentication login id
+          example: "sa"
+        description:
+          type: string
+          nullable: true
+          description: Optional DSN description
+          example: "A3 database DSN"
+        last_user:
+          type: string
+          nullable: true
+          description: Optional last user value stored in registry
+          example: "sa"
+    SQLServerODBCDSNRequest:
+      type: object
+      required:
+        - name
+        - server
+        - database
+        - login_id
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: DSN name
+          example: "A3GameDB"
+        server:
+          type: string
+          minLength: 1
+          description: SQL Server host or instance name
+          example: "localhost\\SQLEXPRESS"
+        database:
+          type: string
+          minLength: 1
+          description: Default database name
+          example: "A3Game"
+        login_id:
+          type: string
+          minLength: 1
+          description: SQL authentication login id
+          example: "sa"
+        password:
+          type: string
+          minLength: 1
+          description: SQL authentication password
+          example: "StrongPassword123"
+        description:
+          type: string
+          description: Optional DSN description
+          example: "A3 database DSN"
+        last_user:
+          type: string
+          description: Optional last user value stored in registry
+          example: "sa"
+    SQLServerODBCDSNsResponse:
+      type: object
+      properties:
+        dsns:
+          type: array
+          items:
+            $ref: '#/components/schemas/SQLServerODBCDSN'
+          description: Array of SQL Server User DSNs
     DirectoryShortcut:
       type: object
       description: Directory shortcut information

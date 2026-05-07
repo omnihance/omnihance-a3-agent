@@ -13,8 +13,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadMcFile, APIError } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/constants';
+import { ClientDataCountBadge } from '@/components/client-data/client-data-count-badge';
 
-export function MapFileUpload() {
+type MapFileUploadProps = {
+  existingCount?: number;
+  countLoading: boolean;
+  countError: boolean;
+};
+
+export function MapFileUpload({
+  existingCount,
+  countLoading,
+  countError,
+}: MapFileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,6 +40,9 @@ export function MapFileUpload() {
       }
       queryClient.invalidateQueries({
         queryKey: queryKeys.maps,
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.gameClientDataCounts,
       });
     },
   });
@@ -84,9 +98,16 @@ export function MapFileUpload() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Map className="h-5 w-5" />
-          Map Client Data
+        <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="flex items-center gap-2">
+            <Map className="h-5 w-5" />
+            Map Client Data
+          </span>
+          <ClientDataCountBadge
+            count={existingCount}
+            isLoading={countLoading}
+            isError={countError}
+          />
         </CardTitle>
         <CardDescription>
           Upload MC.ull file to populate map client data in the database

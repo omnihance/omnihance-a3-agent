@@ -334,6 +334,80 @@ func (_c *MockInternalDB_Connect_Call) RunAndReturn(run func() error) *MockInter
 	return _c
 }
 
+// CreateDirectoryShortcut provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateDirectoryShortcut(userID int64, name string, path string) (*DirectoryShortcut, error) {
+	ret := _mock.Called(userID, name, path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateDirectoryShortcut")
+	}
+
+	var r0 *DirectoryShortcut
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string) (*DirectoryShortcut, error)); ok {
+		return returnFunc(userID, name, path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string) *DirectoryShortcut); ok {
+		r0 = returnFunc(userID, name, path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryShortcut)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, string, string) error); ok {
+		r1 = returnFunc(userID, name, path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateDirectoryShortcut_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateDirectoryShortcut'
+type MockInternalDB_CreateDirectoryShortcut_Call struct {
+	*mock.Call
+}
+
+// CreateDirectoryShortcut is a helper method to define mock.On call
+//   - userID int64
+//   - name string
+//   - path string
+func (_e *MockInternalDB_Expecter) CreateDirectoryShortcut(userID interface{}, name interface{}, path interface{}) *MockInternalDB_CreateDirectoryShortcut_Call {
+	return &MockInternalDB_CreateDirectoryShortcut_Call{Call: _e.mock.On("CreateDirectoryShortcut", userID, name, path)}
+}
+
+func (_c *MockInternalDB_CreateDirectoryShortcut_Call) Run(run func(userID int64, name string, path string)) *MockInternalDB_CreateDirectoryShortcut_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateDirectoryShortcut_Call) Return(directoryShortcut *DirectoryShortcut, err error) *MockInternalDB_CreateDirectoryShortcut_Call {
+	_c.Call.Return(directoryShortcut, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateDirectoryShortcut_Call) RunAndReturn(run func(userID int64, name string, path string) (*DirectoryShortcut, error)) *MockInternalDB_CreateDirectoryShortcut_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateFileRevision provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateFileRevision(tx *goqu.TxDatabase, fileID string, originalPath string, revisionPath string, previousHash string, currentHash string, createdBy int64) (int64, error) {
 	ret := _mock.Called(tx, fileID, originalPath, revisionPath, previousHash, currentHash, createdBy)
@@ -752,6 +826,63 @@ func (_c *MockInternalDB_CreateUserWithStatus_Call) Return(user *User, err error
 }
 
 func (_c *MockInternalDB_CreateUserWithStatus_Call) RunAndReturn(run func(email string, password string, roles string, status string, createdBy *int64) (*User, error)) *MockInternalDB_CreateUserWithStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteDirectoryShortcut provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) DeleteDirectoryShortcut(id int64, userID int64) error {
+	ret := _mock.Called(id, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteDirectoryShortcut")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, int64) error); ok {
+		r0 = returnFunc(id, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_DeleteDirectoryShortcut_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteDirectoryShortcut'
+type MockInternalDB_DeleteDirectoryShortcut_Call struct {
+	*mock.Call
+}
+
+// DeleteDirectoryShortcut is a helper method to define mock.On call
+//   - id int64
+//   - userID int64
+func (_e *MockInternalDB_Expecter) DeleteDirectoryShortcut(id interface{}, userID interface{}) *MockInternalDB_DeleteDirectoryShortcut_Call {
+	return &MockInternalDB_DeleteDirectoryShortcut_Call{Call: _e.mock.On("DeleteDirectoryShortcut", id, userID)}
+}
+
+func (_c *MockInternalDB_DeleteDirectoryShortcut_Call) Run(run func(id int64, userID int64)) *MockInternalDB_DeleteDirectoryShortcut_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteDirectoryShortcut_Call) Return(err error) *MockInternalDB_DeleteDirectoryShortcut_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteDirectoryShortcut_Call) RunAndReturn(run func(id int64, userID int64) error) *MockInternalDB_DeleteDirectoryShortcut_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1530,6 +1661,258 @@ func (_c *MockInternalDB_GetCompletedRevisionCount_Call) RunAndReturn(run func(f
 	return _c
 }
 
+// GetDirectoryShortcut provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetDirectoryShortcut(id int64) (*DirectoryShortcut, error) {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryShortcut")
+	}
+
+	var r0 *DirectoryShortcut
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*DirectoryShortcut, error)); ok {
+		return returnFunc(id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *DirectoryShortcut); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryShortcut)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetDirectoryShortcut_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryShortcut'
+type MockInternalDB_GetDirectoryShortcut_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryShortcut is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) GetDirectoryShortcut(id interface{}) *MockInternalDB_GetDirectoryShortcut_Call {
+	return &MockInternalDB_GetDirectoryShortcut_Call{Call: _e.mock.On("GetDirectoryShortcut", id)}
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcut_Call) Run(run func(id int64)) *MockInternalDB_GetDirectoryShortcut_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcut_Call) Return(directoryShortcut *DirectoryShortcut, err error) *MockInternalDB_GetDirectoryShortcut_Call {
+	_c.Call.Return(directoryShortcut, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcut_Call) RunAndReturn(run func(id int64) (*DirectoryShortcut, error)) *MockInternalDB_GetDirectoryShortcut_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDirectoryShortcutByNormalizedPath provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetDirectoryShortcutByNormalizedPath(userID int64, normalizedPath string) (*DirectoryShortcut, error) {
+	ret := _mock.Called(userID, normalizedPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryShortcutByNormalizedPath")
+	}
+
+	var r0 *DirectoryShortcut
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string) (*DirectoryShortcut, error)); ok {
+		return returnFunc(userID, normalizedPath)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, string) *DirectoryShortcut); ok {
+		r0 = returnFunc(userID, normalizedPath)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryShortcut)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, string) error); ok {
+		r1 = returnFunc(userID, normalizedPath)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryShortcutByNormalizedPath'
+type MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryShortcutByNormalizedPath is a helper method to define mock.On call
+//   - userID int64
+//   - normalizedPath string
+func (_e *MockInternalDB_Expecter) GetDirectoryShortcutByNormalizedPath(userID interface{}, normalizedPath interface{}) *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call {
+	return &MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call{Call: _e.mock.On("GetDirectoryShortcutByNormalizedPath", userID, normalizedPath)}
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call) Run(run func(userID int64, normalizedPath string)) *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call) Return(directoryShortcut *DirectoryShortcut, err error) *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call {
+	_c.Call.Return(directoryShortcut, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call) RunAndReturn(run func(userID int64, normalizedPath string) (*DirectoryShortcut, error)) *MockInternalDB_GetDirectoryShortcutByNormalizedPath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDirectoryShortcutCount provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetDirectoryShortcutCount(userID int64) (int64, error) {
+	ret := _mock.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryShortcutCount")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (int64, error)); ok {
+		return returnFunc(userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) int64); ok {
+		r0 = returnFunc(userID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetDirectoryShortcutCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryShortcutCount'
+type MockInternalDB_GetDirectoryShortcutCount_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryShortcutCount is a helper method to define mock.On call
+//   - userID int64
+func (_e *MockInternalDB_Expecter) GetDirectoryShortcutCount(userID interface{}) *MockInternalDB_GetDirectoryShortcutCount_Call {
+	return &MockInternalDB_GetDirectoryShortcutCount_Call{Call: _e.mock.On("GetDirectoryShortcutCount", userID)}
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutCount_Call) Run(run func(userID int64)) *MockInternalDB_GetDirectoryShortcutCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutCount_Call) Return(n int64, err error) *MockInternalDB_GetDirectoryShortcutCount_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcutCount_Call) RunAndReturn(run func(userID int64) (int64, error)) *MockInternalDB_GetDirectoryShortcutCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDirectoryShortcuts provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetDirectoryShortcuts(userID int64) ([]DirectoryShortcut, error) {
+	ret := _mock.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryShortcuts")
+	}
+
+	var r0 []DirectoryShortcut
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) ([]DirectoryShortcut, error)); ok {
+		return returnFunc(userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) []DirectoryShortcut); ok {
+		r0 = returnFunc(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]DirectoryShortcut)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetDirectoryShortcuts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryShortcuts'
+type MockInternalDB_GetDirectoryShortcuts_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryShortcuts is a helper method to define mock.On call
+//   - userID int64
+func (_e *MockInternalDB_Expecter) GetDirectoryShortcuts(userID interface{}) *MockInternalDB_GetDirectoryShortcuts_Call {
+	return &MockInternalDB_GetDirectoryShortcuts_Call{Call: _e.mock.On("GetDirectoryShortcuts", userID)}
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcuts_Call) Run(run func(userID int64)) *MockInternalDB_GetDirectoryShortcuts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcuts_Call) Return(directoryShortcuts []DirectoryShortcut, err error) *MockInternalDB_GetDirectoryShortcuts_Call {
+	_c.Call.Return(directoryShortcuts, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryShortcuts_Call) RunAndReturn(run func(userID int64) ([]DirectoryShortcut, error)) *MockInternalDB_GetDirectoryShortcuts_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetFileRevision provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetFileRevision(revisionID int64) (*FileRevision, error) {
 	ret := _mock.Called(revisionID)
@@ -1709,6 +2092,59 @@ func (_c *MockInternalDB_GetLatestSamples_Call) RunAndReturn(run func() ([]Lates
 	return _c
 }
 
+// GetMapClientDataCount provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetMapClientDataCount() (int64, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMapClientDataCount")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (int64, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() int64); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetMapClientDataCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMapClientDataCount'
+type MockInternalDB_GetMapClientDataCount_Call struct {
+	*mock.Call
+}
+
+// GetMapClientDataCount is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetMapClientDataCount() *MockInternalDB_GetMapClientDataCount_Call {
+	return &MockInternalDB_GetMapClientDataCount_Call{Call: _e.mock.On("GetMapClientDataCount")}
+}
+
+func (_c *MockInternalDB_GetMapClientDataCount_Call) Run(run func()) *MockInternalDB_GetMapClientDataCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetMapClientDataCount_Call) Return(n int64, err error) *MockInternalDB_GetMapClientDataCount_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetMapClientDataCount_Call) RunAndReturn(run func() (int64, error)) *MockInternalDB_GetMapClientDataCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMaxSequenceOrder provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetMaxSequenceOrder() (int, error) {
 	ret := _mock.Called()
@@ -1832,6 +2268,139 @@ func (_c *MockInternalDB_GetMetricSamplesByTimeRange_Call) Return(metricSampleWi
 }
 
 func (_c *MockInternalDB_GetMetricSamplesByTimeRange_Call) RunAndReturn(run func(metricName string, startTime int64, endTime int64) ([]MetricSampleWithLabels, error)) *MockInternalDB_GetMetricSamplesByTimeRange_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetMetricSamplesByTimeWindow provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetMetricSamplesByTimeWindow(metricName string, startTime int64, endTime int64, stepSeconds int64) ([]MetricSampleWithLabels, error) {
+	ret := _mock.Called(metricName, startTime, endTime, stepSeconds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMetricSamplesByTimeWindow")
+	}
+
+	var r0 []MetricSampleWithLabels
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, int64, int64, int64) ([]MetricSampleWithLabels, error)); ok {
+		return returnFunc(metricName, startTime, endTime, stepSeconds)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, int64, int64, int64) []MetricSampleWithLabels); ok {
+		r0 = returnFunc(metricName, startTime, endTime, stepSeconds)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]MetricSampleWithLabels)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, int64, int64, int64) error); ok {
+		r1 = returnFunc(metricName, startTime, endTime, stepSeconds)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetMetricSamplesByTimeWindow_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMetricSamplesByTimeWindow'
+type MockInternalDB_GetMetricSamplesByTimeWindow_Call struct {
+	*mock.Call
+}
+
+// GetMetricSamplesByTimeWindow is a helper method to define mock.On call
+//   - metricName string
+//   - startTime int64
+//   - endTime int64
+//   - stepSeconds int64
+func (_e *MockInternalDB_Expecter) GetMetricSamplesByTimeWindow(metricName interface{}, startTime interface{}, endTime interface{}, stepSeconds interface{}) *MockInternalDB_GetMetricSamplesByTimeWindow_Call {
+	return &MockInternalDB_GetMetricSamplesByTimeWindow_Call{Call: _e.mock.On("GetMetricSamplesByTimeWindow", metricName, startTime, endTime, stepSeconds)}
+}
+
+func (_c *MockInternalDB_GetMetricSamplesByTimeWindow_Call) Run(run func(metricName string, startTime int64, endTime int64, stepSeconds int64)) *MockInternalDB_GetMetricSamplesByTimeWindow_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 int64
+		if args[2] != nil {
+			arg2 = args[2].(int64)
+		}
+		var arg3 int64
+		if args[3] != nil {
+			arg3 = args[3].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetMetricSamplesByTimeWindow_Call) Return(metricSampleWithLabelss []MetricSampleWithLabels, err error) *MockInternalDB_GetMetricSamplesByTimeWindow_Call {
+	_c.Call.Return(metricSampleWithLabelss, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetMetricSamplesByTimeWindow_Call) RunAndReturn(run func(metricName string, startTime int64, endTime int64, stepSeconds int64) ([]MetricSampleWithLabels, error)) *MockInternalDB_GetMetricSamplesByTimeWindow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetMonsterClientDataCount provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetMonsterClientDataCount() (int64, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMonsterClientDataCount")
+	}
+
+	var r0 int64
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (int64, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() int64); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetMonsterClientDataCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMonsterClientDataCount'
+type MockInternalDB_GetMonsterClientDataCount_Call struct {
+	*mock.Call
+}
+
+// GetMonsterClientDataCount is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetMonsterClientDataCount() *MockInternalDB_GetMonsterClientDataCount_Call {
+	return &MockInternalDB_GetMonsterClientDataCount_Call{Call: _e.mock.On("GetMonsterClientDataCount")}
+}
+
+func (_c *MockInternalDB_GetMonsterClientDataCount_Call) Run(run func()) *MockInternalDB_GetMonsterClientDataCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetMonsterClientDataCount_Call) Return(n int64, err error) *MockInternalDB_GetMonsterClientDataCount_Call {
+	_c.Call.Return(n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetMonsterClientDataCount_Call) RunAndReturn(run func() (int64, error)) *MockInternalDB_GetMonsterClientDataCount_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2011,6 +2580,68 @@ func (_c *MockInternalDB_GetServerProcess_Call) Return(serverProcess *ServerProc
 }
 
 func (_c *MockInternalDB_GetServerProcess_Call) RunAndReturn(run func(id int64) (*ServerProcess, error)) *MockInternalDB_GetServerProcess_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerProcessByPath provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerProcessByPath(path string) (*ServerProcess, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerProcessByPath")
+	}
+
+	var r0 *ServerProcess
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (*ServerProcess, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) *ServerProcess); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerProcess)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerProcessByPath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerProcessByPath'
+type MockInternalDB_GetServerProcessByPath_Call struct {
+	*mock.Call
+}
+
+// GetServerProcessByPath is a helper method to define mock.On call
+//   - path string
+func (_e *MockInternalDB_Expecter) GetServerProcessByPath(path interface{}) *MockInternalDB_GetServerProcessByPath_Call {
+	return &MockInternalDB_GetServerProcessByPath_Call{Call: _e.mock.On("GetServerProcessByPath", path)}
+}
+
+func (_c *MockInternalDB_GetServerProcessByPath_Call) Run(run func(path string)) *MockInternalDB_GetServerProcessByPath_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcessByPath_Call) Return(serverProcess *ServerProcess, err error) *MockInternalDB_GetServerProcessByPath_Call {
+	_c.Call.Return(serverProcess, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerProcessByPath_Call) RunAndReturn(run func(path string) (*ServerProcess, error)) *MockInternalDB_GetServerProcessByPath_Call {
 	_c.Call.Return(run)
 	return _c
 }

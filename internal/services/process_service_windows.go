@@ -20,10 +20,21 @@ func terminateProcessWindowsImpl(ps *processService, proc *os.Process, pid int) 
 		return killProcessWindows(ps, proc, pid)
 	}
 
-	defer windows.CloseHandle(handle)
+	handleClosed := false
+	closeHandle := func() {
+		if handleClosed {
+			return
+		}
+
+		handleClosed = true
+		if closeErr := windows.CloseHandle(handle); closeErr != nil {
+			ps.logger.Warn("failed to close process handle", logger.Field{Key: "pid", Value: pid}, logger.Field{Key: "error", Value: closeErr})
+		}
+	}
+	defer closeHandle()
 
 	if err := windows.TerminateProcess(handle, 0); err != nil {
-		windows.CloseHandle(handle)
+		closeHandle()
 		ps.logger.Warn("TerminateProcess failed, using Kill()", logger.Field{Key: "pid", Value: pid}, logger.Field{Key: "error", Value: err})
 		return killProcessWindows(ps, proc, pid)
 	}

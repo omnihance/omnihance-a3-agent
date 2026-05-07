@@ -9,6 +9,7 @@ import {
   Database,
   Users,
   PlaySquare,
+  DatabaseZap,
   X,
   Folder,
 } from 'lucide-react';
@@ -54,6 +55,12 @@ const sidebarLinks = [
     icon: PlaySquare,
     label: 'Server Management',
     permission: 'view_files' as const,
+  },
+  {
+    href: '/sql-server-odbc',
+    icon: DatabaseZap,
+    label: 'SQL ODBC',
+    permission: 'manage_server' as const,
   },
   {
     href: '/client-data',

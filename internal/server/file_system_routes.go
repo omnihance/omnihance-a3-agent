@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"mime"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	externalUtils "github.com/cyberinferno/go-utils/utils"
@@ -39,6 +41,7 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Get("/quest-file", s.handleQuestFileData)
 		r.Put("/quest-file", s.handleUpdateQuestFile)
 		r.Post("/revert-file", s.handleRevertFile)
+		r.Post("/duplicate-file", s.handleDuplicateFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
 	})
 }
@@ -1624,12 +1627,155 @@ func (s *Server) handleRevisionSummary(w http.ResponseWriter, r *http.Request) {
 	_ = utils.WriteJSONResponse(w, summary)
 }
 
+func (s *Server) handleDuplicateFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	var req DuplicateFileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		var validationErrors []string
+		for _, fieldErr := range err.(validator.ValidationErrors) {
+			validationErrors = append(validationErrors, fieldErr.Field()+" is required")
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    validationErrors,
+		})
+		return
+	}
+
+	sourcePath := filepath.Clean(req.SourcePath)
+	sourceInfo, err := s.fileEditor.Stat(sourcePath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return
+	}
+
+	if sourceInfo.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return
+	}
+
+	targetPath, err := resolveDuplicateTargetPath(sourcePath, req.NewFileName)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
+	if _, err := s.fileEditor.Stat(targetPath); err == nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"A file with this name already exists"},
+		})
+		return
+	} else if !s.fileEditor.IsNotExist(err) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot check destination file: " + err.Error()},
+		})
+		return
+	}
+
+	if err := duplicateFileContents(s.fileEditor, sourcePath, targetPath, sourceInfo.Mode().Perm()); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to duplicate file: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":         "File duplicated successfully",
+		"duplicated_path": targetPath,
+	})
+}
+
 func (s *Server) releaseFileLock(lockPath string) {
 	if lockPath != "" {
 		if err := s.fileEditor.Remove(lockPath); err != nil {
 			s.log.Error("Failed to remove lock file", logger.Field{Key: "error", Value: err})
 		}
 	}
+}
+
+func resolveDuplicateTargetPath(sourcePath string, newFileName string) (string, error) {
+	if err := validateDuplicateFileName(newFileName); err != nil {
+		return "", err
+	}
+
+	sourceDir := filepath.Clean(filepath.Dir(sourcePath))
+	targetPath := filepath.Clean(filepath.Join(sourceDir, strings.TrimSpace(newFileName)))
+	targetDir := filepath.Clean(filepath.Dir(targetPath))
+
+	if targetDir != sourceDir {
+		return "", errors.New("new file name must stay in the same directory")
+	}
+
+	return targetPath, nil
+}
+
+func validateDuplicateFileName(newFileName string) error {
+	trimmedName := strings.TrimSpace(newFileName)
+	if trimmedName == "" {
+		return errors.New("new_file_name is required")
+	}
+
+	if strings.ContainsAny(trimmedName, `/\`) {
+		return errors.New("new file name cannot contain path separators")
+	}
+
+	baseName := filepath.Base(trimmedName)
+	if baseName != trimmedName || baseName == "." || baseName == ".." {
+		return errors.New("new file name is invalid")
+	}
+
+	return nil
+}
+
+func duplicateFileContents(fileEditor duplicateFileEditor, sourcePath string, targetPath string, perm fs.FileMode) error {
+	content, err := fileEditor.ReadFile(sourcePath)
+	if err != nil {
+		return err
+	}
+
+	return fileEditor.WriteFile(targetPath, content, perm)
 }
 
 func validateQuestFileRequest(req QuestFileAPIData) []string {
@@ -1770,4 +1916,14 @@ type fileUpdateContext struct {
 	cleanPath string
 	info      fs.FileInfo
 	fileID    string
+}
+
+type DuplicateFileRequest struct {
+	SourcePath  string `json:"source_path" validate:"required"`
+	NewFileName string `json:"new_file_name" validate:"required"`
+}
+
+type duplicateFileEditor interface {
+	ReadFile(name string) ([]byte, error)
+	WriteFile(name string, data []byte, perm fs.FileMode) error
 }

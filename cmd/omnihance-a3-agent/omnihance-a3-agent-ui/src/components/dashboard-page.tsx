@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode, useState } from 'react';
 import {
   Cpu,
   Loader2,
@@ -15,6 +15,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   type MetricCard,
   type ChartData,
@@ -31,7 +38,24 @@ const METRIC_ICONS: Record<string, LucideIcon> = {
   process_count: Layers,
 };
 
+const METRICS_TIME_WINDOWS = [
+  { label: 'Last hour', value: '1h' },
+  { label: 'Last 6 hours', value: '6h' },
+  { label: 'Last 1 day', value: '1d' },
+  { label: 'Last 7 days', value: '7d' },
+] as const;
+
+type MetricsWindowParams = {
+  range?: string;
+  from?: number;
+  to?: number;
+};
+
 function DashboardPageContent() {
+  const [metricsWindow, setMetricsWindow] = useState<MetricsWindowParams>({
+    range: '1h',
+  });
+
   const {
     status,
     isLoading: statusLoading,
@@ -46,8 +70,8 @@ function DashboardPageContent() {
   });
 
   const { data: metricsCharts } = useQuery({
-    queryKey: queryKeys.metricsCharts,
-    queryFn: () => getMetricsCharts(),
+    queryKey: queryKeys.metricsCharts(metricsWindow),
+    queryFn: () => getMetricsCharts(metricsWindow),
     enabled: status?.metrics_enabled ?? false,
     refetchInterval: 5000,
   });
@@ -150,18 +174,45 @@ function DashboardPageContent() {
 
       {/* Charts */}
       {metricsCharts?.charts && metricsCharts.charts.length > 0 && (
-        <div className="mb-6 grid gap-4 lg:grid-cols-2">
-          {metricsCharts.charts.map((chart: ChartData, index: number) => (
-            <Card key={index}>
-              <CardHeader>
-                <CardTitle>{chart.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MetricChart chartData={chart} />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <>
+          <div className="mb-4 flex items-center justify-end">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Range</span>
+              <Select
+                value={metricsWindow.range ?? '1h'}
+                onValueChange={(value) => {
+                  setMetricsWindow({ range: value });
+                }}
+              >
+                <SelectTrigger
+                  className="w-[180px]"
+                  aria-label="Select dashboard chart time range"
+                >
+                  <SelectValue placeholder="Select range" />
+                </SelectTrigger>
+                <SelectContent>
+                  {METRICS_TIME_WINDOWS.map((windowRange) => (
+                    <SelectItem key={windowRange.value} value={windowRange.value}>
+                      {windowRange.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="mb-6 grid gap-4 lg:grid-cols-2">
+            {metricsCharts.charts.map((chart: ChartData, index: number) => (
+              <Card key={index}>
+                <CardHeader>
+                  <CardTitle>{chart.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <MetricChart chartData={chart} />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

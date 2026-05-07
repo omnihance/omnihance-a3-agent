@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -18,8 +20,9 @@ import {
   Target,
   Users,
 } from 'lucide-react';
-import type { QuestFileAPIData } from '@/lib/api';
+import { getMaps, getMonsters, type QuestFileAPIData } from '@/lib/api';
 import { UNUSED_CONTINUATION } from '@/lib/api';
+import { queryKeys } from '@/constants';
 
 interface QuestFileViewProps {
   data: QuestFileAPIData;
@@ -58,6 +61,22 @@ function formatUInt16Value(value: number | null | undefined): string {
   return value == null || value === UNUSED_UINT16 ? '-' : String(value);
 }
 
+function formatClientDataValue(
+  value: number | null | undefined,
+  lookupMap: Map<number, string>,
+): string {
+  if (value == null || value === UNUSED_UINT16) {
+    return '-';
+  }
+
+  const name = lookupMap.get(value);
+  if (name) {
+    return `${name} (${value})`;
+  }
+
+  return String(value);
+}
+
 function cleanQuestName(name: string): string {
   return name.replace(/\0+$/g, '').trim();
 }
@@ -77,6 +96,42 @@ function hasDropValue(
 }
 
 export function QuestFileView({ data }: QuestFileViewProps) {
+  const { data: maps } = useQuery({
+    queryKey: queryKeys.maps,
+    queryFn: () => getMaps(),
+  });
+
+  const { data: monsters } = useQuery({
+    queryKey: queryKeys.monsters,
+    queryFn: () => getMonsters(),
+  });
+
+  const mapLookup = useMemo(() => {
+    if (!maps) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const mapItem of maps) {
+      map.set(mapItem.id, mapItem.name);
+    }
+
+    return map;
+  }, [maps]);
+
+  const monsterLookup = useMemo(() => {
+    if (!monsters) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const monster of monsters) {
+      map.set(monster.id, monster.name);
+    }
+
+    return map;
+  }, [monsters]);
+
   const activeRewards = data.reward_items
     .slice(0, 3)
     .map((item, idx) =>
@@ -136,7 +191,9 @@ export function QuestFileView({ data }: QuestFileViewProps) {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.giver_npc}</div>
+            <div className="text-2xl font-bold">
+              {formatClientDataValue(data.giver_npc, monsterLookup)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">NPC ID</p>
           </CardContent>
         </Card>
@@ -147,7 +204,9 @@ export function QuestFileView({ data }: QuestFileViewProps) {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.target_npc}</div>
+            <div className="text-2xl font-bold">
+              {formatClientDataValue(data.target_npc, monsterLookup)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">NPC ID</p>
           </CardContent>
         </Card>
@@ -290,9 +349,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                   probability: objective.drop_probs[idx],
                   idx,
                 }))
-                .filter((drop) =>
-                  hasDropValue(drop.item, drop.probability),
-                );
+                .filter((drop) => hasDropValue(drop.item, drop.probability));
 
               return (
                 <Card key={index} className="border-l-4">
@@ -309,7 +366,9 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                   <CardContent>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <div>
-                        <div className="text-sm text-muted-foreground">Type</div>
+                        <div className="text-sm text-muted-foreground">
+                          Type
+                        </div>
                         <div className="text-lg font-semibold">
                           {objective.type_name
                             ? `${objective.type_name} (${objective.type})`
@@ -321,7 +380,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                           Map ID
                         </div>
                         <div className="text-lg font-semibold">
-                          {formatUInt16Value(objective.map_id)}
+                          {formatClientDataValue(objective.map_id, mapLookup)}
                         </div>
                       </div>
                       <div>
@@ -349,7 +408,10 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                               : 'Target Monster'}
                           </div>
                           <div className="text-lg font-semibold">
-                            {formatUInt16Value(objective.target_id)}
+                            {formatClientDataValue(
+                              objective.target_id,
+                              monsterLookup,
+                            )}
                           </div>
                         </div>
                       )}
@@ -378,9 +440,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                               Required Items
                             </div>
                             <div className="text-lg font-semibold">
-                              {formatUInt16Value(
-                                objective.required_item_count,
-                              )}
+                              {formatUInt16Value(objective.required_item_count)}
                             </div>
                           </div>
                         </>

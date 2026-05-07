@@ -74,6 +74,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Map files (.map)
   - Text files (MIME type detection)
 - **File Viewing**: View NPC files, quest files, spawn files, and text files in the browser
+- **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -116,7 +117,10 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Metrics Dashboard**: Visual representation of system performance
   - Metric cards showing current CPU and RAM usage
   - Interactive charts with ECharts integration
-  - Time range filters (1h, 6h, 1d, 7d)
+  - Global dashboard time window selector (default: last hour)
+  - Preset ranges: 1h, 6h, 1d, 7d
+  - Adaptive server-side aggregation to prevent overcrowded x-axis labels
+  - Extensible time-window model ready for future custom from/to filtering
   - Smooth line charts with tooltips
 - **Metrics Retention**: Configurable data retention with automatic cleanup
 - **Historical Data**: Query metrics by time range for trend analysis
@@ -181,6 +185,21 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Access Control**:
   - Admin and Super Admin: Full management (add, edit, delete, start, stop, reorder)
   - Viewer: Read-only access (can view process status and uptime, cannot manage)
+
+### 🗄️ SQL Server ODBC User DSN Management
+
+- **32-bit User DSN management** for legacy SQL Server ODBC driver (`SQL Server`)
+- **Full CRUD support**:
+  - List SQL Server DSNs
+  - View DSN details
+  - Create and update DSN settings
+  - Delete DSNs
+- **Connection testing** before save:
+  - Test SQL auth/server/database connectivity using submitted form values
+- **Registry parity** with Windows ODBC UI:
+  - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\ODBC Data Sources`
+  - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\<dsnName>`
+  - Persists `Driver`, `Server`, `Database`, `Trusted_Connection`, `UID`, and `PWD`
 
 ### 🔧 Additional Features
 
@@ -421,12 +440,14 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/file-tree/text-file` - Read text file content
 - `PUT /api/file-tree/text-file` - Update text file
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
+- `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
 
 ### Metrics
 
 - `GET /api/metrics/summary` - Get current metric values (CPU, RAM)
-- `GET /api/metrics/charts` - Get metric charts with time range filter
+- `GET /api/metrics/charts` - Get metric charts with time window filtering and adaptive aggregation
+  - Query parameters: `range` (default `1h`, supports `1h`, `6h`, `1d`, `7d`), optional `from` and `to` (Unix seconds, must be provided together)
 
 ### Game Client Data
 
@@ -449,6 +470,15 @@ The application uses environment variables for configuration. A `.env` file is a
 - `POST /api/server/processes/{id}/start` - Start an individual process (requires `manage_server` permission)
 - `POST /api/server/processes/{id}/stop` - Stop an individual process (requires `manage_server` permission)
 - `GET /api/server/processes/{id}/status` - Get process status (running, port status, uptime)
+
+### SQL Server ODBC
+
+- `GET /api/odbc/sqlserver-dsns` - List SQL Server User DSNs (requires `manage_server` permission)
+- `GET /api/odbc/sqlserver-dsns/{name}` - Get SQL Server User DSN details (requires `manage_server` permission)
+- `POST /api/odbc/sqlserver-dsns` - Create SQL Server User DSN (requires `manage_server` permission)
+- `PUT /api/odbc/sqlserver-dsns/{name}` - Update SQL Server User DSN (requires `manage_server` permission)
+- `DELETE /api/odbc/sqlserver-dsns/{name}` - Delete SQL Server User DSN (requires `manage_server` permission)
+- `POST /api/odbc/sqlserver-dsns/test` - Test SQL Server connection using request payload (requires `manage_server` permission)
 
 ### Health
 
@@ -492,7 +522,7 @@ The application uses SQLite with the following main tables:
 
 5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view).
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Right-click files to duplicate them quickly.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
 
@@ -501,6 +531,8 @@ The application uses SQLite with the following main tables:
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
 8. **Monitor Metrics**: View system metrics on the dashboard with real-time charts (all authenticated users can view).
+   - Use the top-right range selector above charts (default last hour) to switch between presets.
+   - Chart density is automatically adjusted based on selected window to keep x-axis readable.
 
 9. **File Revisions**: All file edits are automatically backed up. Use the revision system to revert changes if needed (requires admin or super admin role).
 
@@ -512,6 +544,12 @@ The application uses SQLite with the following main tables:
     - Start/stop individual processes or the entire server sequence
     - Monitor real-time status and uptime for all processes
     - Viewers can access the page to see process status but cannot manage processes
+
+11. **Manage SQL Server ODBC DSNs** (Admin and Super Admin only):
+    - Navigate to the SQL ODBC page
+    - Add DSN name, SQL Server name, login ID, password, and default database
+    - Test connection before saving
+    - Update or delete DSNs as needed
 
 ## Development Commands
 
