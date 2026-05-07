@@ -403,8 +403,15 @@ export function FileTree({ initialPath }: FileTreeProps) {
       setAddDialogName('');
       setAddDialogPort('');
     },
-    onError: (error: APIError) => {
-      toast.error(error.getErrorMessage());
+    onError: (error) => {
+      console.error('Failed to duplicate file', error);
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to duplicate file';
+      toast.error(errorMessage);
     },
   });
 
