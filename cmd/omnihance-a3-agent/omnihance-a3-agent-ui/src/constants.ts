@@ -14,6 +14,7 @@ export const queryKeys = {
 
     return ['metrics-charts'] as const;
   },
+  gameClientDataCounts: ['game-client-data-counts'] as const,
   monsters: ['monsters'] as const,
   maps: ['maps'] as const,
   fileTree: (path?: string, showDotfiles?: boolean) => {

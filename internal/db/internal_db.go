@@ -60,8 +60,10 @@ type InternalDB interface {
 	SetDefaultSettings() error
 	BulkReplaceMonsterClientData(data []MonsterClientData) error
 	GetAllMonsterClientData(search string) ([]MonsterClientData, error)
+	GetMonsterClientDataCount() (int64, error)
 	BulkReplaceMapClientData(data []MapClientData) error
 	GetAllMapClientData(search string) ([]MapClientData, error)
+	GetMapClientDataCount() (int64, error)
 	BulkReplaceItemClientData(data []ItemClientData) error
 	GetAllItemClientData(search string) ([]ItemClientData, error)
 	GetServerProcesses() ([]ServerProcess, error)

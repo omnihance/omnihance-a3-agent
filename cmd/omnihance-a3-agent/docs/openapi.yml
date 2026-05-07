@@ -1029,6 +1029,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/counts:
+    get:
+      tags:
+        - game-data
+      summary: Get game client data counts
+      description: Returns total existing monster and map client data counts.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Game client data counts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameClientDataCountsResponse'
+              example:
+                monsters: 125
+                maps: 42
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/game-client-data/monsters:
     get:
       tags:
@@ -2996,6 +3026,20 @@ components:
           type: string
           description: Name of the game data entry
           example: "Goblin Warrior"
+    GameClientDataCountsResponse:
+      type: object
+      description: Total existing client data counts for uploadable datasets
+      properties:
+        monsters:
+          type: integer
+          format: int64
+          description: Total monster client data records
+          example: 125
+        maps:
+          type: integer
+          format: int64
+          description: Total map client data records
+          example: 42
     ListUsersResponse:
       type: object
       description: Paginated list of users

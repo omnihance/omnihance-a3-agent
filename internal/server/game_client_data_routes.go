@@ -18,11 +18,39 @@ import (
 func (s *Server) InitializeGameClientDataRoutes(r *chi.Mux) {
 	r.Route("/api/game-client-data", func(r chi.Router) {
 		r.Use(mw.CheckCookie(s.internalDB, s.cfg.CookieSecret))
+		r.Get("/counts", s.handleGameClientDataCounts)
 		r.Get("/monsters", s.handleMonsters)
 		r.Post("/upload-mon-file", s.handleUploadMONFile)
 		r.Get("/maps", s.handleMaps)
 		r.Post("/upload-mc-file", s.handleUploadMCFile)
 		r.Get("/items", s.handleItems)
+	})
+}
+
+func (s *Server) handleGameClientDataCounts(w http.ResponseWriter, r *http.Request) {
+	monsterCount, err := s.internalDB.GetMonsterClientDataCount()
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "game-data",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
+	mapCount, err := s.internalDB.GetMapClientDataCount()
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "game-data",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, GameClientDataCountsResponse{
+		Monsters: monsterCount,
+		Maps:     mapCount,
 	})
 }
 
@@ -320,4 +348,9 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 type GameClientDataResponse struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
+}
+
+type GameClientDataCountsResponse struct {
+	Monsters int64 `json:"monsters"`
+	Maps     int64 `json:"maps"`
 }

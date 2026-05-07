@@ -21,6 +21,7 @@ export const API_ROUTES = {
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
   GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
+  GAME_CLIENT_DATA_COUNTS: '/api/game-client-data/counts',
   GAME_CLIENT_DATA_UPLOAD_MON_FILE: '/api/game-client-data/upload-mon-file',
   GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
   GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
@@ -420,6 +421,15 @@ const GameClientDataResponseSchema = z.object({
 
 export type GameClientDataResponse = z.infer<
   typeof GameClientDataResponseSchema
+>;
+
+const GameClientDataCountsResponseSchema = z.object({
+  monsters: z.number().int().nonnegative(),
+  maps: z.number().int().nonnegative(),
+});
+
+export type GameClientDataCountsResponse = z.infer<
+  typeof GameClientDataCountsResponseSchema
 >;
 
 const UploadFileResponseSchema = z.object({
@@ -846,6 +856,17 @@ export async function getMonsters(params?: {
     z.array(GameClientDataResponseSchema),
     response.data,
     API_ROUTES.GAME_CLIENT_DATA_MONSTERS,
+  );
+}
+
+export async function getGameClientDataCounts(): Promise<GameClientDataCountsResponse> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.GAME_CLIENT_DATA_COUNTS,
+  );
+  return validateResponse(
+    GameClientDataCountsResponseSchema,
+    response.data,
+    API_ROUTES.GAME_CLIENT_DATA_COUNTS,
   );
 }
 
@@ -1279,14 +1300,18 @@ const SQLServerODBCDSNRequestSchema = z.object({
   last_user: z.string().optional(),
 });
 
-export type SQLServerODBCDSNRequest = z.infer<typeof SQLServerODBCDSNRequestSchema>;
+export type SQLServerODBCDSNRequest = z.infer<
+  typeof SQLServerODBCDSNRequestSchema
+>;
 
 const SQLServerODBCDSNTestResponseSchema = z.object({
   message: z.string(),
 });
 
 export async function getSQLServerODBCDSNs(): Promise<SQLServerODBCDSN[]> {
-  const response = await axiosInstance.get<unknown>(API_ROUTES.ODBC_SQLSERVER_DSNS);
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DSNS,
+  );
   const data = validateResponse(
     SQLServerODBCDSNsResponseSchema,
     response.data,

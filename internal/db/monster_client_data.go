@@ -96,3 +96,18 @@ func (s *sqliteInternalDB) GetAllMonsterClientData(search string) ([]MonsterClie
 
 	return data, nil
 }
+
+func (s *sqliteInternalDB) GetMonsterClientDataCount() (int64, error) {
+	count, err := s.goqu.From("monster_client_data").
+		Prepared(true).
+		Count()
+	if err != nil {
+		s.logger.Error(
+			"failed to get monster client data count",
+			logger.Field{Key: "error", Value: err},
+		)
+		return 0, fmt.Errorf("failed to get monster client data count: %w", err)
+	}
+
+	return count, nil
+}
