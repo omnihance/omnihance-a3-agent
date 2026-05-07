@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Controller, type FieldPath, useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouter } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -26,7 +26,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { APIError, updateQuestFile, type QuestFileAPIData } from '@/lib/api';
+import {
+  APIError,
+  getMaps,
+  getMonsters,
+  updateQuestFile,
+  type QuestFileAPIData,
+} from '@/lib/api';
 import { queryKeys } from '@/constants';
 
 const QUEST_OBJECTIVE_TYPE = {
@@ -172,6 +178,44 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
   const rewardItems = watch('reward_items');
   const rewardCounts = watch('reward_counts');
   const continuations = watch('continuations');
+  const giverNPC = watch('giver_npc');
+  const targetNPC = watch('target_npc');
+
+  const { data: maps } = useQuery({
+    queryKey: queryKeys.maps,
+    queryFn: () => getMaps(),
+  });
+
+  const { data: monsters } = useQuery({
+    queryKey: queryKeys.monsters,
+    queryFn: () => getMonsters(),
+  });
+
+  const mapLookup = useMemo(() => {
+    if (!maps) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const mapItem of maps) {
+      map.set(mapItem.id, mapItem.name);
+    }
+
+    return map;
+  }, [maps]);
+
+  const monsterLookup = useMemo(() => {
+    if (!monsters) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const monster of monsters) {
+      map.set(monster.id, monster.name);
+    }
+
+    return map;
+  }, [monsters]);
 
   const mutation = useMutation({
     mutationFn: (values: QuestFileFormData) =>
@@ -394,7 +438,12 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
   const numberField = (
     id: FieldPath<QuestFileFormData>,
     label: string,
-    options?: { min?: number; max?: number; disabled?: boolean },
+    options?: {
+      min?: number;
+      max?: number;
+      disabled?: boolean;
+      displayValue?: string;
+    },
   ) => (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
@@ -420,6 +469,9 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
           />
         )}
       />
+      {options?.displayValue && (
+        <p className="text-sm text-muted-foreground">{options.displayValue}</p>
+      )}
     </div>
   );
 
@@ -489,10 +541,12 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
             {numberField('giver_npc', 'Giver NPC ID', {
               min: 0,
               max: MAX_UINT16_FORM,
+              displayValue: formatClientDataName(giverNPC, monsterLookup),
             })}
             {numberField('target_npc', 'Target NPC ID', {
               min: 0,
               max: MAX_UINT16_FORM,
+              displayValue: formatClientDataName(targetNPC, monsterLookup),
             })}
             {numberField('min_level', 'Min Level', {
               min: 0,
@@ -692,6 +746,10 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                         min: 0,
                         max: MAX_UINT16_FORM,
                         disabled: isUnused,
+                        displayValue: formatClientDataName(
+                          objective.map_id,
+                          mapLookup,
+                        ),
                       })}
                       {numberField(
                         `objectives.${index}.location.x`,
@@ -725,6 +783,12 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                           min: 0,
                           max: MAX_UINT16_FORM,
                           disabled: !supportsTarget,
+                          displayValue: supportsTarget
+                            ? formatClientDataName(
+                                objective.target_id,
+                                monsterLookup,
+                              )
+                            : '-',
                         },
                       )}
                       {numberField(
@@ -970,6 +1034,17 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
       </div>
     </form>
   );
+}
+
+function formatClientDataName(
+  value: number | null | undefined,
+  lookupMap: Map<number, string>,
+): string {
+  if (value == null || value === UNUSED_UINT16) {
+    return '-';
+  }
+
+  return lookupMap.get(value) || String(value);
 }
 
 function toQuestFormData(data: QuestFileAPIData): QuestFileFormData {
