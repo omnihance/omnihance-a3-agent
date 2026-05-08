@@ -1355,18 +1355,30 @@ func (s *sqliteInternalDB) migrate011ItemClientDataType() error {
 
 	CREATE INDEX IF NOT EXISTS idx_item_client_data_updated_by ON item_client_data (updated_by);
 	`
-	_, err = s.db.Exec(migrationSQL)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin item client data type migration: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
 	if err != nil {
 		return fmt.Errorf("failed to add item client data type: %w", err)
 	}
 
-	if err := s.markMigrationApplied(migName); err != nil {
+	if _, err := tx.Exec("INSERT INTO migrations (name) VALUES (?)", migName); err != nil {
 		s.logger.Error(
 			"failed to mark migration as applied",
 			logger.Field{Key: "migration", Value: migName},
 			logger.Field{Key: "error", Value: err},
 		)
 		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit item client data type migration: %w", err)
 	}
 
 	return nil
@@ -1429,18 +1441,30 @@ func (s *sqliteInternalDB) rollback011ItemClientDataType() error {
 
 	CREATE INDEX IF NOT EXISTS idx_item_client_data_updated_by ON item_client_data (updated_by);
 	`
-	_, err = s.db.Exec(migrationSQL)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin item client data type rollback: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
 	if err != nil {
 		return fmt.Errorf("failed to rollback item client data type: %w", err)
 	}
 
-	if err := s.markMigrationRolledBack(migName); err != nil {
+	if _, err := tx.Exec("DELETE FROM migrations WHERE name = ?", migName); err != nil {
 		s.logger.Error(
 			"failed to mark migration as rolled back",
 			logger.Field{Key: "migration", Value: migName},
 			logger.Field{Key: "error", Value: err},
 		)
 		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit item client data type rollback: %w", err)
 	}
 
 	return nil
