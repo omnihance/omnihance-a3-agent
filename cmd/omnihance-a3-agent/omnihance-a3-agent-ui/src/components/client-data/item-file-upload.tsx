@@ -32,6 +32,7 @@ export function ItemFileUpload({
 }: ItemFileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -69,16 +70,32 @@ export function ItemFileUpload({
     setIsDragging(false);
 
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.name.toLowerCase().endsWith('.ull')) {
-      setFile(droppedFile);
+    if (!droppedFile) {
+      return;
     }
+
+    if (!droppedFile.name.toLowerCase().endsWith('.ull')) {
+      setValidationError(`Please select a valid ${fileLabel}.ull file.`);
+      return;
+    }
+
+    setValidationError(null);
+    setFile(droppedFile);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.name.toLowerCase().endsWith('.ull')) {
-      setFile(selectedFile);
+    if (!selectedFile) {
+      return;
     }
+
+    if (!selectedFile.name.toLowerCase().endsWith('.ull')) {
+      setValidationError(`Please select a valid ${fileLabel}.ull file.`);
+      return;
+    }
+
+    setValidationError(null);
+    setFile(selectedFile);
   };
 
   const handleUpload = () => {
@@ -93,6 +110,7 @@ export function ItemFileUpload({
 
   const resetFile = () => {
     setFile(null);
+    setValidationError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -195,10 +213,10 @@ export function ItemFileUpload({
           </div>
         )}
 
-        {error && (
+        {(validationError || error) && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{validationError || error}</AlertDescription>
           </Alert>
         )}
 
