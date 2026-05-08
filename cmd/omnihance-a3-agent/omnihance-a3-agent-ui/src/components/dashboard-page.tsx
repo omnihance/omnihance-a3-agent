@@ -192,7 +192,10 @@ function DashboardPageContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {METRICS_TIME_WINDOWS.map((windowRange) => (
-                    <SelectItem key={windowRange.value} value={windowRange.value}>
+                    <SelectItem
+                      key={windowRange.value}
+                      value={windowRange.value}
+                    >
                       {windowRange.label}
                     </SelectItem>
                   ))}
