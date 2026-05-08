@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 	mock "github.com/stretchr/testify/mock"
 )
@@ -549,6 +550,254 @@ func (_c *MockFileEditorService_OpenFile_Call) Return(file *os.File, err error) 
 }
 
 func (_c *MockFileEditorService_OpenFile_Call) RunAndReturn(run func(name string, flag int, perm fs.FileMode) (*os.File, error)) *MockFileEditorService_OpenFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientIT0FileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientIT0FileBytes(data []byte) ([]itemfile.Item, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientIT0FileBytes")
+	}
+
+	var r0 []itemfile.Item
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]itemfile.Item, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []itemfile.Item); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]itemfile.Item)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientIT0FileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientIT0FileBytes'
+type MockFileEditorService_ReadClientIT0FileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientIT0FileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientIT0FileBytes(data interface{}) *MockFileEditorService_ReadClientIT0FileBytes_Call {
+	return &MockFileEditorService_ReadClientIT0FileBytes_Call{Call: _e.mock.On("ReadClientIT0FileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientIT0FileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientIT0FileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT0FileBytes_Call) Return(items []itemfile.Item, err error) *MockFileEditorService_ReadClientIT0FileBytes_Call {
+	_c.Call.Return(items, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT0FileBytes_Call) RunAndReturn(run func(data []byte) ([]itemfile.Item, error)) *MockFileEditorService_ReadClientIT0FileBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientIT1FileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientIT1FileBytes(data []byte) ([]itemfile.Item, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientIT1FileBytes")
+	}
+
+	var r0 []itemfile.Item
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]itemfile.Item, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []itemfile.Item); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]itemfile.Item)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientIT1FileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientIT1FileBytes'
+type MockFileEditorService_ReadClientIT1FileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientIT1FileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientIT1FileBytes(data interface{}) *MockFileEditorService_ReadClientIT1FileBytes_Call {
+	return &MockFileEditorService_ReadClientIT1FileBytes_Call{Call: _e.mock.On("ReadClientIT1FileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientIT1FileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientIT1FileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT1FileBytes_Call) Return(items []itemfile.Item, err error) *MockFileEditorService_ReadClientIT1FileBytes_Call {
+	_c.Call.Return(items, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT1FileBytes_Call) RunAndReturn(run func(data []byte) ([]itemfile.Item, error)) *MockFileEditorService_ReadClientIT1FileBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientIT2FileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientIT2FileBytes(data []byte) ([]itemfile.Item, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientIT2FileBytes")
+	}
+
+	var r0 []itemfile.Item
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]itemfile.Item, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []itemfile.Item); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]itemfile.Item)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientIT2FileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientIT2FileBytes'
+type MockFileEditorService_ReadClientIT2FileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientIT2FileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientIT2FileBytes(data interface{}) *MockFileEditorService_ReadClientIT2FileBytes_Call {
+	return &MockFileEditorService_ReadClientIT2FileBytes_Call{Call: _e.mock.On("ReadClientIT2FileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientIT2FileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientIT2FileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT2FileBytes_Call) Return(items []itemfile.Item, err error) *MockFileEditorService_ReadClientIT2FileBytes_Call {
+	_c.Call.Return(items, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT2FileBytes_Call) RunAndReturn(run func(data []byte) ([]itemfile.Item, error)) *MockFileEditorService_ReadClientIT2FileBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadClientIT3FileBytes provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadClientIT3FileBytes(data []byte) ([]itemfile.Item, error) {
+	ret := _mock.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadClientIT3FileBytes")
+	}
+
+	var r0 []itemfile.Item
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func([]byte) ([]itemfile.Item, error)); ok {
+		return returnFunc(data)
+	}
+	if returnFunc, ok := ret.Get(0).(func([]byte) []itemfile.Item); ok {
+		r0 = returnFunc(data)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]itemfile.Item)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func([]byte) error); ok {
+		r1 = returnFunc(data)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadClientIT3FileBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadClientIT3FileBytes'
+type MockFileEditorService_ReadClientIT3FileBytes_Call struct {
+	*mock.Call
+}
+
+// ReadClientIT3FileBytes is a helper method to define mock.On call
+//   - data []byte
+func (_e *MockFileEditorService_Expecter) ReadClientIT3FileBytes(data interface{}) *MockFileEditorService_ReadClientIT3FileBytes_Call {
+	return &MockFileEditorService_ReadClientIT3FileBytes_Call{Call: _e.mock.On("ReadClientIT3FileBytes", data)}
+}
+
+func (_c *MockFileEditorService_ReadClientIT3FileBytes_Call) Run(run func(data []byte)) *MockFileEditorService_ReadClientIT3FileBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []byte
+		if args[0] != nil {
+			arg0 = args[0].([]byte)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT3FileBytes_Call) Return(items []itemfile.Item, err error) *MockFileEditorService_ReadClientIT3FileBytes_Call {
+	_c.Call.Return(items, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadClientIT3FileBytes_Call) RunAndReturn(run func(data []byte) ([]itemfile.Item, error)) *MockFileEditorService_ReadClientIT3FileBytes_Call {
 	_c.Call.Return(run)
 	return _c
 }

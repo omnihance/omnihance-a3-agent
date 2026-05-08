@@ -1,9 +1,16 @@
 import { MonsterFileUpload } from '@/components/client-data/monster-file-upload';
 import { MapFileUpload } from '@/components/client-data/map-file-upload';
+import { ItemFileUpload } from '@/components/client-data/item-file-upload';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/constants';
-import { getGameClientDataCounts } from '@/lib/api';
+import {
+  getGameClientDataCounts,
+  uploadIt0File,
+  uploadIt1File,
+  uploadIt2File,
+  uploadIt3File,
+} from '@/lib/api';
 
 export function ClientDataPage() {
   const { hasPermission } = usePermissions();
@@ -38,6 +45,34 @@ export function ClientDataPage() {
             existingCount={counts?.maps}
             countLoading={countsLoading}
             countError={countsError}
+          />
+          <ItemFileUpload
+            fileLabel="IT0"
+            existingCount={counts?.items.it0}
+            countLoading={countsLoading}
+            countError={countsError}
+            uploadFile={uploadIt0File}
+          />
+          <ItemFileUpload
+            fileLabel="IT1"
+            existingCount={counts?.items.it1}
+            countLoading={countsLoading}
+            countError={countsError}
+            uploadFile={uploadIt1File}
+          />
+          <ItemFileUpload
+            fileLabel="IT2"
+            existingCount={counts?.items.it2}
+            countLoading={countsLoading}
+            countError={countsError}
+            uploadFile={uploadIt2File}
+          />
+          <ItemFileUpload
+            fileLabel="IT3"
+            existingCount={counts?.items.it3}
+            countLoading={countsLoading}
+            countError={countsError}
+            uploadFile={uploadIt3File}
           />
         </div>
       ) : (

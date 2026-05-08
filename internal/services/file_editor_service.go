@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -62,6 +63,10 @@ type FileEditorService interface {
 	ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error)
 	ReadClientMapFileData(path string) ([]MapClientData, error)
 	ReadClientMapFileBytes(data []byte) ([]MapClientData, error)
+	ReadClientIT0FileBytes(data []byte) ([]itemfile.Item, error)
+	ReadClientIT1FileBytes(data []byte) ([]itemfile.Item, error)
+	ReadClientIT2FileBytes(data []byte) ([]itemfile.Item, error)
+	ReadClientIT3FileBytes(data []byte) ([]itemfile.Item, error)
 	ReadQuestFileData(path string) (questfile.QuestFile, error)
 	WriteQuestFileData(path string, data questfile.QuestFile) error
 }
@@ -333,6 +338,27 @@ func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientDa
 	}
 
 	return mapData, nil
+}
+
+func (fes *fileEditorService) ReadClientIT0FileBytes(data []byte) ([]itemfile.Item, error) {
+	rawItems, err := itemfile.ReadIT0(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+
+	return itemfile.ParseIT0Items(rawItems, nil)
+}
+
+func (fes *fileEditorService) ReadClientIT1FileBytes(data []byte) ([]itemfile.Item, error) {
+	return itemfile.ReadIT1Items(bytes.NewReader(data))
+}
+
+func (fes *fileEditorService) ReadClientIT2FileBytes(data []byte) ([]itemfile.Item, error) {
+	return itemfile.ReadIT2Items(bytes.NewReader(data))
+}
+
+func (fes *fileEditorService) ReadClientIT3FileBytes(data []byte) ([]itemfile.Item, error) {
+	return itemfile.ReadIT3Items(bytes.NewReader(data))
 }
 
 func (fes *fileEditorService) ReadQuestFileData(path string) (questfile.QuestFile, error) {

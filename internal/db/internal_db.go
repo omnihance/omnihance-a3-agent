@@ -64,8 +64,9 @@ type InternalDB interface {
 	BulkReplaceMapClientData(data []MapClientData) error
 	GetAllMapClientData(search string) ([]MapClientData, error)
 	GetMapClientDataCount() (int64, error)
-	BulkReplaceItemClientData(data []ItemClientData) error
+	BulkReplaceItemClientData(itemType ItemClientDataType, data []ItemClientData) error
 	GetAllItemClientData(search string) ([]ItemClientData, error)
+	GetItemClientDataCounts() (ItemClientDataCounts, error)
 	GetServerProcesses() ([]ServerProcess, error)
 	GetServerProcess(id int64) (*ServerProcess, error)
 	GetServerProcessByPath(path string) (*ServerProcess, error)
@@ -214,10 +215,18 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate011ItemClientDataType(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback011ItemClientDataType(); err != nil {
+		return err
+	}
+
 	if err := s.rollback010DirectoryShortcutsTable(); err != nil {
 		return err
 	}
@@ -1270,6 +1279,159 @@ func (s *sqliteInternalDB) rollback010DirectoryShortcutsTable() error {
 	_, err = s.db.Exec(migrationSQL)
 	if err != nil {
 		return fmt.Errorf("failed to rollback directory_shortcuts table: %w", err)
+	}
+
+	if err := s.markMigrationRolledBack(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate011ItemClientDataType() error {
+	const migName = "011_item_client_data_type"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS item_client_data_new (
+		id INTEGER NOT NULL,
+		name TEXT NOT NULL,
+		item_type TEXT NOT NULL DEFAULT 'it0' CHECK(item_type IN ('it0', 'it1', 'it2', 'it3')),
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP,
+		PRIMARY KEY (id, item_type)
+	);
+
+	INSERT OR IGNORE INTO item_client_data_new (
+		id,
+		name,
+		item_type,
+		created_by,
+		created_at,
+		updated_by,
+		updated_at
+	)
+	SELECT
+		id,
+		name,
+		'it0',
+		created_by,
+		created_at,
+		updated_by,
+		updated_at
+	FROM item_client_data;
+
+	DROP TABLE item_client_data;
+
+	ALTER TABLE item_client_data_new RENAME TO item_client_data;
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_name ON item_client_data (name);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_item_type ON item_client_data (item_type);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_created_by ON item_client_data (created_by);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_updated_by ON item_client_data (updated_by);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to add item client data type: %w", err)
+	}
+
+	if err := s.markMigrationApplied(migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback011ItemClientDataType() error {
+	const migName = "011_item_client_data_type"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS item_client_data_old (
+		id INTEGER PRIMARY KEY,
+		name TEXT NOT NULL,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP
+	);
+
+	INSERT OR IGNORE INTO item_client_data_old (
+		id,
+		name,
+		created_by,
+		created_at,
+		updated_by,
+		updated_at
+	)
+	SELECT
+		id,
+		name,
+		created_by,
+		created_at,
+		updated_by,
+		updated_at
+	FROM item_client_data
+	ORDER BY item_type;
+
+	DROP TABLE item_client_data;
+
+	ALTER TABLE item_client_data_old RENAME TO item_client_data;
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_name ON item_client_data (name);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_created_by ON item_client_data (created_by);
+
+	CREATE INDEX IF NOT EXISTS idx_item_client_data_updated_by ON item_client_data (updated_by);
+	`
+	_, err = s.db.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback item client data type: %w", err)
 	}
 
 	if err := s.markMigrationRolledBack(migName); err != nil {
