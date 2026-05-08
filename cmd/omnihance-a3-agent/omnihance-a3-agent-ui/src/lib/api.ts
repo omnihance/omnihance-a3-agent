@@ -26,6 +26,10 @@ export const API_ROUTES = {
   GAME_CLIENT_DATA_MAPS: '/api/game-client-data/maps',
   GAME_CLIENT_DATA_UPLOAD_MC_FILE: '/api/game-client-data/upload-mc-file',
   GAME_CLIENT_DATA_ITEMS: '/api/game-client-data/items',
+  GAME_CLIENT_DATA_UPLOAD_IT0_FILE: '/api/game-client-data/upload-it0-file',
+  GAME_CLIENT_DATA_UPLOAD_IT1_FILE: '/api/game-client-data/upload-it1-file',
+  GAME_CLIENT_DATA_UPLOAD_IT2_FILE: '/api/game-client-data/upload-it2-file',
+  GAME_CLIENT_DATA_UPLOAD_IT3_FILE: '/api/game-client-data/upload-it3-file',
   USERS: '/api/users',
   USER_STATUSES: '/api/users/statuses',
   USER_STATUS: (id: number) => `/api/users/${id}/status`,
@@ -417,6 +421,7 @@ export type MetricsChartsResponse = z.infer<typeof MetricsChartsResponseSchema>;
 const GameClientDataResponseSchema = z.object({
   id: z.number().int(),
   name: z.string(),
+  item_type: z.enum(['it0', 'it1', 'it2', 'it3']).optional(),
 });
 
 export type GameClientDataResponse = z.infer<
@@ -426,6 +431,12 @@ export type GameClientDataResponse = z.infer<
 const GameClientDataCountsResponseSchema = z.object({
   monsters: z.number().int().nonnegative(),
   maps: z.number().int().nonnegative(),
+  items: z.object({
+    it0: z.number().int().nonnegative(),
+    it1: z.number().int().nonnegative(),
+    it2: z.number().int().nonnegative(),
+    it3: z.number().int().nonnegative(),
+  }),
 });
 
 export type GameClientDataCountsResponse = z.infer<
@@ -939,6 +950,49 @@ export async function getItems(params?: {
     z.array(GameClientDataResponseSchema),
     response.data,
     API_ROUTES.GAME_CLIENT_DATA_ITEMS,
+  );
+}
+
+async function uploadGameClientDataFile(
+  endpoint: string,
+  file: File,
+): Promise<UploadFileResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await axiosInstance.post<unknown>(endpoint, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return validateResponse(UploadFileResponseSchema, response.data, endpoint);
+}
+
+export async function uploadIt0File(file: File): Promise<UploadFileResponse> {
+  return uploadGameClientDataFile(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_IT0_FILE,
+    file,
+  );
+}
+
+export async function uploadIt1File(file: File): Promise<UploadFileResponse> {
+  return uploadGameClientDataFile(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_IT1_FILE,
+    file,
+  );
+}
+
+export async function uploadIt2File(file: File): Promise<UploadFileResponse> {
+  return uploadGameClientDataFile(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_IT2_FILE,
+    file,
+  );
+}
+
+export async function uploadIt3File(file: File): Promise<UploadFileResponse> {
+  return uploadGameClientDataFile(
+    API_ROUTES.GAME_CLIENT_DATA_UPLOAD_IT3_FILE,
+    file,
   );
 }
 

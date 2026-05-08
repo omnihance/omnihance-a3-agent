@@ -1034,7 +1034,7 @@ paths:
       tags:
         - game-data
       summary: Get game client data counts
-      description: Returns total existing monster and map client data counts.
+      description: Returns total existing monster, map, and item client data counts.
       security:
         - ApiKeyAuth: []
       responses:
@@ -1047,6 +1047,11 @@ paths:
               example:
                 monsters: 125
                 maps: 42
+                items:
+                  it0: 100
+                  it1: 80
+                  it2: 25
+                  it3: 10
         '401':
           description: Unauthorized
           content:
@@ -1278,8 +1283,10 @@ paths:
               example:
                 - id: 1
                   name: "Iron Sword"
+                  item_type: "it0"
                 - id: 2
                   name: "Steel Sword"
+                  item_type: "it1"
         '401':
           description: Unauthorized
           content:
@@ -1288,6 +1295,190 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-it0-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload IT0 item client data file
+      description: Uploads and processes an IT0.ull item client data file. The file is decoded using ULL decryption, parsed with agonyl-utils-go itemfile helpers, and replaces existing IT0 item client data only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The IT0.ull item client data file to upload.
+      responses:
+        '200':
+          description: IT0 item file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadClientDataResponse'
+        '400':
+          description: Bad Request - invalid upload or failed item parsing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-it1-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload IT1 item client data file
+      description: Uploads and processes an IT1.ull item client data file and replaces existing IT1 item client data only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The IT1.ull item client data file to upload.
+      responses:
+        '200':
+          description: IT1 item file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadClientDataResponse'
+        '400':
+          description: Bad Request - invalid upload or failed item parsing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-it2-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload IT2 item client data file
+      description: Uploads and processes an IT2.ull item client data file and replaces existing IT2 item client data only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The IT2.ull item client data file to upload.
+      responses:
+        '200':
+          description: IT2 item file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadClientDataResponse'
+        '400':
+          description: Bad Request - invalid upload or failed item parsing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save item data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/game-client-data/upload-it3-file:
+    post:
+      tags:
+        - game-data
+      summary: Upload IT3 item client data file
+      description: Uploads and processes an IT3.ull item client data file and replaces existing IT3 item client data only.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The IT3.ull item client data file to upload.
+      responses:
+        '200':
+          description: IT3 item file uploaded and processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadClientDataResponse'
+        '400':
+          description: Bad Request - invalid upload or failed item parsing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error - Failed to read file or save item data
           content:
             application/json:
               schema:
@@ -3026,6 +3217,15 @@ components:
           type: string
           description: Name of the game data entry
           example: "Goblin Warrior"
+        item_type:
+          type: string
+          enum:
+            - it0
+            - it1
+            - it2
+            - it3
+          description: Source item file type. Present for item client data responses.
+          example: "it0"
     GameClientDataCountsResponse:
       type: object
       description: Total existing client data counts for uploadable datasets
@@ -3040,6 +3240,38 @@ components:
           format: int64
           description: Total map client data records
           example: 42
+        items:
+          type: object
+          description: Total item client data records by source IT file
+          properties:
+            it0:
+              type: integer
+              format: int64
+              example: 100
+            it1:
+              type: integer
+              format: int64
+              example: 80
+            it2:
+              type: integer
+              format: int64
+              example: 25
+            it3:
+              type: integer
+              format: int64
+              example: 10
+    UploadClientDataResponse:
+      type: object
+      description: Client data upload response
+      properties:
+        message:
+          type: string
+          example: "IT1 item file uploaded successfully"
+        count:
+          type: integer
+          format: int64
+          description: Number of records imported
+          example: 80
     ListUsersResponse:
       type: object
       description: Paginated list of users

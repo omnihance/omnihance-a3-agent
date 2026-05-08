@@ -20,7 +20,12 @@ import {
   Target,
   Users,
 } from 'lucide-react';
-import { getMaps, getMonsters, type QuestFileAPIData } from '@/lib/api';
+import {
+  getItems,
+  getMaps,
+  getMonsters,
+  type QuestFileAPIData,
+} from '@/lib/api';
 import { UNUSED_CONTINUATION } from '@/lib/api';
 import { queryKeys } from '@/constants';
 
@@ -106,6 +111,11 @@ export function QuestFileView({ data }: QuestFileViewProps) {
     queryFn: () => getMonsters(),
   });
 
+  const { data: items } = useQuery({
+    queryKey: queryKeys.items,
+    queryFn: () => getItems(),
+  });
+
   const mapLookup = useMemo(() => {
     if (!maps) {
       return new Map<number, string>();
@@ -131,6 +141,19 @@ export function QuestFileView({ data }: QuestFileViewProps) {
 
     return map;
   }, [monsters]);
+
+  const itemLookup = useMemo(() => {
+    if (!items) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const item of items) {
+      map.set(item.id, item.name);
+    }
+
+    return map;
+  }, [items]);
 
   const activeRewards = data.reward_items
     .slice(0, 3)
@@ -296,7 +319,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Slot</TableHead>
-                <TableHead className="text-right">Item ID</TableHead>
+                <TableHead className="text-right">Item</TableHead>
                 <TableHead className="text-right">Count</TableHead>
               </TableRow>
             </TableHeader>
@@ -312,7 +335,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                       Slot {idx + 1}
                     </TableCell>
                     <TableCell className="text-right">
-                      {isUnused ? '-' : item}
+                      {isUnused ? '-' : formatClientDataValue(item, itemLookup)}
                     </TableCell>
                     <TableCell className="text-right">
                       {isUnused ? '-' : count}
@@ -432,7 +455,10 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                               Quest Item ID
                             </div>
                             <div className="text-lg font-semibold">
-                              {formatUInt16Value(objective.quest_item_id)}
+                              {formatClientDataValue(
+                                objective.quest_item_id,
+                                itemLookup,
+                              )}
                             </div>
                           </div>
                           <div>
@@ -456,9 +482,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Slot</TableHead>
-                              <TableHead className="text-right">
-                                Item ID
-                              </TableHead>
+                              <TableHead className="text-right">Item</TableHead>
                               <TableHead className="text-right">
                                 Probability
                               </TableHead>
@@ -471,7 +495,7 @@ export function QuestFileView({ data }: QuestFileViewProps) {
                                   Slot {drop.idx + 1}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {formatUInt16Value(drop.item)}
+                                  {formatClientDataValue(drop.item, itemLookup)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatUInt8Value(drop.probability)}

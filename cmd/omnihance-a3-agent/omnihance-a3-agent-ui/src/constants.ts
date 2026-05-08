@@ -17,6 +17,7 @@ export const queryKeys = {
   gameClientDataCounts: ['game-client-data-counts'] as const,
   monsters: ['monsters'] as const,
   maps: ['maps'] as const,
+  items: ['items'] as const,
   fileTree: (path?: string, showDotfiles?: boolean) => {
     if (path !== undefined && showDotfiles !== undefined) {
       return ['file-tree', path, showDotfiles] as const;

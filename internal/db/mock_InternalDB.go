@@ -94,16 +94,16 @@ func (_c *MockInternalDB_BeginTx_Call) RunAndReturn(run func() (*goqu.TxDatabase
 }
 
 // BulkReplaceItemClientData provides a mock function for the type MockInternalDB
-func (_mock *MockInternalDB) BulkReplaceItemClientData(data []ItemClientData) error {
-	ret := _mock.Called(data)
+func (_mock *MockInternalDB) BulkReplaceItemClientData(itemType ItemClientDataType, data []ItemClientData) error {
+	ret := _mock.Called(itemType, data)
 
 	if len(ret) == 0 {
 		panic("no return value specified for BulkReplaceItemClientData")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func([]ItemClientData) error); ok {
-		r0 = returnFunc(data)
+	if returnFunc, ok := ret.Get(0).(func(ItemClientDataType, []ItemClientData) error); ok {
+		r0 = returnFunc(itemType, data)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -116,19 +116,25 @@ type MockInternalDB_BulkReplaceItemClientData_Call struct {
 }
 
 // BulkReplaceItemClientData is a helper method to define mock.On call
+//   - itemType ItemClientDataType
 //   - data []ItemClientData
-func (_e *MockInternalDB_Expecter) BulkReplaceItemClientData(data interface{}) *MockInternalDB_BulkReplaceItemClientData_Call {
-	return &MockInternalDB_BulkReplaceItemClientData_Call{Call: _e.mock.On("BulkReplaceItemClientData", data)}
+func (_e *MockInternalDB_Expecter) BulkReplaceItemClientData(itemType interface{}, data interface{}) *MockInternalDB_BulkReplaceItemClientData_Call {
+	return &MockInternalDB_BulkReplaceItemClientData_Call{Call: _e.mock.On("BulkReplaceItemClientData", itemType, data)}
 }
 
-func (_c *MockInternalDB_BulkReplaceItemClientData_Call) Run(run func(data []ItemClientData)) *MockInternalDB_BulkReplaceItemClientData_Call {
+func (_c *MockInternalDB_BulkReplaceItemClientData_Call) Run(run func(itemType ItemClientDataType, data []ItemClientData)) *MockInternalDB_BulkReplaceItemClientData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 []ItemClientData
+		var arg0 ItemClientDataType
 		if args[0] != nil {
-			arg0 = args[0].([]ItemClientData)
+			arg0 = args[0].(ItemClientDataType)
+		}
+		var arg1 []ItemClientData
+		if args[1] != nil {
+			arg1 = args[1].([]ItemClientData)
 		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -139,7 +145,7 @@ func (_c *MockInternalDB_BulkReplaceItemClientData_Call) Return(err error) *Mock
 	return _c
 }
 
-func (_c *MockInternalDB_BulkReplaceItemClientData_Call) RunAndReturn(run func(data []ItemClientData) error) *MockInternalDB_BulkReplaceItemClientData_Call {
+func (_c *MockInternalDB_BulkReplaceItemClientData_Call) RunAndReturn(run func(itemType ItemClientDataType, data []ItemClientData) error) *MockInternalDB_BulkReplaceItemClientData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1971,6 +1977,59 @@ func (_c *MockInternalDB_GetFileRevision_Call) Return(fileRevision *FileRevision
 }
 
 func (_c *MockInternalDB_GetFileRevision_Call) RunAndReturn(run func(revisionID int64) (*FileRevision, error)) *MockInternalDB_GetFileRevision_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetItemClientDataCounts provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetItemClientDataCounts() (ItemClientDataCounts, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetItemClientDataCounts")
+	}
+
+	var r0 ItemClientDataCounts
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (ItemClientDataCounts, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() ItemClientDataCounts); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(ItemClientDataCounts)
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetItemClientDataCounts_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetItemClientDataCounts'
+type MockInternalDB_GetItemClientDataCounts_Call struct {
+	*mock.Call
+}
+
+// GetItemClientDataCounts is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetItemClientDataCounts() *MockInternalDB_GetItemClientDataCounts_Call {
+	return &MockInternalDB_GetItemClientDataCounts_Call{Call: _e.mock.On("GetItemClientDataCounts")}
+}
+
+func (_c *MockInternalDB_GetItemClientDataCounts_Call) Run(run func()) *MockInternalDB_GetItemClientDataCounts_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetItemClientDataCounts_Call) Return(itemClientDataCounts ItemClientDataCounts, err error) *MockInternalDB_GetItemClientDataCounts_Call {
+	_c.Call.Return(itemClientDataCounts, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetItemClientDataCounts_Call) RunAndReturn(run func() (ItemClientDataCounts, error)) *MockInternalDB_GetItemClientDataCounts_Call {
 	_c.Call.Return(run)
 	return _c
 }

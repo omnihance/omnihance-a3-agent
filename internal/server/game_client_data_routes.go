@@ -12,6 +12,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
+	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	agonylUtils "github.com/project-agonyl/agonyl-utils-go/utils"
 )
 
@@ -24,6 +25,10 @@ func (s *Server) InitializeGameClientDataRoutes(r *chi.Mux) {
 		r.Get("/maps", s.handleMaps)
 		r.Post("/upload-mc-file", s.handleUploadMCFile)
 		r.Get("/items", s.handleItems)
+		r.Post("/upload-it0-file", s.handleUploadIT0File)
+		r.Post("/upload-it1-file", s.handleUploadIT1File)
+		r.Post("/upload-it2-file", s.handleUploadIT2File)
+		r.Post("/upload-it3-file", s.handleUploadIT3File)
 	})
 }
 
@@ -48,9 +53,20 @@ func (s *Server) handleGameClientDataCounts(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	itemCounts, err := s.internalDB.GetItemClientDataCounts()
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "game-data",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
 	_ = utils.WriteJSONResponse(w, GameClientDataCountsResponse{
 		Monsters: monsterCount,
 		Maps:     mapCount,
+		Items:    itemCounts,
 	})
 }
 
@@ -118,8 +134,9 @@ func (s *Server) handleItems(w http.ResponseWriter, r *http.Request) {
 	response := make([]GameClientDataResponse, 0, len(data))
 	for _, item := range data {
 		response = append(response, GameClientDataResponse{
-			ID:   item.ID,
-			Name: item.Name,
+			ID:       item.ID,
+			Name:     item.Name,
+			ItemType: item.ItemType,
 		})
 	}
 
@@ -261,6 +278,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"Failed to parse multipart form: " + err.Error()},
 		})
+		return
 	}
 
 	file, fileHeader, err := r.FormFile("file")
@@ -270,6 +288,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"Failed to get file from form: " + err.Error()},
 		})
+		return
 	}
 
 	defer func() {
@@ -282,6 +301,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"File size exceeds maximum allowed size"},
 		})
+		return
 	}
 
 	fileData, err := io.ReadAll(file)
@@ -291,6 +311,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"Failed to read file: " + err.Error()},
 		})
+		return
 	}
 
 	if len(fileData) > int(maxUploadSize) {
@@ -299,6 +320,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"File size exceeds maximum allowed size"},
 		})
+		return
 	}
 
 	agonylUtils.DecodeULL(fileData, len(fileData))
@@ -309,6 +331,7 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 			"context":   "game-data",
 			"errors":    []string{"Failed to parse map file: " + err.Error()},
 		})
+		return
 	}
 
 	now := time.Now()
@@ -345,12 +368,157 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleUploadIT0File(w http.ResponseWriter, r *http.Request) {
+	s.handleUploadITFile(w, r, db.ItemClientDataTypeIT0, "IT0", s.fileEditor.ReadClientIT0FileBytes)
+}
+
+func (s *Server) handleUploadIT1File(w http.ResponseWriter, r *http.Request) {
+	s.handleUploadITFile(w, r, db.ItemClientDataTypeIT1, "IT1", s.fileEditor.ReadClientIT1FileBytes)
+}
+
+func (s *Server) handleUploadIT2File(w http.ResponseWriter, r *http.Request) {
+	s.handleUploadITFile(w, r, db.ItemClientDataTypeIT2, "IT2", s.fileEditor.ReadClientIT2FileBytes)
+}
+
+func (s *Server) handleUploadIT3File(w http.ResponseWriter, r *http.Request) {
+	s.handleUploadITFile(w, r, db.ItemClientDataTypeIT3, "IT3", s.fileEditor.ReadClientIT3FileBytes)
+}
+
+func (s *Server) handleUploadITFile(
+	w http.ResponseWriter,
+	r *http.Request,
+	itemType db.ItemClientDataType,
+	label string,
+	readItems func([]byte) ([]itemfile.Item, error),
+) {
+	if !s.requireUserPermission(w, r, permissions.ActionUploadGameData) {
+		return
+	}
+
+	userID, ok := utils.GetUserIdFromContext(r.Context())
+	if !ok {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
+			"errorCode": constants.ErrorCodeUnauthorized,
+			"context":   "game-data",
+			"errors":    []string{"User ID not found in context"},
+		})
+		return
+	}
+
+	fileData, ok := s.readGameClientUploadFile(w, r)
+	if !ok {
+		return
+	}
+
+	agonylUtils.DecodeULL(fileData, len(fileData))
+	items, err := readItems(fileData)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "game-data",
+			"errors":    []string{"Failed to parse " + label + " file: " + err.Error()},
+		})
+		return
+	}
+
+	now := time.Now()
+	dbItemData := make([]db.ItemClientData, 0, len(items))
+	uniqueItemMap := make(map[uint32]bool)
+	for _, item := range items {
+		if _, ok := uniqueItemMap[item.ItemCode]; ok {
+			continue
+		}
+
+		uniqueItemMap[item.ItemCode] = true
+		dbItemData = append(dbItemData, db.ItemClientData{
+			ID:        int64(item.ItemCode),
+			Name:      item.ItemName,
+			ItemType:  string(itemType),
+			CreatedBy: &userID,
+			UpdatedBy: &userID,
+			UpdatedAt: &now,
+		})
+	}
+
+	if err := s.internalDB.BulkReplaceItemClientData(itemType, dbItemData); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "game-data",
+			"errors":    []string{"Failed to save " + label + " item data: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message": label + " item file uploaded successfully",
+		"count":   len(dbItemData),
+	})
+}
+
+func (s *Server) readGameClientUploadFile(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	maxUploadSize := int64(s.cfg.MaxFileUploadSizeMb) * 1024 * 1024
+
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "game-data",
+			"errors":    []string{"Failed to parse multipart form: " + err.Error()},
+		})
+		return nil, false
+	}
+
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "game-data",
+			"errors":    []string{"Failed to get file from form: " + err.Error()},
+		})
+		return nil, false
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	if fileHeader.Size > maxUploadSize {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "game-data",
+			"errors":    []string{"File size exceeds maximum allowed size"},
+		})
+		return nil, false
+	}
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "game-data",
+			"errors":    []string{"Failed to read file: " + err.Error()},
+		})
+		return nil, false
+	}
+
+	if len(fileData) > int(maxUploadSize) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "game-data",
+			"errors":    []string{"File size exceeds maximum allowed size"},
+		})
+		return nil, false
+	}
+
+	return fileData, true
+}
+
 type GameClientDataResponse struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	ItemType string `json:"item_type,omitempty"`
 }
 
 type GameClientDataCountsResponse struct {
-	Monsters int64 `json:"monsters"`
-	Maps     int64 `json:"maps"`
+	Monsters int64                   `json:"monsters"`
+	Maps     int64                   `json:"maps"`
+	Items    db.ItemClientDataCounts `json:"items"`
 }

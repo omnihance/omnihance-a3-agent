@@ -28,6 +28,7 @@ import {
 import { toast } from 'sonner';
 import {
   APIError,
+  getItems,
   getMaps,
   getMonsters,
   updateQuestFile,
@@ -191,6 +192,11 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
     queryFn: () => getMonsters(),
   });
 
+  const { data: items } = useQuery({
+    queryKey: queryKeys.items,
+    queryFn: () => getItems(),
+  });
+
   const mapLookup = useMemo(() => {
     if (!maps) {
       return new Map<number, string>();
@@ -216,6 +222,19 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
 
     return map;
   }, [monsters]);
+
+  const itemLookup = useMemo(() => {
+    if (!items) {
+      return new Map<number, string>();
+    }
+
+    const map = new Map<number, string>();
+    for (const item of items) {
+      map.set(item.id, item.name);
+    }
+
+    return map;
+  }, [items]);
 
   const mutation = useMutation({
     mutationFn: (values: QuestFileFormData) =>
@@ -483,6 +502,7 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
       max?: number;
       disabled?: boolean;
       emptyValue?: number | null;
+      displayValue?: string;
     },
   ) => (
     <div className="space-y-2">
@@ -514,6 +534,9 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
           />
         )}
       />
+      {options?.displayValue && (
+        <p className="text-sm text-muted-foreground">{options.displayValue}</p>
+      )}
     </div>
   );
 
@@ -608,6 +631,9 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                         max: MAX_UINT16_FORM,
                         disabled: !isActive,
                         emptyValue: 0,
+                        displayValue: isActive
+                          ? formatClientDataName(rewardItems[index], itemLookup)
+                          : '-',
                       })}
                     </TableCell>
                     <TableCell>
@@ -808,6 +834,13 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                           max: MAX_UINT16_FORM,
                           disabled:
                             !supportsQuestItem || !hasQuestItemRequirement,
+                          displayValue:
+                            supportsQuestItem && hasQuestItemRequirement
+                              ? formatClientDataName(
+                                  objective.quest_item_id,
+                                  itemLookup,
+                                )
+                              : '-',
                         },
                       )}
                       {numberField(
@@ -905,6 +938,13 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
                                     max: MAX_UINT16_FORM,
                                     disabled: !supportsDrops || !hasDropSlot,
                                     emptyValue: 0,
+                                    displayValue:
+                                      supportsDrops && hasDropSlot
+                                        ? formatClientDataName(
+                                            objective.drop_items[dropIndex],
+                                            itemLookup,
+                                          )
+                                        : '-',
                                   },
                                 )}
                               </TableCell>
