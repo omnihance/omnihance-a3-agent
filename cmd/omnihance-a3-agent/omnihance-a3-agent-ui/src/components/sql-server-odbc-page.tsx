@@ -162,7 +162,7 @@ export function SQLServerODBCPage() {
       server: form.server.trim(),
       database: form.database.trim(),
       login_id: form.login_id.trim(),
-      password: form.password || '',
+      password: form.password?.trim() || '',
     };
   };
 
@@ -176,7 +176,7 @@ export function SQLServerODBCPage() {
       return null;
     }
 
-    return { ...payload, password: form.password };
+    return { ...payload, password: form.password.trim() };
   };
 
   const validateAndGetDefaultPayload =
