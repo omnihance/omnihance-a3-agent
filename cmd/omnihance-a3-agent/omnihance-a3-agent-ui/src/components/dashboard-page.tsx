@@ -122,7 +122,7 @@ function DashboardPageContent() {
               <a
                 href={latestReleaseURL}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 aria-label={`View ${latestVersion} release on GitHub`}
               >
                 <ExternalLink className="h-4 w-4" />

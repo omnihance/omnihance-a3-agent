@@ -46,6 +46,8 @@ type versionCheckerService struct {
 	cron           *cron.Cron
 	ctx            context.Context
 	cancel         context.CancelFunc
+	lifecycleMu    sync.Mutex
+	started        bool
 	mu             sync.RWMutex
 	status         VersionCheckStatus
 }
@@ -85,23 +87,34 @@ func NewVersionCheckerServiceWithClient(
 }
 
 func (v *versionCheckerService) Start() error {
-	v.ctx, v.cancel = context.WithCancel(context.Background())
+	v.lifecycleMu.Lock()
+	defer v.lifecycleMu.Unlock()
 
-	v.cron = cron.New(cron.WithSeconds())
+	if v.started {
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	scheduler := cron.New(cron.WithSeconds())
 	checkSchedule := fmt.Sprintf("@every %ds", v.intervalSeconds())
-	_, err := v.cron.AddFunc(checkSchedule, func() {
-		if err := v.CheckNow(v.ctx); err != nil {
+	_, err := scheduler.AddFunc(checkSchedule, func() {
+		if err := v.CheckNow(ctx); err != nil {
 			v.logger.Warn("version check failed", logger.Field{Key: "error", Value: err})
 		}
 	})
 	if err != nil {
-		v.cancel()
+		cancel()
 		return fmt.Errorf("failed to schedule version check: %w", err)
 	}
 
-	v.cron.Start()
+	v.ctx = ctx
+	v.cancel = cancel
+	v.cron = scheduler
+	v.started = true
+
+	scheduler.Start()
 	go func() {
-		if err := v.CheckNow(v.ctx); err != nil {
+		if err := v.CheckNow(ctx); err != nil {
 			v.logger.Warn("version check failed", logger.Field{Key: "error", Value: err})
 		}
 	}()
@@ -115,14 +128,28 @@ func (v *versionCheckerService) Start() error {
 }
 
 func (v *versionCheckerService) Stop() error {
-	if v.cron != nil {
-		ctx := v.cron.Stop()
+	v.lifecycleMu.Lock()
+	if !v.started {
+		v.lifecycleMu.Unlock()
+		return nil
+	}
+
+	scheduler := v.cron
+	cancel := v.cancel
+	if cancel != nil {
+		cancel()
+	}
+
+	if scheduler != nil {
+		ctx := scheduler.Stop()
 		<-ctx.Done()
 	}
 
-	if v.cancel != nil {
-		v.cancel()
-	}
+	v.ctx = nil
+	v.cancel = nil
+	v.cron = nil
+	v.started = false
+	v.lifecycleMu.Unlock()
 
 	v.logger.Info("version checker service stopped")
 
@@ -286,6 +313,16 @@ func parseSemanticVersion(version string) (semanticVersion, error) {
 func parseVersionNumber(part string, version string) (int, error) {
 	if part == "" {
 		return 0, fmt.Errorf("version %q contains an empty version part", version)
+	}
+
+	for _, char := range part {
+		if char < '0' || char > '9' {
+			return 0, fmt.Errorf("version %q contains a non-numeric version part", version)
+		}
+	}
+
+	if len(part) > 1 && strings.HasPrefix(part, "0") {
+		return 0, fmt.Errorf("version %q contains a version part with leading zero", version)
 	}
 
 	value, err := strconv.Atoi(part)

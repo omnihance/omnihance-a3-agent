@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,6 +65,12 @@ func TestShouldReportNewVersion(t *testing.T) {
 			latestVersion:  "latest",
 			expectError:    true,
 		},
+		{
+			name:           "latest version with leading zero fails closed",
+			currentVersion: "1.2.0",
+			latestVersion:  "1.02.0",
+			expectError:    true,
+		},
 	}
 
 	for _, test := range tests {
@@ -77,6 +84,25 @@ func TestShouldReportNewVersion(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, test.expected, actual)
+		})
+	}
+}
+
+func TestParseSemanticVersionRejectsInvalidNumericParts(t *testing.T) {
+	tests := []string{
+		"01.2.3",
+		"1.02.3",
+		"1.2.03",
+		"+1.2.3",
+		"1.+2.3",
+		"1.2.+3",
+	}
+
+	for _, version := range tests {
+		t.Run(version, func(t *testing.T) {
+			_, err := parseSemanticVersion(version)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), version)
 		})
 	}
 }
@@ -175,6 +201,57 @@ func TestVersionCheckerStartUsesConfiguredInterval(t *testing.T) {
 	require.Eventually(t, func() bool {
 		status := service.GetStatus()
 		return status.NewVersionAvailable && status.VersionCheckedAt != nil
+	}, 2*time.Second, 25*time.Millisecond)
+}
+
+func TestVersionCheckerStartIsIdempotent(t *testing.T) {
+	var requestCount atomic.Int32
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"tag_name":"v1.1.0","html_url":"https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0"}`)
+	}))
+	defer testServer.Close()
+
+	service := newTestVersionCheckerService("1.0.0", testServer.URL, testServer.Client())
+
+	require.NoError(t, service.Start())
+	require.NoError(t, service.Start())
+	t.Cleanup(func() {
+		_ = service.Stop()
+	})
+
+	require.Eventually(t, func() bool {
+		return requestCount.Load() == 1
+	}, 2*time.Second, 25*time.Millisecond)
+	require.Never(t, func() bool {
+		return requestCount.Load() > 1
+	}, 200*time.Millisecond, 25*time.Millisecond)
+}
+
+func TestVersionCheckerCanRestartAfterStop(t *testing.T) {
+	var requestCount atomic.Int32
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"tag_name":"v1.1.0","html_url":"https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0"}`)
+	}))
+	defer testServer.Close()
+
+	service := newTestVersionCheckerService("1.0.0", testServer.URL, testServer.Client())
+
+	require.NoError(t, service.Start())
+	require.Eventually(t, func() bool {
+		return requestCount.Load() == 1
+	}, 2*time.Second, 25*time.Millisecond)
+	require.NoError(t, service.Stop())
+	require.NoError(t, service.Start())
+	t.Cleanup(func() {
+		_ = service.Stop()
+	})
+
+	require.Eventually(t, func() bool {
+		return requestCount.Load() == 2
 	}, 2*time.Second, 25*time.Millisecond)
 }
 
