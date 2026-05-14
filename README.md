@@ -122,6 +122,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Adaptive server-side aggregation to prevent overcrowded x-axis labels
   - Extensible time-window model ready for future custom from/to filtering
   - Smooth line charts with tooltips
+- **Release Update Banner**: Dashboard notification when a newer stable GitHub release is available
+  - Checks the latest GitHub release in the background, not on every dashboard refresh
+  - Uses semantic version comparison with support for `v1.2.3` and `1.2.3` tags
+  - Shows the latest available release for `dev` builds
+  - Configurable check interval with a safe default of 1 hour
 - **Metrics Retention**: Configurable data retention with automatic cleanup
 - **Historical Data**: Query metrics by time range for trend analysis
 
@@ -194,6 +199,10 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - View DSN details
   - Create and update DSN settings
   - Delete DSNs
+- **Default A3 DSN creation**:
+  - Create the common A3 SQL Server User DSNs from a shared server name and login ID
+  - Creates missing defaults and skips existing DSNs without overwriting them
+  - Default DSNs: `A3Friend`, `A3ItemEvent`, `A3RcvResult`, `A3SerialList`, `ASD`, `EventA3`, `FriendDB`, `HSDB`, `LETTERDB`, `LocalServer`, `Login202`, `NEWASD`
 - **Connection testing** before save:
   - Test SQL auth/server/database connectivity using submitted form values
 - **Registry parity** with Windows ODBC UI:
@@ -396,9 +405,16 @@ The application uses environment variables for configuration. A `.env` file is a
 | `METRICS_COLLECTION_INTERVAL_SECONDS` | `60`                                               | How often to collect metrics             |
 | `METRICS_RETENTION_DAYS`              | `7`                                                | How long to keep metrics data            |
 | `METRICS_CLEANUP_INTERVAL_SECONDS`    | `3600`                                             | How often to clean up old metrics        |
+| `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases |
 | `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups      |
 | `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                |
 | `COOKIE_SECRET`                       | Auto-generated                                     | Secret for signing session cookies       |
+
+### Version Checks
+
+The agent checks `https://api.github.com/repos/omnihance/omnihance-a3-agent/releases/latest` in the background and caches the result in memory. The dashboard and `/api/status` read the cached value, so refreshing the UI does not call GitHub.
+
+Only stable GitHub releases are considered because GitHub's latest release endpoint excludes draft and prerelease releases. If the running version is `dev`, the dashboard shows the latest available release. For release builds, the checker compares semantic versions and shows the banner only when the GitHub release is newer.
 
 ## API Endpoints
 
@@ -426,7 +442,7 @@ The application uses environment variables for configuration. A `.env` file is a
 
 ### Status
 
-- `GET /api/status` - Get application status and version
+- `GET /api/status` - Get application status, current version, cached latest release details, and update availability
 
 ### File System
 
@@ -476,6 +492,7 @@ The application uses environment variables for configuration. A `.env` file is a
 - `GET /api/odbc/sqlserver-dsns` - List SQL Server User DSNs (requires `manage_server` permission)
 - `GET /api/odbc/sqlserver-dsns/{name}` - Get SQL Server User DSN details (requires `manage_server` permission)
 - `POST /api/odbc/sqlserver-dsns` - Create SQL Server User DSN (requires `manage_server` permission)
+- `POST /api/odbc/sqlserver-dsns/defaults` - Create missing default A3 SQL Server User DSNs and skip existing DSNs (requires `manage_server` permission)
 - `PUT /api/odbc/sqlserver-dsns/{name}` - Update SQL Server User DSN (requires `manage_server` permission)
 - `DELETE /api/odbc/sqlserver-dsns/{name}` - Delete SQL Server User DSN (requires `manage_server` permission)
 - `POST /api/odbc/sqlserver-dsns/test` - Test SQL Server connection using request payload (requires `manage_server` permission)
@@ -530,7 +547,7 @@ The application uses SQLite with the following main tables:
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
-8. **Monitor Metrics**: View system metrics on the dashboard with real-time charts (all authenticated users can view).
+8. **Monitor Metrics and Updates**: View system metrics on the dashboard with real-time charts (all authenticated users can view). If a newer stable Omnihance A3 Agent release is available, the dashboard shows a release banner with a GitHub link.
    - Use the top-right range selector above charts (default last hour) to switch between presets.
    - Chart density is automatically adjusted based on selected window to keep x-axis readable.
 
@@ -547,6 +564,8 @@ The application uses SQLite with the following main tables:
 
 11. **Manage SQL Server ODBC DSNs** (Admin and Super Admin only):
     - Navigate to the SQL ODBC page
+    - Click "Create default ODBC values" to create the common A3 SQL Server User DSNs from a server name and user ID
+    - Existing default DSNs are skipped so their current values are not overwritten
     - Add DSN name, SQL Server name, login ID, password, and default database
     - Test connection before saving
     - Update or delete DSNs as needed

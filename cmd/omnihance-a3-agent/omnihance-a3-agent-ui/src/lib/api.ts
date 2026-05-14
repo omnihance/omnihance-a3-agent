@@ -161,6 +161,9 @@ const StatusResponseSchema = z.object({
   version: z.string(),
   setup_done: z.boolean(),
   new_version_available: z.boolean(),
+  latest_version: z.string().nullable(),
+  latest_release_url: z.string().nullable(),
+  version_checked_at: z.string().nullable(),
   metrics_enabled: z.boolean(),
 });
 

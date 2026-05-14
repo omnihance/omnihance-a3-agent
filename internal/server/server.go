@@ -22,6 +22,7 @@ type Server struct {
 	fileEditor           services.FileEditorService
 	processService       services.ProcessService
 	serverManagerService services.ServerManagerService
+	versionChecker       services.VersionCheckerService
 }
 
 func NewServer(
@@ -34,6 +35,7 @@ func NewServer(
 	fileEditor services.FileEditorService,
 	processService services.ProcessService,
 	serverManagerService services.ServerManagerService,
+	versionChecker services.VersionCheckerService,
 ) *http.Server {
 	newServer := &Server{
 		cfg:                  cfg,
@@ -45,6 +47,7 @@ func NewServer(
 		fileEditor:           fileEditor,
 		processService:       processService,
 		serverManagerService: serverManagerService,
+		versionChecker:       versionChecker,
 	}
 
 	server := &http.Server{

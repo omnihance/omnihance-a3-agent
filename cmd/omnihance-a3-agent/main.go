@@ -67,6 +67,16 @@ func main() {
 	fileEditor := services.NewFileEditorService(log)
 	processService := services.NewProcessService(log)
 	serverManagerService := services.NewServerManagerService(internalDB, processService, log)
+	versionChecker := services.NewVersionCheckerService(cfg, log, version)
+	if err := versionChecker.Start(); err != nil {
+		log.Error("Could not start version checker service", logger.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+
+	defer func() {
+		_ = versionChecker.Stop()
+	}()
+
 	server := server.NewServer(
 		cfg, log,
 		frontendFiles,
@@ -76,6 +86,7 @@ func main() {
 		fileEditor,
 		processService,
 		serverManagerService,
+		versionChecker,
 	)
 	if err := server.ListenAndServe(); err != nil {
 		log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})
