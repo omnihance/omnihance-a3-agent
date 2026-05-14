@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit, Loader2, Plus, PlugZap, Trash2 } from 'lucide-react';
+import { Database, Edit, Loader2, Plus, PlugZap, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   APIError,
+  createDefaultSQLServerODBCDSNs,
   createSQLServerODBCDSN,
   deleteSQLServerODBCDSN,
   testSQLServerODBCDSNConnection,
   updateSQLServerODBCDSN,
   getSQLServerODBCDSNs,
+  type SQLServerODBCDefaultDSNRequest,
   type SQLServerODBCDSN,
   type SQLServerODBCDSNRequest,
 } from '@/lib/api';
@@ -57,8 +59,11 @@ const emptyForm: SQLServerODBCDSNRequest = {
   database: '',
   login_id: '',
   password: '',
-  description: '',
-  last_user: '',
+};
+
+const emptyDefaultForm: SQLServerODBCDefaultDSNRequest = {
+  server: '',
+  login_id: '',
 };
 
 export function SQLServerODBCPage() {
@@ -67,8 +72,11 @@ export function SQLServerODBCPage() {
   const canManageServer = hasPermission('manage_server');
 
   const [form, setForm] = useState<SQLServerODBCDSNRequest>(emptyForm);
+  const [defaultForm, setDefaultForm] =
+    useState<SQLServerODBCDefaultDSNRequest>(emptyDefaultForm);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [defaultDialogOpen, setDefaultDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDSN, setSelectedDSN] = useState<SQLServerODBCDSN | null>(null);
 
@@ -119,37 +127,70 @@ export function SQLServerODBCPage() {
     onError: (error: APIError) => toast.error(error.getErrorMessage()),
   });
 
+  const createDefaultsMutation = useMutation({
+    mutationFn: createDefaultSQLServerODBCDSNs,
+    onSuccess: (result) => {
+      invalidate();
+      toast.success(
+        `Created ${result.created.length} DSNs, skipped ${result.skipped.length} existing DSNs`,
+      );
+      setDefaultDialogOpen(false);
+      setDefaultForm(emptyDefaultForm);
+    },
+    onError: (error: APIError) => toast.error(error.getErrorMessage()),
+  });
+
   const testMutation = useMutation({
     mutationFn: testSQLServerODBCDSNConnection,
     onSuccess: () => toast.success('Connection successful'),
     onError: (error: APIError) => toast.error(error.getErrorMessage()),
   });
 
-  const validateAndGetPayload = (): SQLServerODBCDSNRequest | null => {
+  const validateAndGetSavePayload = (): SQLServerODBCDSNRequest | null => {
     if (
       !form.name.trim() ||
       !form.server.trim() ||
       !form.database.trim() ||
-      !form.login_id.trim() ||
-      !form.password.trim()
+      !form.login_id.trim()
     ) {
-      toast.error(
-        'Name, server, database, login id, and password are required',
-      );
+      toast.error('Name, server, database, and login id are required');
       return null;
     }
 
     return {
-      ...form,
       name: form.name.trim(),
       server: form.server.trim(),
       database: form.database.trim(),
       login_id: form.login_id.trim(),
-      password: form.password,
-      description: form.description?.trim() || '',
-      last_user: form.last_user?.trim() || '',
+      password: form.password?.trim() || '',
     };
   };
+
+  const validateAndGetTestPayload = (): SQLServerODBCDSNRequest | null => {
+    const payload = validateAndGetSavePayload();
+    if (!payload) {
+      return null;
+    }
+    if (!form.password?.trim()) {
+      toast.error('Password is required to test the connection');
+      return null;
+    }
+
+    return { ...payload, password: form.password.trim() };
+  };
+
+  const validateAndGetDefaultPayload =
+    (): SQLServerODBCDefaultDSNRequest | null => {
+      if (!defaultForm.server.trim() || !defaultForm.login_id.trim()) {
+        toast.error('Server and user id are required');
+        return null;
+      }
+
+      return {
+        server: defaultForm.server.trim(),
+        login_id: defaultForm.login_id.trim(),
+      };
+    };
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -164,10 +205,13 @@ export function SQLServerODBCPage() {
       database: dsn.database,
       login_id: dsn.login_id,
       password: '',
-      description: dsn.description ?? '',
-      last_user: dsn.last_user ?? '',
     });
     setEditDialogOpen(true);
+  };
+
+  const openDefaults = () => {
+    setDefaultForm(emptyDefaultForm);
+    setDefaultDialogOpen(true);
   };
 
   return (
@@ -180,10 +224,20 @@ export function SQLServerODBCPage() {
           </p>
         </div>
         {canManageServer && (
-          <Button onClick={openAdd}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add DSN
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={openDefaults}
+              aria-label="Create default ODBC values"
+            >
+              <Database className="mr-2 h-4 w-4" />
+              Create default ODBC values
+            </Button>
+            <Button onClick={openAdd} aria-label="Add DSN">
+              <Plus className="mr-2 h-4 w-4" />
+              Add DSN
+            </Button>
+          </div>
         )}
       </div>
 
@@ -270,7 +324,7 @@ export function SQLServerODBCPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const payload = validateAndGetPayload();
+                const payload = validateAndGetTestPayload();
                 if (payload) {
                   testMutation.mutate(payload);
                 }
@@ -286,7 +340,7 @@ export function SQLServerODBCPage() {
             </Button>
             <Button
               onClick={() => {
-                const payload = validateAndGetPayload();
+                const payload = validateAndGetSavePayload();
                 if (payload) {
                   createMutation.mutate(payload);
                 }
@@ -316,7 +370,7 @@ export function SQLServerODBCPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const payload = validateAndGetPayload();
+                const payload = validateAndGetTestPayload();
                 if (payload) {
                   testMutation.mutate(payload);
                 }
@@ -332,7 +386,7 @@ export function SQLServerODBCPage() {
             </Button>
             <Button
               onClick={() => {
-                const payload = validateAndGetPayload();
+                const payload = validateAndGetSavePayload();
                 if (payload && selectedDSN) {
                   updateMutation.mutate({ name: selectedDSN.name, payload });
                 }
@@ -343,6 +397,59 @@ export function SQLServerODBCPage() {
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
               Update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={defaultDialogOpen} onOpenChange={setDefaultDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create default ODBC values</DialogTitle>
+            <DialogDescription>Create missing A3 User DSNs</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="default-dsn-server">Server</Label>
+              <Input
+                id="default-dsn-server"
+                value={defaultForm.server}
+                onChange={(e) =>
+                  setDefaultForm({ ...defaultForm, server: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="default-dsn-login">User ID</Label>
+              <Input
+                id="default-dsn-login"
+                value={defaultForm.login_id}
+                onChange={(e) =>
+                  setDefaultForm({ ...defaultForm, login_id: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDefaultDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const payload = validateAndGetDefaultPayload();
+                if (payload) {
+                  createDefaultsMutation.mutate(payload);
+                }
+              }}
+              disabled={createDefaultsMutation.isPending}
+            >
+              {createDefaultsMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -430,14 +537,6 @@ function DSNForm({
           type="password"
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="dsn-description">Description</Label>
-        <Input
-          id="dsn-description"
-          value={form.description || ''}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
       </div>
     </div>
