@@ -27,6 +27,7 @@ type EnvVars struct {
 	CookieSecret                     string
 	MaxFileUploadSizeMb              int
 	DirectoryShortcutsLimit          int
+	VersionCheckIntervalSeconds      int
 }
 
 var defaultEnvVars = map[string]string{
@@ -42,6 +43,7 @@ var defaultEnvVars = map[string]string{
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
 	"COOKIE_SECRET":                       externalUtils.GenerateRandomString(32),
 	"DIRECTORY_SHORTCUTS_LIMIT":           "5",
+	"VERSION_CHECK_INTERVAL_SECONDS":      "3600",
 }
 
 func New() *EnvVars {
@@ -113,6 +115,16 @@ func New() *EnvVars {
 		directoryShortcutsLimit = 0
 	}
 
+	versionCheckIntervalSeconds, err := strconv.Atoi(os.Getenv("VERSION_CHECK_INTERVAL_SECONDS"))
+	if err != nil {
+		slog.Warn("Could not get version check interval seconds: " + err.Error())
+		versionCheckIntervalSeconds = 3600
+	}
+
+	if versionCheckIntervalSeconds <= 0 {
+		versionCheckIntervalSeconds = 3600
+	}
+
 	return &EnvVars{
 		Port:                             os.Getenv("PORT"),
 		LogLevel:                         os.Getenv("LOG_LEVEL"),
@@ -127,6 +139,7 @@ func New() *EnvVars {
 		CookieSecret:                     cookieSecret,
 		MaxFileUploadSizeMb:              maxFileUploadSizeMb,
 		DirectoryShortcutsLimit:          directoryShortcutsLimit,
+		VersionCheckIntervalSeconds:      versionCheckIntervalSeconds,
 	}
 }
 

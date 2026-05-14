@@ -2670,6 +2670,22 @@ components:
           type: boolean
           description: Whether a new version is available
           example: false
+        latest_version:
+          type: string
+          nullable: true
+          description: Latest stable release version available on GitHub
+          example: "v1.1.0"
+        latest_release_url:
+          type: string
+          nullable: true
+          description: URL for the latest stable GitHub release
+          example: "https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0"
+        version_checked_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the cached version check was last refreshed
+          example: "2026-05-14T10:00:00Z"
         metrics_enabled:
           type: boolean
           description: Whether metrics collection is enabled

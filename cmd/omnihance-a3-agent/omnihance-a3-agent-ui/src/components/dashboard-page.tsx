@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { Component, type ReactNode, useState } from 'react';
 import {
   Cpu,
+  ExternalLink,
   Loader2,
   MemoryStick,
   Globe,
@@ -10,11 +11,13 @@ import {
   CheckCircle2,
   XCircle,
   Layers,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -62,6 +65,19 @@ function DashboardPageContent() {
     isError: statusError,
   } = useStatus();
 
+  const latestVersion = status?.latest_version;
+  const latestReleaseURL = status?.latest_release_url;
+  const showVersionBanner =
+    status?.new_version_available === true &&
+    latestVersion !== null &&
+    latestVersion !== undefined &&
+    latestReleaseURL !== null &&
+    latestReleaseURL !== undefined;
+  const versionBannerMessage =
+    status?.version?.toLowerCase() === 'dev'
+      ? `Latest release ${latestVersion} is available. You are running a dev build.`
+      : `New version ${latestVersion} is available. You are running ${status?.version ?? 'unknown'}.`;
+
   const { data: metricsSummary } = useQuery({
     queryKey: queryKeys.metricsSummary,
     queryFn: getMetricsSummary,
@@ -86,9 +102,6 @@ function DashboardPageContent() {
               <h1 className="text-2xl font-bold tracking-tight">
                 {status?.name || APP_NAME}
               </h1>
-              {status?.new_version_available && (
-                <Badge variant="secondary">Update Available</Badge>
-              )}
             </div>
             <p className="text-muted-foreground">
               {status?.version
@@ -98,6 +111,27 @@ function DashboardPageContent() {
           </div>
         </div>
       </div>
+
+      {showVersionBanner && latestReleaseURL && (
+        <Alert className="mb-6 border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100">
+          <Megaphone className="h-4 w-4" />
+          <AlertTitle>New version available</AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{versionBannerMessage}</span>
+            <Button asChild size="sm" variant="outline">
+              <a
+                href={latestReleaseURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`View ${latestVersion} release on GitHub`}
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>View Release</span>
+              </a>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
