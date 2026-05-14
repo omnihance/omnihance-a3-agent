@@ -58,9 +58,29 @@ func (m *fakeManager) Delete(name string) error {
 }
 
 func TestValidateDSN(t *testing.T) {
-	err := validateDSN(DSN{})
+	err := validatePersistDSN(DSN{})
 	if !errors.Is(err, ErrNameRequired) {
 		t.Fatalf("expected ErrNameRequired, got %v", err)
+	}
+
+	err = validatePersistDSN(DSN{
+		Name:     "A3",
+		Server:   "localhost",
+		Database: "A3",
+		LoginID:  "sa",
+	})
+	if err != nil {
+		t.Fatalf("persist validation should not require password: %v", err)
+	}
+
+	err = validateTestDSN(DSN{
+		Name:     "A3",
+		Server:   "localhost",
+		Database: "A3",
+		LoginID:  "sa",
+	})
+	if !errors.Is(err, ErrPasswordRequired) {
+		t.Fatalf("expected ErrPasswordRequired, got %v", err)
 	}
 }
 
@@ -77,6 +97,50 @@ func TestFromConfig(t *testing.T) {
 	})
 	if result.Name != "A3" || result.Server != "localhost" || result.Database != "A3DB" {
 		t.Fatalf("unexpected mapping result: %+v", result)
+	}
+}
+
+func TestToConfigMatchesA3RegistryExport(t *testing.T) {
+	originalResolveDriverPath := resolveDriverPath
+	resolveDriverPath = func() (string, error) {
+		return `C:\WINDOWS\system32\SQLSRV32.dll`, nil
+	}
+	defer func() {
+		resolveDriverPath = originalResolveDriverPath
+	}()
+
+	cfg, err := toConfig(DSN{
+		Name:     "ASD",
+		Server:   `DESKTOP-PE9M1HH\SQLEXPRESS`,
+		Database: "ASD",
+		LoginID:  "sa",
+		Password: "secret",
+	})
+	if err != nil {
+		t.Fatalf("toConfig failed: %v", err)
+	}
+
+	expected := map[string]string{
+		"Driver":   `C:\WINDOWS\system32\SQLSRV32.dll`,
+		"Server":   `DESKTOP-PE9M1HH\SQLEXPRESS`,
+		"Database": "ASD",
+		"LastUser": "sa",
+	}
+	if cfg.Name != "ASD" || cfg.Driver != DriverName {
+		t.Fatalf("unexpected config metadata: %+v", cfg)
+	}
+	if len(cfg.Attrs) != len(expected) {
+		t.Fatalf("unexpected attrs: %+v", cfg.Attrs)
+	}
+	for key, value := range expected {
+		if cfg.Attrs[key] != value {
+			t.Fatalf("attr %s = %q, want %q", key, cfg.Attrs[key], value)
+		}
+	}
+	for _, key := range []string{"UID", "PWD", "Trusted_Connection", "Description"} {
+		if _, ok := cfg.Attrs[key]; ok {
+			t.Fatalf("unexpected persisted attr %s", key)
+		}
 	}
 }
 
@@ -114,6 +178,48 @@ func TestServiceCRUD(t *testing.T) {
 
 	if err := service.Delete("A3"); err != nil {
 		t.Fatalf("delete failed: %v", err)
+	}
+}
+
+func TestCreateDefaultsSkipsExistingDSNs(t *testing.T) {
+	originalResolveDriverPath := resolveDriverPath
+	resolveDriverPath = func() (string, error) {
+		return `C:\WINDOWS\system32\SQLSRV32.dll`, nil
+	}
+	defer func() {
+		resolveDriverPath = originalResolveDriverPath
+	}()
+
+	manager := newFakeManager()
+	manager.items["ASD"] = userdsn.Config{
+		Name:   "ASD",
+		Driver: DriverName,
+		Attrs: map[string]string{
+			"Server":   "old",
+			"Database": "old",
+		},
+	}
+
+	service := NewService(manager)
+	result, err := service.CreateDefaults(`DESKTOP-PE9M1HH\SQLEXPRESS`, "sa")
+	if err != nil {
+		t.Fatalf("CreateDefaults failed: %v", err)
+	}
+	if len(result.Created) != len(defaultDSNs)-1 {
+		t.Fatalf("created %d defaults, want %d", len(result.Created), len(defaultDSNs)-1)
+	}
+	if len(result.Skipped) != 1 || result.Skipped[0] != "ASD" {
+		t.Fatalf("unexpected skipped defaults: %+v", result.Skipped)
+	}
+	if manager.items["ASD"].Attrs["Server"] != "old" {
+		t.Fatal("existing DSN was overwritten")
+	}
+
+	itemEvent := manager.items["A3ItemEvent"]
+	if itemEvent.Attrs["Database"] != "A3ItemEvent" ||
+		itemEvent.Attrs["LastUser"] != "sa" ||
+		itemEvent.Attrs["Server"] != `DESKTOP-PE9M1HH\SQLEXPRESS` {
+		t.Fatalf("unexpected default DSN attrs: %+v", itemEvent.Attrs)
 	}
 }
 

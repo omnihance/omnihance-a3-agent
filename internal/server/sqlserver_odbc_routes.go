@@ -82,6 +82,42 @@ func (s *Server) InitializeSQLServerODBCDSNRoutes(r *chi.Mux) {
 			}
 			_ = utils.WriteJSONResponse(w, dsn)
 		})
+		r.Post("/defaults", func(w http.ResponseWriter, r *http.Request) {
+			if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
+				return
+			}
+
+			var req sqlServerDefaultDSNRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeODBCValidationError(w, "Invalid request body")
+				return
+			}
+			if err := validator.New().Struct(req); err != nil {
+				writeODBCValidationError(w, err.Error())
+				return
+			}
+
+			result, err := service.CreateDefaults(req.Server, req.LoginID)
+			if err != nil {
+				if isODBCValidationError(err) {
+					writeODBCValidationError(w, err.Error())
+					return
+				}
+				writeODBCError(w, http.StatusInternalServerError, err)
+				return
+			}
+
+			dsns, err := service.List()
+			if err != nil {
+				writeODBCError(w, http.StatusInternalServerError, err)
+				return
+			}
+			_ = utils.WriteJSONResponse(w, map[string]interface{}{
+				"created": result.Created,
+				"skipped": result.Skipped,
+				"dsns":    dsns,
+			})
+		})
 		r.Put("/{name}", func(w http.ResponseWriter, r *http.Request) {
 			if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
 				return
@@ -159,24 +195,25 @@ func (s *Server) InitializeSQLServerODBCDSNRoutes(r *chi.Mux) {
 }
 
 type sqlServerDSNRequest struct {
-	Name        string `json:"name" validate:"required"`
-	Server      string `json:"server" validate:"required"`
-	Database    string `json:"database" validate:"required"`
-	LoginID     string `json:"login_id" validate:"required"`
-	Password    string `json:"password" validate:"required"`
-	Description string `json:"description"`
-	LastUser    string `json:"last_user"`
+	Name     string `json:"name" validate:"required"`
+	Server   string `json:"server" validate:"required"`
+	Database string `json:"database" validate:"required"`
+	LoginID  string `json:"login_id" validate:"required"`
+	Password string `json:"password"`
+}
+
+type sqlServerDefaultDSNRequest struct {
+	Server  string `json:"server" validate:"required"`
+	LoginID string `json:"login_id" validate:"required"`
 }
 
 func (r sqlServerDSNRequest) toModel() sqlserverdsn.DSN {
 	return sqlserverdsn.DSN{
-		Name:        r.Name,
-		Server:      r.Server,
-		Database:    r.Database,
-		LoginID:     r.LoginID,
-		Password:    r.Password,
-		Description: r.Description,
-		LastUser:    r.LastUser,
+		Name:     r.Name,
+		Server:   r.Server,
+		Database: r.Database,
+		LoginID:  r.LoginID,
+		Password: r.Password,
 	}
 }
 

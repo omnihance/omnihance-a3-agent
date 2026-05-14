@@ -47,6 +47,7 @@ export const API_ROUTES = {
   ODBC_SQLSERVER_DSNS: '/api/odbc/sqlserver-dsns',
   ODBC_SQLSERVER_DSN: (name: string) =>
     `/api/odbc/sqlserver-dsns/${encodeURIComponent(name)}`,
+  ODBC_SQLSERVER_DEFAULT_DSNS: '/api/odbc/sqlserver-dsns/defaults',
   ODBC_SQLSERVER_DSN_TEST: '/api/odbc/sqlserver-dsns/test',
 } as const;
 
@@ -1334,7 +1335,6 @@ const SQLServerODBCDSNSchema = z.object({
   server: z.string(),
   database: z.string(),
   login_id: z.string(),
-  description: z.string().optional(),
   last_user: z.string().optional(),
 });
 
@@ -1349,13 +1349,34 @@ const SQLServerODBCDSNRequestSchema = z.object({
   server: z.string().min(1),
   database: z.string().min(1),
   login_id: z.string().min(1),
-  password: z.string().min(1),
-  description: z.string().optional(),
-  last_user: z.string().optional(),
+  password: z.string().optional(),
 });
 
 export type SQLServerODBCDSNRequest = z.infer<
   typeof SQLServerODBCDSNRequestSchema
+>;
+
+const SQLServerODBCDSNTestRequestSchema = SQLServerODBCDSNRequestSchema.extend({
+  password: z.string().min(1),
+});
+
+const SQLServerODBCDefaultDSNRequestSchema = z.object({
+  server: z.string().min(1),
+  login_id: z.string().min(1),
+});
+
+export type SQLServerODBCDefaultDSNRequest = z.infer<
+  typeof SQLServerODBCDefaultDSNRequestSchema
+>;
+
+const SQLServerODBCDefaultDSNResponseSchema = z.object({
+  created: z.array(z.string()),
+  skipped: z.array(z.string()),
+  dsns: z.array(SQLServerODBCDSNSchema),
+});
+
+export type SQLServerODBCDefaultDSNResponse = z.infer<
+  typeof SQLServerODBCDefaultDSNResponseSchema
 >;
 
 const SQLServerODBCDSNTestResponseSchema = z.object({
@@ -1408,6 +1429,20 @@ export async function updateSQLServerODBCDSN(
   return validateResponse(SQLServerODBCDSNSchema, response.data, route);
 }
 
+export async function createDefaultSQLServerODBCDSNs(
+  payload: SQLServerODBCDefaultDSNRequest,
+): Promise<SQLServerODBCDefaultDSNResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.ODBC_SQLSERVER_DEFAULT_DSNS,
+    SQLServerODBCDefaultDSNRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    SQLServerODBCDefaultDSNResponseSchema,
+    response.data,
+    API_ROUTES.ODBC_SQLSERVER_DEFAULT_DSNS,
+  );
+}
+
 export async function deleteSQLServerODBCDSN(
   name: string,
 ): Promise<MessageResponse> {
@@ -1421,7 +1456,7 @@ export async function testSQLServerODBCDSNConnection(
 ): Promise<MessageResponse> {
   const response = await axiosInstance.post<unknown>(
     API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
-    SQLServerODBCDSNRequestSchema.parse(payload),
+    SQLServerODBCDSNTestRequestSchema.parse(payload),
   );
   return validateResponse(
     SQLServerODBCDSNTestResponseSchema,
