@@ -237,7 +237,7 @@ func validatePortSetting(value string) (string, error) {
 	normalizedValue := strings.TrimSpace(value)
 	port, err := strconv.ParseUint(normalizedValue, 10, 16)
 	if err != nil || port == 0 {
-		return "", fmt.Errorf("Game server DB port must be between 1 and 65535")
+		return "", fmt.Errorf("game server DB port must be between 1 and 65535")
 	}
 
 	return strconv.FormatUint(port, 10), nil

@@ -704,7 +704,7 @@ func (s *backupService) runFileBackup(ctx context.Context, job db.BackupJob, run
 		return err
 	}
 
-	output.WriteString(fmt.Sprintf("Archived %s (%d bytes).\n", sourceInfo.Name(), archiveInfo.Size()))
+	_, _ = fmt.Fprintf(output, "Archived %s (%d bytes).\n", sourceInfo.Name(), archiveInfo.Size())
 
 	return nil
 }
