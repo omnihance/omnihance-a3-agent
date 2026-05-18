@@ -1,6 +1,6 @@
 # Omnihance A3 Agent
 
-A comprehensive web-based management platform for A3 Online MMO game servers. This application provides a beautiful, modern interface to control and manage your A3 server files, monitor system metrics, and handle user authentication.
+A comprehensive web-based management platform for A3 Online MMO game servers. This application provides a beautiful, modern interface to control and manage your A3 server files, monitor system metrics, run backups, and handle user authentication.
 
 ## Overview
 
@@ -8,7 +8,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
 
 - **Backend**: Go-based REST API server with embedded SQLite database
 - **Frontend**: ReactJS 19 web application with TypeScript, embedded in the Go binary
-- **Purpose**: Provide a web interface to manage A3 Online server files, monitor system performance, and handle user access
+- **Purpose**: Provide a web interface to manage A3 Online server files, monitor system performance, run file and SQL Server backups, and handle user access
 
 ## Features
 
@@ -212,6 +212,31 @@ Omnihance A3 Agent is a full-stack application consisting of:
 
 ### 🔧 Additional Features
 
+#### Backup Jobs
+
+- **File and directory backups**:
+  - Create manual or scheduled jobs for a selected file or directory
+  - Destination directories are created when missing, and destination paths must be directories
+  - Source path and destination path fields support searchable path suggestions
+- **Local SQL Server backups**:
+  - Back up one or more comma-separated database names
+  - SQL Server host, port, username, and password can be prefilled from settings
+  - Remote SQL Server hosts are rejected; only local SQL Server backups are supported
+  - Each database is backed up to `.bak` first, then archived for download
+- **Scheduling and control**:
+  - Optional cron expressions enable automatic runs; empty cron values are manual-only
+  - Jobs can be active, inactive, running, deleted, or future extensible statuses
+  - Running jobs cannot be edited or deleted
+  - Manual runs, cancellation, and paginated run history are available from the Backups page
+  - Cron collisions create skipped run records instead of starting concurrent runs
+- **Backup outputs**:
+  - Archives are ZIP files using best Deflate compression
+  - Archive passwords use AES-256 ZIP encryption when provided
+  - Output files use `{item-name}-{job-id}-YYYYMMDDHHMMSS.zip`; a numeric suffix is added if needed
+  - Run details record logs, errors, cancellation state, and output file links
+
+#### Platform Features
+
 - **API Documentation**: OpenAPI/Swagger documentation embedded
 - **Health Check**: `/health` endpoint for monitoring
 - **CORS Support**: Configurable CORS for cross-origin requests
@@ -268,6 +293,8 @@ internal/
     └── port_checker.go          # TCP port availability checking
 ```
 
+Backup-related backend code lives in `internal/db/backup_jobs.go`, `internal/server/backup_routes.go`, `internal/services/backup_service.go`, and `internal/services/backup_sql_service_*.go`.
+
 ### Frontend Structure
 
 ```
@@ -303,6 +330,8 @@ omnihance-a3-agent-ui/
   │   └── integrations/        # Third-party integrations
 ```
 
+The Backups UI is implemented in `src/components/backup-page.tsx` with its route in `src/routes/backups.tsx`.
+
 ## Tech Stack
 
 ### Backend
@@ -312,7 +341,8 @@ omnihance-a3-agent-ui/
 - **Database**: SQLite (modernc.org/sqlite)
 - **Logging**: Zerolog
 - **Validation**: go-playground/validator
-- **Cron**: robfig/cron/v3 (for metrics collection)
+- **Cron**: robfig/cron/v3 (for metrics collection and backup scheduling)
+- **Archives**: yeka/zip for ZIP creation and AES-encrypted backup archives
 - **Crypto**: golang.org/x/crypto (bcrypt for passwords)
 
 ### Frontend
@@ -407,6 +437,7 @@ The application uses environment variables for configuration. A `.env` file is a
 | `METRICS_CLEANUP_INTERVAL_SECONDS`    | `3600`                                             | How often to clean up old metrics        |
 | `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases |
 | `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups      |
+| `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files |
 | `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                |
 | `COOKIE_SECRET`                       | Auto-generated                                     | Secret for signing session cookies       |
 
@@ -497,6 +528,21 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `DELETE /api/odbc/sqlserver-dsns/{name}` - Delete SQL Server User DSN (requires `manage_server` permission)
 - `POST /api/odbc/sqlserver-dsns/test` - Test SQL Server connection using request payload (requires `manage_server` permission)
 
+### Backups
+
+- `GET /api/backups/jobs` - List backup jobs (requires `manage_server` permission)
+- `POST /api/backups/jobs` - Create a file or local SQL Server backup job (requires `manage_server` permission)
+- `GET /api/backups/jobs/{id}` - Get backup job details, including stored passwords for authorized users
+- `PUT /api/backups/jobs/{id}` - Update a backup job and reschedule cron if needed
+- `DELETE /api/backups/jobs/{id}` - Soft delete a backup job; running jobs cannot be deleted
+- `POST /api/backups/jobs/{id}/run` - Manually trigger a backup job
+- `POST /api/backups/jobs/{id}/cancel` - Cancel a running backup job
+- `GET /api/backups/jobs/{id}/runs` - List paginated run history for a backup job
+- `GET /api/backups/runs/{run_id}` - Get run details, logs, errors, and output file metadata
+- `GET /api/backups/runs/{run_id}/files/{file_id}/download` - Download a backup output file
+- `GET /api/backups/path-search` - Search local source or destination paths
+- `GET /api/backups/defaults/sql-server` - Get SQL Server backup defaults and local server status
+
 ### Health
 
 - `GET /health` - Health check endpoint
@@ -516,6 +562,9 @@ The application uses SQLite with the following main tables:
   - Stores process name, file path, optional port, sequence order
   - Tracks start/end times for uptime calculation
   - Enforces unique paths to prevent duplicates
+- **backup_jobs**: Backup job definitions, scheduling metadata, paths, SQL settings, and statuses
+- **backup_runs**: Backup run history, trigger type, status, output logs, errors, and cancellation timestamps
+- **backup_run_files**: Output archive files created by each backup run
 - **metric_names**: Metric definitions
 - **metric_series**: Metric time series
 - **metric_samples**: Metric data points
@@ -569,6 +618,13 @@ The application uses SQLite with the following main tables:
     - Add DSN name, SQL Server name, login ID, password, and default database
     - Test connection before saving
     - Update or delete DSNs as needed
+
+12. **Create and Run Backups** (Admin and Super Admin only):
+    - Navigate to the Backups page
+    - Create file/directory jobs or local SQL Server jobs
+    - Leave the cron expression empty for manual-only backups, or add a cron expression for scheduled runs
+    - Optionally set an archive password for encrypted ZIP output
+    - Trigger jobs manually, cancel running jobs, and review paginated run history with output file downloads
 
 ## Development Commands
 
