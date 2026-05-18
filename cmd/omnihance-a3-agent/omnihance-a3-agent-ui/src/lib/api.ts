@@ -44,6 +44,8 @@ export const API_ROUTES = {
   SERVER_PROCESS_STATUS: (id: number) => `/api/server/processes/${id}/status`,
   DIRECTORY_SHORTCUTS: '/api/directory-shortcuts',
   DIRECTORY_SHORTCUT: (id: number) => `/api/directory-shortcuts/${id}`,
+  SETTINGS: '/api/settings',
+  SETTING: (key: string) => `/api/settings/${encodeURIComponent(key)}`,
   ODBC_SQLSERVER_DSNS: '/api/odbc/sqlserver-dsns',
   ODBC_SQLSERVER_DSN: (name: string) =>
     `/api/odbc/sqlserver-dsns/${encodeURIComponent(name)}`,
@@ -1125,6 +1127,88 @@ const MessageResponseSchema = z.object({
 });
 
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
+
+const SettingKeySchema = z.enum(['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS']);
+
+export type SettingKey = z.infer<typeof SettingKeySchema>;
+
+const SettingDefinitionSchema = z.object({
+  key: SettingKeySchema,
+  label: z.string(),
+  description: z.string(),
+  value_type: z.string(),
+  input_type: z.enum(['text', 'number', 'password']),
+});
+
+export type SettingDefinition = z.infer<typeof SettingDefinitionSchema>;
+
+const SettingSchema = z.object({
+  key: SettingKeySchema,
+  value: z.string(),
+  created_by: z.number().int().nullable(),
+  created_at: z.string(),
+  updated_by: z.number().int().nullable(),
+  updated_at: z.string().nullable(),
+});
+
+export type Setting = z.infer<typeof SettingSchema>;
+
+const SettingsResponseSchema = z.object({
+  settings: z.array(SettingSchema),
+  definitions: z.array(SettingDefinitionSchema),
+});
+
+export type SettingsResponse = z.infer<typeof SettingsResponseSchema>;
+
+const CreateSettingRequestSchema = z.object({
+  key: SettingKeySchema,
+  value: z.string(),
+});
+
+export type CreateSettingRequest = z.infer<typeof CreateSettingRequestSchema>;
+
+const UpdateSettingRequestSchema = z.object({
+  value: z.string(),
+});
+
+export type UpdateSettingRequest = z.infer<typeof UpdateSettingRequestSchema>;
+
+export async function getSettings(): Promise<SettingsResponse> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SETTINGS);
+  return validateResponse(
+    SettingsResponseSchema,
+    response.data,
+    API_ROUTES.SETTINGS,
+  );
+}
+
+export async function createSetting(
+  data: CreateSettingRequest,
+): Promise<Setting> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SETTINGS,
+    CreateSettingRequestSchema.parse(data),
+  );
+  return validateResponse(SettingSchema, response.data, API_ROUTES.SETTINGS);
+}
+
+export async function updateSetting(
+  key: SettingKey,
+  data: UpdateSettingRequest,
+): Promise<Setting> {
+  const route = API_ROUTES.SETTING(key);
+  const response = await axiosInstance.put<unknown>(
+    route,
+    UpdateSettingRequestSchema.parse(data),
+  );
+  return validateResponse(SettingSchema, response.data, route);
+}
+
+export async function deleteSetting(key: SettingKey): Promise<MessageResponse> {
+  const route = API_ROUTES.SETTING(key);
+  const response = await axiosInstance.delete<unknown>(route);
+  return validateResponse(MessageResponseSchema, response.data, route);
+}
 
 export async function getServerProcesses(): Promise<ServerProcess[]> {
   const response = await axiosInstance.get<unknown>(

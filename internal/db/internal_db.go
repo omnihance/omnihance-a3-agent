@@ -18,6 +18,8 @@ type InternalDB interface {
 	MigrateDown() error
 	GetSettings() ([]Settings, error)
 	GetSetting(key string) (*Settings, error)
+	CreateSetting(key string, value string, userID *int64) (*Settings, error)
+	UpdateSetting(key string, value string, userID *int64) (*Settings, error)
 	SetSetting(key string, value string, userID *int64) error
 	SetSettingIfNotExists(key string, value string, userID *int64) error
 	DeleteSetting(key string) error

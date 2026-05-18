@@ -670,6 +670,80 @@ func (_c *MockInternalDB_CreateSession_Call) RunAndReturn(run func(userID int64,
 	return _c
 }
 
+// CreateSetting provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateSetting(key string, value string, userID *int64) (*Settings, error) {
+	ret := _mock.Called(key, value, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateSetting")
+	}
+
+	var r0 *Settings
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) (*Settings, error)); ok {
+		return returnFunc(key, value, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) *Settings); ok {
+		r0 = returnFunc(key, value, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Settings)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string, *int64) error); ok {
+		r1 = returnFunc(key, value, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSetting'
+type MockInternalDB_CreateSetting_Call struct {
+	*mock.Call
+}
+
+// CreateSetting is a helper method to define mock.On call
+//   - key string
+//   - value string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateSetting(key interface{}, value interface{}, userID interface{}) *MockInternalDB_CreateSetting_Call {
+	return &MockInternalDB_CreateSetting_Call{Call: _e.mock.On("CreateSetting", key, value, userID)}
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) Run(run func(key string, value string, userID *int64)) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) Return(settings *Settings, err error) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Return(settings, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) RunAndReturn(run func(key string, value string, userID *int64) (*Settings, error)) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateUser provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateUser(email string, password string, roles string, createdBy *int64) (*User, error) {
 	ret := _mock.Called(email, password, roles, createdBy)
@@ -4149,6 +4223,80 @@ func (_c *MockInternalDB_UpdateSessionLastAccessed_Call) Return(err error) *Mock
 }
 
 func (_c *MockInternalDB_UpdateSessionLastAccessed_Call) RunAndReturn(run func(sessionID string) error) *MockInternalDB_UpdateSessionLastAccessed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateSetting provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateSetting(key string, value string, userID *int64) (*Settings, error) {
+	ret := _mock.Called(key, value, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateSetting")
+	}
+
+	var r0 *Settings
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) (*Settings, error)); ok {
+		return returnFunc(key, value, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) *Settings); ok {
+		r0 = returnFunc(key, value, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Settings)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string, *int64) error); ok {
+		r1 = returnFunc(key, value, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_UpdateSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSetting'
+type MockInternalDB_UpdateSetting_Call struct {
+	*mock.Call
+}
+
+// UpdateSetting is a helper method to define mock.On call
+//   - key string
+//   - value string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) UpdateSetting(key interface{}, value interface{}, userID interface{}) *MockInternalDB_UpdateSetting_Call {
+	return &MockInternalDB_UpdateSetting_Call{Call: _e.mock.On("UpdateSetting", key, value, userID)}
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) Run(run func(key string, value string, userID *int64)) *MockInternalDB_UpdateSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) Return(settings *Settings, err error) *MockInternalDB_UpdateSetting_Call {
+	_c.Call.Return(settings, err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) RunAndReturn(run func(key string, value string, userID *int64) (*Settings, error)) *MockInternalDB_UpdateSetting_Call {
 	_c.Call.Return(run)
 	return _c
 }

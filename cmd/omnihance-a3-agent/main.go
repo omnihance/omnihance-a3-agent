@@ -44,7 +44,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	_ = internalDB.SetDefaultSettings()
 	if cfg.MetricsEnabled {
 		metricsCollector := services.NewMetricsCollectorService(cfg, log, internalDB)
 		if err := metricsCollector.Start(); err != nil {

@@ -41,3 +41,10 @@ const (
 	ContextKeyUserEmail = "user_email"
 	ContextKeyUserRoles = "user_roles"
 )
+
+const (
+	SettingKeyDBHost = "DB_HOST"
+	SettingKeyDBPort = "DB_PORT"
+	SettingKeyDBUser = "DB_USER"
+	SettingKeyDBPass = "DB_PASS"
+)
