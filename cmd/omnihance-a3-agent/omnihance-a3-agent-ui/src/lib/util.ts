@@ -18,14 +18,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) {
+  if (!Number.isFinite(bytes) || bytes < 0) {
     return '0 Bytes';
   }
 
   const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
+  const dm = Number.isFinite(decimals)
+    ? Math.min(Math.max(0, Math.trunc(decimals)), 20)
+    : 0;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  let i = 0;
+
+  if (bytes >= 1) {
+    i = Math.floor(Math.log(bytes) / Math.log(k));
+    i = Math.min(Math.max(i, 0), sizes.length - 1);
+  }
 
   return (
     Number.parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
