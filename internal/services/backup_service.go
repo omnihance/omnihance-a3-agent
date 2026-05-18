@@ -183,7 +183,7 @@ func (s *backupService) GetJobs() ([]db.BackupJob, error) {
 func (s *backupService) GetJob(id int64) (*db.BackupJob, error) {
 	job, err := s.internalDB.GetBackupJob(id)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBackupNotFound, err)
+		return nil, backupNotFoundError(err)
 	}
 
 	return job, nil
@@ -380,7 +380,7 @@ func (s *backupService) GetRuns(jobID int64, page int, pageSize int) ([]db.Backu
 func (s *backupService) GetRunDetails(runID int64) (*BackupRunDetails, error) {
 	run, err := s.internalDB.GetBackupRun(runID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBackupNotFound, err)
+		return nil, backupNotFoundError(err)
 	}
 
 	files, err := s.internalDB.GetBackupRunFiles(run.ID)
@@ -397,10 +397,18 @@ func (s *backupService) GetRunDetails(runID int64) (*BackupRunDetails, error) {
 func (s *backupService) GetRunFile(fileID int64) (*db.BackupRunFile, error) {
 	file, err := s.internalDB.GetBackupRunFile(fileID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrBackupNotFound, err)
+		return nil, backupNotFoundError(err)
 	}
 
 	return file, nil
+}
+
+func backupNotFoundError(err error) error {
+	if errors.Is(err, db.ErrBackupNotFound) || errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("%w: %w", ErrBackupNotFound, err)
+	}
+
+	return err
 }
 
 func (s *backupService) SearchPaths(query string, kind string) ([]PathSearchResult, error) {

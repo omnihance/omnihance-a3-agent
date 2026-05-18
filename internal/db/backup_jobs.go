@@ -1,12 +1,15 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 )
+
+var ErrBackupNotFound = errors.New("backup item not found")
 
 const (
 	BackupJobTypeFile      = "file"
@@ -138,7 +141,7 @@ func (s *sqliteInternalDB) GetBackupJob(id int64) (*BackupJob, error) {
 	}
 
 	if !found {
-		return nil, fmt.Errorf("backup job %d not found", id)
+		return nil, fmt.Errorf("%w: backup job %d", ErrBackupNotFound, id)
 	}
 
 	return &job, nil
@@ -192,7 +195,7 @@ func (s *sqliteInternalDB) UpdateBackupJob(id int64, payload BackupJobPayload, u
 	}
 
 	if rowsAffected == 0 {
-		return nil, fmt.Errorf("backup job %d not found", id)
+		return nil, fmt.Errorf("%w: backup job %d", ErrBackupNotFound, id)
 	}
 
 	return s.GetBackupJob(id)
@@ -224,7 +227,7 @@ func (s *sqliteInternalDB) UpdateBackupJobStatus(id int64, status string, userID
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("backup job %d not found", id)
+		return fmt.Errorf("%w: backup job %d", ErrBackupNotFound, id)
 	}
 
 	return nil
@@ -258,7 +261,7 @@ func (s *sqliteInternalDB) DeleteBackupJob(id int64, userID *int64) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("backup job %d not found", id)
+		return fmt.Errorf("%w: backup job %d", ErrBackupNotFound, id)
 	}
 
 	return nil
@@ -399,7 +402,7 @@ func (s *sqliteInternalDB) GetBackupRun(id int64) (*BackupRun, error) {
 	}
 
 	if !found {
-		return nil, fmt.Errorf("backup run %d not found", id)
+		return nil, fmt.Errorf("%w: backup run %d", ErrBackupNotFound, id)
 	}
 
 	return &run, nil
@@ -566,7 +569,7 @@ func (s *sqliteInternalDB) GetBackupRunFile(id int64) (*BackupRunFile, error) {
 	}
 
 	if !found {
-		return nil, fmt.Errorf("backup run file %d not found", id)
+		return nil, fmt.Errorf("%w: backup run file %d", ErrBackupNotFound, id)
 	}
 
 	return &file, nil
