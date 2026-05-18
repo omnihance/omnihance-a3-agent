@@ -154,9 +154,15 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Bulk import with duplicate detection
   - Search and filter maps by name
   - Map name display in spawn file views (extracted from filename)
-- **Item Client Data**: Query item data from A3 client files
+- **Item Client Data**: Upload and query item data from A3 client files
+  - Upload IT0.ull, IT1.ull, IT2.ull, and IT3.ull files to populate item data
+  - Automatic ULL decryption and parsing for each item file type
+  - Bulk import with duplicate detection per item type
   - Search and filter items by name
   - Item data lookup support
+- **Client Data Counts**:
+  - View imported record counts for monsters, maps, and each item file type
+  - Use counts to confirm which client datasets have already been uploaded
 - **Smart Data Integration**:
   - Automatic monster name resolution in spawn file editing
   - Map name extraction from spawn file filenames (e.g., "0.n_ndt" → "Wolfreck")
@@ -212,6 +218,18 @@ Omnihance A3 Agent is a full-stack application consisting of:
 
 ### 🔧 Additional Features
 
+#### Directory Shortcuts and Settings
+
+- **Directory shortcuts**:
+  - Pin frequently used directories in the file browser per user
+  - Prevent duplicate shortcuts through normalized path checks
+  - Reject root-directory shortcuts to keep navigation focused
+  - Limit shortcut count with `DIRECTORY_SHORTCUTS_LIMIT`
+- **Game server database settings**:
+  - Manage `DB_HOST`, `DB_PORT`, `DB_USER`, and `DB_PASS` from the Settings page
+  - Validate supported keys and value types before save
+  - Reuse saved SQL Server values as backup defaults
+
 #### Backup Jobs
 
 - **File and directory backups**:
@@ -262,6 +280,7 @@ internal/
   │   ├── users.go              # User management
   │   ├── sessions.go           # Session management
   │   ├── settings.go           # Settings storage
+  │   ├── directory_shortcuts.go # Per-user pinned directories
   │   ├── file_revisions.go     # File revision tracking
   │   ├── metrics.go            # Metrics storage
   │   ├── monster_client_data.go # Monster client data storage
@@ -280,6 +299,10 @@ internal/
   │   ├── metrics_routes.go     # Metrics endpoints
   │   ├── session_routes.go     # Session management
   │   ├── server_routes.go      # Server process management endpoints
+  │   ├── directory_shortcuts_routes.go # Directory shortcut endpoints
+  │   ├── settings_routes.go    # Game server database settings endpoints
+  │   ├── sqlserver_odbc_routes.go # SQL Server ODBC DSN endpoints
+  │   ├── backup_routes.go      # Backup job and run endpoints
   │   ├── permissions.go        # Permission checking utilities
   │   └── status_routes.go      # Status endpoint
   ├── services/                  # Business logic
@@ -317,12 +340,19 @@ omnihance-a3-agent-ui/
   │   │   ├── metric-chart.tsx
   │   │   ├── client-data-page.tsx
   │   │   ├── manage-server-page.tsx
+  │   │   ├── settings-page.tsx
+  │   │   ├── sql-server-odbc-page.tsx
+  │   │   ├── backup-page.tsx
   │   │   ├── client-data/
   │   │   │   ├── monster-file-upload.tsx
-  │   │   │   └── map-file-upload.tsx
+  │   │   │   ├── map-file-upload.tsx
+  │   │   │   └── item-file-upload.tsx
   │   │   └── ui/              # shadcn/ui components
   │   ├── routes/              # Route definitions
-  │   │   └── manage-server.tsx
+  │   │   ├── manage-server.tsx
+  │   │   ├── settings.tsx
+  │   │   ├── sql-server-odbc.tsx
+  │   │   └── backups.tsx
   │   ├── hooks/               # Custom React hooks
   │   │   └── use-permissions.ts
   │   ├── lib/                 # Utilities and API client
@@ -330,7 +360,7 @@ omnihance-a3-agent-ui/
   │   └── integrations/        # Third-party integrations
 ```
 
-The Backups UI is implemented in `src/components/backup-page.tsx` with its route in `src/routes/backups.tsx`.
+The Backups, Settings, and SQL Server ODBC pages are implemented in `src/components/backup-page.tsx`, `src/components/settings-page.tsx`, and `src/components/sql-server-odbc-page.tsx` with matching routes under `src/routes/`.
 
 ## Tech Stack
 
@@ -438,6 +468,9 @@ The application uses environment variables for configuration. A `.env` file is a
 | `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases |
 | `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups      |
 | `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files |
+| `MAX_FILE_UPLOAD_SIZE_MB`             | `2`                                                | Maximum multipart upload size in MB      |
+| `DIRECTORY_SHORTCUTS_LIMIT`           | `5`                                                | Maximum pinned directories per user (`0` disables the limit) |
+| `RUNNING_IN_DOCKER`                   | `false`                                            | Disable host metrics collection when running in Docker |
 | `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                |
 | `COOKIE_SECRET`                       | Auto-generated                                     | Secret for signing session cookies       |
 
@@ -498,11 +531,29 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 
 ### Game Client Data
 
+- `GET /api/game-client-data/counts` - Get imported record counts for monsters, maps, and item file types
 - `GET /api/game-client-data/monsters` - Get monster client data (supports optional `s` query parameter for search)
 - `POST /api/game-client-data/upload-mon-file` - Upload MON.ull file to populate monster database
 - `GET /api/game-client-data/maps` - Get map client data (supports optional `s` query parameter for search)
 - `POST /api/game-client-data/upload-mc-file` - Upload MC.ull file to populate map database
 - `GET /api/game-client-data/items` - Get item client data (supports optional `s` query parameter for search)
+- `POST /api/game-client-data/upload-it0-file` - Upload IT0.ull file to populate item data
+- `POST /api/game-client-data/upload-it1-file` - Upload IT1.ull file to populate item data
+- `POST /api/game-client-data/upload-it2-file` - Upload IT2.ull file to populate item data
+- `POST /api/game-client-data/upload-it3-file` - Upload IT3.ull file to populate item data
+
+### Directory Shortcuts
+
+- `GET /api/directory-shortcuts` - List current user's pinned directory shortcuts with limit metadata
+- `POST /api/directory-shortcuts` - Create a pinned directory shortcut for the current user
+- `DELETE /api/directory-shortcuts/{id}` - Delete one of the current user's pinned directory shortcuts
+
+### Settings
+
+- `GET /api/settings` - List supported game server database settings and definitions (requires `manage_server` permission)
+- `POST /api/settings` - Create a supported setting (requires `manage_server` permission)
+- `PUT /api/settings/{key}` - Update a supported setting (requires `manage_server` permission)
+- `DELETE /api/settings/{key}` - Delete a supported setting (requires `manage_server` permission)
 
 ### Server Management
 
@@ -554,6 +605,7 @@ The application uses SQLite with the following main tables:
 - **users**: User accounts with roles and status
 - **sessions**: Active user sessions
 - **settings**: Key-value application settings
+- **directory_shortcuts**: Per-user pinned directories for faster file navigation
 - **file_revisions**: File edit history and revisions
 - **monster_client_data**: Monster data from MON.ull files (ID, name, timestamps)
 - **map_client_data**: Map data from MC.ull files (ID, name, timestamps)
@@ -586,9 +638,9 @@ The application uses SQLite with the following main tables:
    - Set/reset user passwords
    - Note: Super admin users cannot have their status changed
 
-5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull and MC.ull files to populate the monster and map databases (requires admin or super admin role).
+5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull, MC.ull, and IT0.ull through IT3.ull files to populate monster, map, and item databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Right-click files to duplicate them quickly.
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
 
@@ -619,7 +671,12 @@ The application uses SQLite with the following main tables:
     - Test connection before saving
     - Update or delete DSNs as needed
 
-12. **Create and Run Backups** (Admin and Super Admin only):
+12. **Configure Game Server Settings** (Admin and Super Admin only):
+    - Navigate to the Settings page
+    - Configure game server database host, port, username, and password
+    - Reuse saved database settings as local SQL Server backup defaults
+
+13. **Create and Run Backups** (Admin and Super Admin only):
     - Navigate to the Backups page
     - Create file/directory jobs or local SQL Server jobs
     - Leave the cron expression empty for manual-only backups, or add a cron expression for scheduled runs

@@ -24,6 +24,8 @@ tags:
     name: server-management
   - description: Directory shortcuts operations
     name: directory-shortcuts
+  - description: Game server settings operations
+    name: settings
   - description: SQL Server ODBC User DSN management operations
     name: odbc-sqlserver
   - description: Backup job and run operations
@@ -2287,6 +2289,196 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/settings:
+    get:
+      tags:
+        - settings
+      summary: List settings
+      description: Returns supported game server database settings and their UI definitions. Requires manage_server permission.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - settings
+      summary: Create setting
+      description: Creates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingRequest'
+      responses:
+        '200':
+          description: Setting created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Setting'
+        '400':
+          description: Bad Request - Invalid request body, unsupported key, invalid value, or setting already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/settings/{key}:
+    put:
+      tags:
+        - settings
+      summary: Update setting
+      description: Updates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          description: Setting key
+          example: DB_HOST
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSettingRequest'
+      responses:
+        '200':
+          description: Setting updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Setting'
+        '400':
+          description: Bad Request - Invalid request body, unsupported key, or invalid value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Setting not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - settings
+      summary: Delete setting
+      description: Deletes a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          description: Setting key
+          example: DB_HOST
+      responses:
+        '200':
+          description: Setting deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Bad Request - Unsupported setting key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Setting not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/odbc/sqlserver-dsns:
     get:
       tags:
@@ -4357,6 +4549,109 @@ components:
           minLength: 1
           description: Full path to the directory to pin
           example: "C:\\Users\\user\\Documents"
+    Setting:
+      type: object
+      description: Stored game server setting
+      properties:
+        key:
+          type: string
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          description: Setting key
+          example: DB_HOST
+        value:
+          type: string
+          description: Setting value
+          example: "127.0.0.1"
+        created_by:
+          type: integer
+          format: int64
+          nullable: true
+          description: User ID that created the setting
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the setting was created
+          example: "2024-01-01T00:00:00Z"
+        updated_by:
+          type: integer
+          format: int64
+          nullable: true
+          description: User ID that last updated the setting
+          example: 1
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when the setting was last updated
+          example: "2024-01-01T00:00:00Z"
+    SettingDefinition:
+      type: object
+      description: Supported setting metadata used by the UI
+      properties:
+        key:
+          type: string
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          description: Supported setting key
+          example: DB_HOST
+        label:
+          type: string
+          description: Human-readable setting label
+          example: "Game server DB host"
+        description:
+          type: string
+          description: Setting help text
+          example: "SQL Server host name or IP address used by the game server database."
+        value_type:
+          type: string
+          enum: [string, uint16]
+          description: Stored value type
+          example: string
+        input_type:
+          type: string
+          enum: [text, number, password]
+          description: Preferred UI input type
+          example: text
+    SettingsResponse:
+      type: object
+      description: Supported settings and definitions
+      properties:
+        settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Setting'
+          description: Existing supported settings
+        definitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettingDefinition'
+          description: Supported setting definitions
+    SettingRequest:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          description: Setting key
+          example: DB_HOST
+        value:
+          type: string
+          minLength: 1
+          description: Setting value
+          example: "127.0.0.1"
+    UpdateSettingRequest:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: string
+          minLength: 1
+          description: Setting value
+          example: "127.0.0.1"
     MessageResponse:
       type: object
       properties:
