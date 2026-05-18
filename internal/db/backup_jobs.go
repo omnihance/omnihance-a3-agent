@@ -434,7 +434,7 @@ func (s *sqliteInternalDB) FinishBackupRun(runID int64, jobID int64, runStatus s
 		_ = tx.Rollback()
 	}()
 
-	_, err = tx.Update("backup_runs").
+	result, err := tx.Update("backup_runs").
 		Prepared(true).
 		Set(goqu.Record{
 			"status":        runStatus,
@@ -450,7 +450,16 @@ func (s *sqliteInternalDB) FinishBackupRun(runID int64, jobID int64, runStatus s
 		return fmt.Errorf("failed to finish backup run %d: %w", runID, err)
 	}
 
-	_, err = tx.Update("backup_jobs").
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for backup run finish %d: %w", runID, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("failed to finish backup run %d: affected %d rows", runID, rowsAffected)
+	}
+
+	result, err = tx.Update("backup_jobs").
 		Prepared(true).
 		Set(goqu.Record{
 			"status":     jobStatus,
@@ -461,6 +470,15 @@ func (s *sqliteInternalDB) FinishBackupRun(runID int64, jobID int64, runStatus s
 		Exec()
 	if err != nil {
 		return fmt.Errorf("failed to restore backup job status %d: %w", jobID, err)
+	}
+
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for backup job restore %d: %w", jobID, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("failed to restore backup job status %d: affected %d rows", jobID, rowsAffected)
 	}
 
 	if err := tx.Commit(); err != nil {
