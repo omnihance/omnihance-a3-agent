@@ -2576,6 +2576,9 @@ paths:
       tags:
         - backups
       summary: List backup jobs
+      description: Returns all non-deleted backup jobs, including current status and last run metadata.
+      security:
+        - ApiKeyAuth: []
       responses:
         '200':
           description: Backup jobs
@@ -2583,10 +2586,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupJobsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
         - backups
       summary: Create backup job
+      description: Creates a file or local SQL Server backup job. Cron schedules are optional, and SQL Server jobs reject remote hosts.
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -2600,11 +2624,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupJob'
+        '400':
+          description: Bad Request - Invalid request body, validation failure, invalid path, or remote SQL Server host
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/jobs/{id}:
     get:
       tags:
         - backups
       summary: Get backup job
+      description: Returns full backup job details by ID, including stored archive and SQL passwords for authorized users.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
       responses:
@@ -2614,10 +2665,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupJob'
+        '400':
+          description: Bad Request - Invalid backup job ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       tags:
         - backups
       summary: Update backup job
+      description: Updates an existing backup job and reschedules its cron trigger. Running jobs cannot be updated.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
       requestBody:
@@ -2633,8 +2717,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupJob'
+        '400':
+          description: Bad Request - Invalid backup job ID, request body, validation failure, invalid path, or remote SQL Server host
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Job is running
+          description: Conflict - Backup job is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -2643,6 +2757,9 @@ paths:
       tags:
         - backups
       summary: Delete backup job
+      description: Soft deletes a backup job and stops any configured cron schedule. Running jobs cannot be deleted.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
       responses:
@@ -2652,11 +2769,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Bad Request - Invalid backup job ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Backup job is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/jobs/{id}/run:
     post:
       tags:
         - backups
       summary: Manually trigger a backup job
+      description: Starts a manual backup run for the job. Deleted jobs and jobs that are already running cannot be triggered.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
       responses:
@@ -2666,11 +2822,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupRun'
+        '400':
+          description: Bad Request - Invalid backup job ID or job cannot be run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Backup job is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/jobs/{id}/cancel:
     post:
       tags:
         - backups
       summary: Cancel a running backup job
+      description: Requests cancellation for the currently running backup run for the job and records the cancellation state.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
       responses:
@@ -2680,21 +2875,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupRun'
+        '400':
+          description: Bad Request - Invalid backup job ID or no running backup job exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/jobs/{id}/runs:
     get:
       tags:
         - backups
       summary: List backup runs for a job
+      description: Returns paginated run history for a backup job, newest first.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - $ref: '#/components/parameters/PathID'
         - name: page
           in: query
+          description: Page number to return, starting at 1.
           schema:
             type: integer
             minimum: 1
             default: 1
         - name: pageSize
           in: query
+          description: Number of runs to return per page. Values above 100 are ignored by the server.
           schema:
             type: integer
             minimum: 1
@@ -2707,11 +2931,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupRunsResponse'
+        '400':
+          description: Bad Request - Invalid backup job ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/runs/{run_id}:
     get:
       tags:
         - backups
       summary: Get backup run details
+      description: Returns one backup run with its recorded output files, log output, and error or cancellation details.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: run_id
           in: path
@@ -2726,11 +2983,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupRunDetails'
+        '400':
+          description: Bad Request - Invalid backup run ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup run not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/runs/{run_id}/files/{file_id}/download:
     get:
       tags:
         - backups
       summary: Download a backup output file
+      description: Downloads one output file recorded for a backup run. The file ID must belong to the requested run.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: run_id
           in: path
@@ -2752,18 +3042,53 @@ paths:
               schema:
                 type: string
                 format: binary
+        '400':
+          description: Bad Request - Invalid backup run or file ID, or backup output is a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup run file not found or output file is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/path-search:
     get:
       tags:
         - backups
       summary: Search backup input or destination paths
+      description: Searches local paths for backup source or destination selection. Directory searches return directories only; input searches can return files and directories.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: query
           in: query
+          description: Optional path query. When omitted, the server returns available file system roots.
           schema:
             type: string
         - name: kind
           in: query
+          description: Optional search kind. Use directory for destination directories; omitted values search inputs.
           schema:
             type: string
             enum: [input, directory]
@@ -2774,11 +3099,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupPathSearchResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/backups/defaults/sql-server:
     get:
       tags:
         - backups
       summary: Get SQL Server backup defaults
+      description: Returns SQL Server backup defaults from settings and whether a supported local SQL Server service is running.
+      security:
+        - ApiKeyAuth: []
       responses:
         '200':
           description: SQL Server defaults
@@ -2786,6 +3132,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupSQLServerDefaults'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   parameters:
