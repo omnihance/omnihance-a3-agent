@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { APIError, type UploadFileResponse } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { ClientDataCountBadge } from '@/components/client-data/client-data-count-badge';
 

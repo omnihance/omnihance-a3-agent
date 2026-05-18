@@ -24,7 +24,7 @@ import {
   getQuestFile,
   getMaps,
 } from '@/lib/api';
-import { formatBytes, formatDate } from '@/lib/utils';
+import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileEdit } from './text-file-edit';
 import { NPCFileEdit } from './npc-file-edit';
 import { SpawnFileEdit } from './spawn-file-edit';

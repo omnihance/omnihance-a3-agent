@@ -39,7 +39,7 @@ import {
   revertFile,
   getMaps,
 } from '@/lib/api';
-import { formatBytes, formatDate } from '@/lib/utils';
+import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
 import { SpawnFileView } from '@/components/spawn-file-view';

@@ -51,6 +51,16 @@ export const API_ROUTES = {
     `/api/odbc/sqlserver-dsns/${encodeURIComponent(name)}`,
   ODBC_SQLSERVER_DEFAULT_DSNS: '/api/odbc/sqlserver-dsns/defaults',
   ODBC_SQLSERVER_DSN_TEST: '/api/odbc/sqlserver-dsns/test',
+  BACKUP_JOBS: '/api/backups/jobs',
+  BACKUP_JOB: (id: number) => `/api/backups/jobs/${id}`,
+  BACKUP_JOB_RUN: (id: number) => `/api/backups/jobs/${id}/run`,
+  BACKUP_JOB_CANCEL: (id: number) => `/api/backups/jobs/${id}/cancel`,
+  BACKUP_JOB_RUNS: (id: number) => `/api/backups/jobs/${id}/runs`,
+  BACKUP_RUN: (id: number) => `/api/backups/runs/${id}`,
+  BACKUP_RUN_FILE_DOWNLOAD: (runId: number, fileId: number) =>
+    `/api/backups/runs/${runId}/files/${fileId}/download`,
+  BACKUP_PATH_SEARCH: '/api/backups/path-search',
+  BACKUP_SQL_SERVER_DEFAULTS: '/api/backups/defaults/sql-server',
 } as const;
 
 export class APIError extends Error {
@@ -1414,6 +1424,236 @@ export async function deleteDirectoryShortcut(
     DeleteDirectoryShortcutResponseSchema,
     response.data,
     API_ROUTES.DIRECTORY_SHORTCUT(id),
+  );
+}
+
+const BackupJobTypeSchema = z.enum(['file', 'sql_server']);
+
+export type BackupJobType = z.infer<typeof BackupJobTypeSchema>;
+
+const BackupJobSchema = z.object({
+  id: z.number().int(),
+  job_type: BackupJobTypeSchema,
+  name: z.string(),
+  status: z.string(),
+  cron_expression: z.string().nullable(),
+  destination_directory: z.string(),
+  archive_password: z.string().nullable(),
+  source_path: z.string().nullable(),
+  sql_host: z.string().nullable(),
+  sql_port: z.number().int().nullable(),
+  sql_username: z.string().nullable(),
+  sql_password: z.string().nullable(),
+  sql_database_names: z.string().nullable(),
+  last_run_at: z.string().nullable(),
+  created_by: z.number().int().nullable(),
+  created_at: z.string(),
+  updated_by: z.number().int().nullable(),
+  updated_at: z.string().nullable(),
+  deleted_by: z.number().int().nullable(),
+  deleted_at: z.string().nullable(),
+});
+
+export type BackupJob = z.infer<typeof BackupJobSchema>;
+
+const BackupRunSchema = z.object({
+  id: z.number().int(),
+  job_id: z.number().int(),
+  trigger_type: z.string(),
+  status: z.string(),
+  previous_job_status: z.string(),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+  cancel_requested_at: z.string().nullable(),
+  output: z.string().nullable(),
+  error_details: z.string().nullable(),
+  created_by: z.number().int().nullable(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type BackupRun = z.infer<typeof BackupRunSchema>;
+
+const BackupRunFileSchema = z.object({
+  id: z.number().int(),
+  run_id: z.number().int(),
+  item_name: z.string(),
+  file_path: z.string(),
+  file_size: z.number().int(),
+  created_at: z.string(),
+});
+
+export type BackupRunFile = z.infer<typeof BackupRunFileSchema>;
+
+const BackupRunDetailsSchema = z.object({
+  run: BackupRunSchema,
+  files: z.array(BackupRunFileSchema),
+});
+
+export type BackupRunDetails = z.infer<typeof BackupRunDetailsSchema>;
+
+const BackupJobsResponseSchema = z.object({
+  jobs: z.array(BackupJobSchema),
+});
+
+const BackupRunsResponseSchema = z.object({
+  runs: z.array(BackupRunSchema),
+  pagination: PaginationInfoSchema,
+});
+
+export type BackupRunsResponse = z.infer<typeof BackupRunsResponseSchema>;
+
+const BackupJobRequestSchema = z.object({
+  job_type: BackupJobTypeSchema,
+  name: z.string().min(1),
+  status: z.string().min(1),
+  cron_expression: z.string().nullable().optional(),
+  destination_directory: z.string().min(1),
+  archive_password: z.string().nullable().optional(),
+  source_path: z.string().nullable().optional(),
+  sql_host: z.string().nullable().optional(),
+  sql_port: z.number().int().positive().nullable().optional(),
+  sql_username: z.string().nullable().optional(),
+  sql_password: z.string().nullable().optional(),
+  sql_database_names: z.string().nullable().optional(),
+});
+
+export type BackupJobRequest = z.infer<typeof BackupJobRequestSchema>;
+
+const BackupPathSearchResultSchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  kind: z.enum(['file', 'directory']),
+});
+
+export type BackupPathSearchResult = z.infer<
+  typeof BackupPathSearchResultSchema
+>;
+
+const BackupPathSearchResponseSchema = z.object({
+  results: z.array(BackupPathSearchResultSchema),
+});
+
+const BackupSQLServerDefaultsSchema = z.object({
+  host: z.string(),
+  port: z.number().int(),
+  username: z.string(),
+  password: z.string(),
+  local_server_running: z.boolean(),
+});
+
+export type BackupSQLServerDefaults = z.infer<
+  typeof BackupSQLServerDefaultsSchema
+>;
+
+export async function getBackupJobs(): Promise<BackupJob[]> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.BACKUP_JOBS);
+  const data = validateResponse(
+    BackupJobsResponseSchema,
+    response.data,
+    API_ROUTES.BACKUP_JOBS,
+  );
+  return data.jobs;
+}
+
+export async function getBackupJob(id: number): Promise<BackupJob> {
+  const route = API_ROUTES.BACKUP_JOB(id);
+  const response = await axiosInstance.get<unknown>(route);
+  return validateResponse(BackupJobSchema, response.data, route);
+}
+
+export async function createBackupJob(
+  payload: BackupJobRequest,
+): Promise<BackupJob> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.BACKUP_JOBS,
+    BackupJobRequestSchema.parse(payload),
+  );
+  return validateResponse(
+    BackupJobSchema,
+    response.data,
+    API_ROUTES.BACKUP_JOBS,
+  );
+}
+
+export async function updateBackupJob(
+  id: number,
+  payload: BackupJobRequest,
+): Promise<BackupJob> {
+  const route = API_ROUTES.BACKUP_JOB(id);
+  const response = await axiosInstance.put<unknown>(
+    route,
+    BackupJobRequestSchema.parse(payload),
+  );
+  return validateResponse(BackupJobSchema, response.data, route);
+}
+
+export async function deleteBackupJob(id: number): Promise<MessageResponse> {
+  const route = API_ROUTES.BACKUP_JOB(id);
+  const response = await axiosInstance.delete<unknown>(route);
+  return validateResponse(MessageResponseSchema, response.data, route);
+}
+
+export async function runBackupJob(id: number): Promise<BackupRun> {
+  const route = API_ROUTES.BACKUP_JOB_RUN(id);
+  const response = await axiosInstance.post<unknown>(route);
+  return validateResponse(BackupRunSchema, response.data, route);
+}
+
+export async function cancelBackupJob(id: number): Promise<BackupRun> {
+  const route = API_ROUTES.BACKUP_JOB_CANCEL(id);
+  const response = await axiosInstance.post<unknown>(route);
+  return validateResponse(BackupRunSchema, response.data, route);
+}
+
+export async function getBackupRuns(
+  id: number,
+  params?: { page?: number; pageSize?: number },
+): Promise<BackupRunsResponse> {
+  const route = API_ROUTES.BACKUP_JOB_RUNS(id);
+  const response = await axiosInstance.get<unknown>(route, { params });
+  return validateResponse(BackupRunsResponseSchema, response.data, route);
+}
+
+export async function getBackupRunDetails(
+  id: number,
+): Promise<BackupRunDetails> {
+  const route = API_ROUTES.BACKUP_RUN(id);
+  const response = await axiosInstance.get<unknown>(route);
+  return validateResponse(BackupRunDetailsSchema, response.data, route);
+}
+
+export function getBackupRunFileDownloadUrl(
+  runId: number,
+  fileId: number,
+): string {
+  return API_ROUTES.BACKUP_RUN_FILE_DOWNLOAD(runId, fileId);
+}
+
+export async function searchBackupPaths(params: {
+  query?: string;
+  kind?: 'input' | 'directory';
+}): Promise<BackupPathSearchResult[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.BACKUP_PATH_SEARCH,
+    { params },
+  );
+  const data = validateResponse(
+    BackupPathSearchResponseSchema,
+    response.data,
+    API_ROUTES.BACKUP_PATH_SEARCH,
+  );
+  return data.results;
+}
+
+export async function getBackupSQLServerDefaults(): Promise<BackupSQLServerDefaults> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.BACKUP_SQL_SERVER_DEFAULTS,
+  );
+  return validateResponse(
+    BackupSQLServerDefaultsSchema,
+    response.data,
+    API_ROUTES.BACKUP_SQL_SERVER_DEFAULTS,
   );
 }
 

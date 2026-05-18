@@ -44,4 +44,17 @@ export const queryKeys = {
   directoryShortcuts: ['directory-shortcuts'] as const,
   settings: ['settings'] as const,
   sqlServerOdbcDsns: ['sql-server-odbc-dsns'] as const,
+  backupJobs: ['backup-jobs'] as const,
+  backupJob: (id: number) => ['backup-job', id] as const,
+  backupRuns: (jobId: number, page?: number, pageSize?: number) => {
+    if (page !== undefined && pageSize !== undefined) {
+      return ['backup-runs', jobId, page, pageSize] as const;
+    }
+
+    return ['backup-runs', jobId] as const;
+  },
+  backupRun: (runId: number) => ['backup-run', runId] as const,
+  backupPathSearch: (query?: string, kind?: string) =>
+    ['backup-path-search', query || '', kind || 'input'] as const,
+  backupSqlServerDefaults: ['backup-sql-server-defaults'] as const,
 } as const;

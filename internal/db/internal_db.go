@@ -85,6 +85,24 @@ type InternalDB interface {
 	GetDirectoryShortcutByNormalizedPath(userID int64, normalizedPath string) (*DirectoryShortcut, error)
 	CreateDirectoryShortcut(userID int64, name, path string) (*DirectoryShortcut, error)
 	DeleteDirectoryShortcut(id int64, userID int64) error
+	GetBackupJobs() ([]BackupJob, error)
+	GetSchedulableBackupJobs() ([]BackupJob, error)
+	GetBackupJob(id int64) (*BackupJob, error)
+	CreateBackupJob(payload BackupJobPayload, userID *int64) (*BackupJob, error)
+	UpdateBackupJob(id int64, payload BackupJobPayload, userID *int64) (*BackupJob, error)
+	UpdateBackupJobStatus(id int64, status string, userID *int64) error
+	DeleteBackupJob(id int64, userID *int64) error
+	CreateBackupRun(jobID int64, triggerType string, previousJobStatus string, userID *int64) (*BackupRun, error)
+	CreateSkippedBackupRun(jobID int64, triggerType string, previousJobStatus string, output string, userID *int64) (*BackupRun, error)
+	GetBackupRuns(jobID int64, page int, pageSize int) ([]BackupRun, int64, error)
+	GetBackupRun(id int64) (*BackupRun, error)
+	GetRunningBackupRunForJob(jobID int64) (*BackupRun, error)
+	FinishBackupRun(runID int64, jobID int64, runStatus string, jobStatus string, output *string, errorDetails *string) error
+	MarkBackupRunCancelRequested(runID int64) error
+	CreateBackupRunFile(runID int64, itemName string, filePath string, fileSize int64) (*BackupRunFile, error)
+	GetBackupRunFiles(runID int64) ([]BackupRunFile, error)
+	GetBackupRunFile(id int64) (*BackupRunFile, error)
+	MarkOrphanedBackupRunsFailed() error
 }
 
 type sqliteInternalDB struct {
@@ -221,10 +239,18 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate012BackupJobsTables(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback012BackupJobsTables(); err != nil {
+		return err
+	}
+
 	if err := s.rollback011ItemClientDataType(); err != nil {
 		return err
 	}
@@ -1467,6 +1493,174 @@ func (s *sqliteInternalDB) rollback011ItemClientDataType() error {
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit item client data type rollback: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate012BackupJobsTables() error {
+	const migName = "012_backup_jobs_tables"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS backup_jobs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		job_type TEXT NOT NULL,
+		name TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'active',
+		cron_expression TEXT,
+		destination_directory TEXT NOT NULL,
+		archive_password TEXT,
+		source_path TEXT,
+		sql_host TEXT,
+		sql_port INTEGER,
+		sql_username TEXT,
+		sql_password TEXT,
+		sql_database_names TEXT,
+		last_run_at TIMESTAMP,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		updated_at TIMESTAMP,
+		deleted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		deleted_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_status ON backup_jobs (status);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_job_type ON backup_jobs (job_type);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_created_at ON backup_jobs (created_at);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_last_run_at ON backup_jobs (last_run_at);
+
+	CREATE TABLE IF NOT EXISTS backup_runs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		job_id INTEGER NOT NULL REFERENCES backup_jobs(id) ON DELETE RESTRICT,
+		trigger_type TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'running',
+		previous_job_status TEXT NOT NULL,
+		started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		finished_at TIMESTAMP,
+		cancel_requested_at TIMESTAMP,
+		output TEXT,
+		error_details TEXT,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_runs_job_id ON backup_runs (job_id);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_runs_status ON backup_runs (status);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_runs_started_at ON backup_runs (started_at);
+
+	CREATE TABLE IF NOT EXISTS backup_run_files (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		run_id INTEGER NOT NULL REFERENCES backup_runs(id) ON DELETE CASCADE,
+		item_name TEXT NOT NULL,
+		file_path TEXT NOT NULL,
+		file_size INTEGER NOT NULL DEFAULT 0,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_run_files_run_id ON backup_run_files (run_id);
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin backup jobs migration: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create backup jobs tables: %w", err)
+	}
+
+	if _, err := tx.Exec("INSERT INTO migrations (name) VALUES (?)", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit backup jobs migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback012BackupJobsTables() error {
+	const migName = "012_backup_jobs_tables"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	rollbackSQL := `
+	DROP TABLE IF EXISTS backup_run_files;
+	DROP TABLE IF EXISTS backup_runs;
+	DROP TABLE IF EXISTS backup_jobs;
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin backup jobs rollback: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(rollbackSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback backup jobs tables: %w", err)
+	}
+
+	if _, err := tx.Exec("DELETE FROM migrations WHERE name = ?", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit backup jobs rollback: %w", err)
 	}
 
 	return nil

@@ -66,6 +66,16 @@ func main() {
 	fileEditor := services.NewFileEditorService(log)
 	processService := services.NewProcessService(log)
 	serverManagerService := services.NewServerManagerService(internalDB, processService, log)
+	backupService := services.NewBackupService(cfg, log, internalDB, fileEditor)
+	if err := backupService.Start(); err != nil {
+		log.Error("Could not start backup service", logger.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+
+	defer func() {
+		_ = backupService.Stop()
+	}()
+
 	versionChecker := services.NewVersionCheckerService(cfg, log, version)
 	if err := versionChecker.Start(); err != nil {
 		log.Error("Could not start version checker service", logger.Field{Key: "error", Value: err})
@@ -86,6 +96,7 @@ func main() {
 		processService,
 		serverManagerService,
 		versionChecker,
+		backupService,
 	)
 	if err := server.ListenAndServe(); err != nil {
 		log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})

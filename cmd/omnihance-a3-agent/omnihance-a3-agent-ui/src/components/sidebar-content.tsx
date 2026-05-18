@@ -12,6 +12,7 @@ import {
   DatabaseZap,
   X,
   Folder,
+  Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -25,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/util';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   getDirectoryShortcuts,
@@ -60,6 +61,12 @@ const sidebarLinks = [
     href: '/sql-server-odbc',
     icon: DatabaseZap,
     label: 'SQL ODBC',
+    permission: 'manage_server' as const,
+  },
+  {
+    href: '/backups',
+    icon: Archive,
+    label: 'Backups',
     permission: 'manage_server' as const,
   },
   {

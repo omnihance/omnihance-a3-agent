@@ -13,7 +13,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { SidebarContent } from '@/components/sidebar-content';
-import { beautifyRole, cn } from '@/lib/utils';
+import { beautifyRole, cn } from '@/lib/util';
 import { signOut, getSession, APIError } from '@/lib/api';
 import { queryKeys } from '@/constants';
 

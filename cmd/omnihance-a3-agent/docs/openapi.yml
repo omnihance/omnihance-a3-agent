@@ -26,6 +26,8 @@ tags:
     name: directory-shortcuts
   - description: SQL Server ODBC User DSN management operations
     name: odbc-sqlserver
+  - description: Backup job and run operations
+    name: backups
 
 paths:
   /health:
@@ -2569,8 +2571,231 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-                
+  /api/backups/jobs:
+    get:
+      tags:
+        - backups
+      summary: List backup jobs
+      responses:
+        '200':
+          description: Backup jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJobsResponse'
+    post:
+      tags:
+        - backups
+      summary: Create backup job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupJobRequest'
+      responses:
+        '200':
+          description: Created backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+  /api/backups/jobs/{id}:
+    get:
+      tags:
+        - backups
+      summary: Get backup job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+      responses:
+        '200':
+          description: Backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+    put:
+      tags:
+        - backups
+      summary: Update backup job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupJobRequest'
+      responses:
+        '200':
+          description: Updated backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupJob'
+        '409':
+          description: Job is running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - backups
+      summary: Delete backup job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+      responses:
+        '200':
+          description: Deleted backup job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/backups/jobs/{id}/run:
+    post:
+      tags:
+        - backups
+      summary: Manually trigger a backup job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+      responses:
+        '200':
+          description: Created backup run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRun'
+  /api/backups/jobs/{id}/cancel:
+    post:
+      tags:
+        - backups
+      summary: Cancel a running backup job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+      responses:
+        '200':
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRun'
+  /api/backups/jobs/{id}/runs:
+    get:
+      tags:
+        - backups
+      summary: List backup runs for a job
+      parameters:
+        - $ref: '#/components/parameters/PathID'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Backup runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRunsResponse'
+  /api/backups/runs/{run_id}:
+    get:
+      tags:
+        - backups
+      summary: Get backup run details
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Backup run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRunDetails'
+  /api/backups/runs/{run_id}/files/{file_id}/download:
+    get:
+      tags:
+        - backups
+      summary: Download a backup output file
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Backup file download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+  /api/backups/path-search:
+    get:
+      tags:
+        - backups
+      summary: Search backup input or destination paths
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [input, directory]
+      responses:
+        '200':
+          description: Path search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupPathSearchResponse'
+  /api/backups/defaults/sql-server:
+    get:
+      tags:
+        - backups
+      summary: Get SQL Server backup defaults
+      responses:
+        '200':
+          description: SQL Server defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupSQLServerDefaults'
+
 components:
+  parameters:
+    PathID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
@@ -3768,3 +3993,206 @@ components:
           minLength: 1
           description: Full path to the directory to pin
           example: "C:\\Users\\user\\Documents"
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation completed successfully"
+    BackupJob:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        job_type:
+          type: string
+          enum: [file, sql_server]
+        name:
+          type: string
+        status:
+          type: string
+          example: active
+        cron_expression:
+          type: string
+          nullable: true
+        destination_directory:
+          type: string
+        archive_password:
+          type: string
+          nullable: true
+        source_path:
+          type: string
+          nullable: true
+        sql_host:
+          type: string
+          nullable: true
+        sql_port:
+          type: integer
+          nullable: true
+        sql_username:
+          type: string
+          nullable: true
+        sql_password:
+          type: string
+          nullable: true
+        sql_database_names:
+          type: string
+          nullable: true
+        last_run_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+    BackupJobRequest:
+      type: object
+      required:
+        - job_type
+        - name
+        - status
+        - destination_directory
+      properties:
+        job_type:
+          type: string
+          enum: [file, sql_server]
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        cron_expression:
+          type: string
+          nullable: true
+        destination_directory:
+          type: string
+        archive_password:
+          type: string
+          nullable: true
+        source_path:
+          type: string
+          nullable: true
+        sql_host:
+          type: string
+          nullable: true
+        sql_port:
+          type: integer
+          nullable: true
+        sql_username:
+          type: string
+          nullable: true
+        sql_password:
+          type: string
+          nullable: true
+        sql_database_names:
+          type: string
+          nullable: true
+    BackupJobsResponse:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupJob'
+    BackupRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        job_id:
+          type: integer
+          format: int64
+        trigger_type:
+          type: string
+        status:
+          type: string
+        previous_job_status:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_requested_at:
+          type: string
+          format: date-time
+          nullable: true
+        output:
+          type: string
+          nullable: true
+        error_details:
+          type: string
+          nullable: true
+    BackupRunsResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupRun'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+    BackupRunFile:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        run_id:
+          type: integer
+          format: int64
+        item_name:
+          type: string
+        file_path:
+          type: string
+        file_size:
+          type: integer
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+    BackupRunDetails:
+      type: object
+      properties:
+        run:
+          $ref: '#/components/schemas/BackupRun'
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupRunFile'
+    BackupPathSearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              path:
+                type: string
+              kind:
+                type: string
+                enum: [file, directory]
+    BackupSQLServerDefaults:
+      type: object
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        local_server_running:
+          type: boolean
