@@ -1,11 +1,19 @@
 package db
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
+	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+)
+
+var (
+	ErrSettingNotFound      = errors.New("setting not found")
+	ErrSettingAlreadyExists = errors.New("setting already exists")
 )
 
 type Settings struct {
@@ -18,11 +26,10 @@ type Settings struct {
 }
 
 var defaultSettings = map[string]string{
-	"DB_HOST": "127.0.0.1",
-	"DB_PORT": "1433",
-	"DB_USER": "sa",
-	"DB_PASS": "ley",
-	"DB_NAME": "ASD",
+	constants.SettingKeyDBHost: "127.0.0.1",
+	constants.SettingKeyDBPort: "1433",
+	constants.SettingKeyDBUser: "sa",
+	constants.SettingKeyDBPass: "ley",
 }
 
 func (s *sqliteInternalDB) GetSettings() ([]Settings, error) {
@@ -56,10 +63,89 @@ func (s *sqliteInternalDB) GetSetting(key string) (*Settings, error) {
 	}
 
 	if !found {
-		return nil, fmt.Errorf("setting %s not found", key)
+		return nil, fmt.Errorf("%w: %s", ErrSettingNotFound, key)
 	}
 
 	return &setting, nil
+}
+
+func (s *sqliteInternalDB) CreateSetting(key string, value string, userID *int64) (*Settings, error) {
+	insertRecord := goqu.Record{
+		"key":   key,
+		"value": value,
+	}
+
+	if userID != nil {
+		insertRecord["created_by"] = *userID
+	}
+
+	result, err := s.goqu.Insert("settings").
+		Prepared(true).
+		Rows(insertRecord).
+		Executor().
+		Exec()
+	if err != nil {
+		if isUniqueConstraintError(err) {
+			return nil, fmt.Errorf("%w: %s", ErrSettingAlreadyExists, key)
+		}
+
+		s.logger.Error(
+			"failed to create setting",
+			logger.Field{Key: "key", Value: key},
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "error", Value: err},
+		)
+		return nil, fmt.Errorf("failed to create setting %s: %w", key, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rows affected for setting %s: %w", key, err)
+	}
+
+	if rowsAffected == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrSettingAlreadyExists, key)
+	}
+
+	return s.GetSetting(key)
+}
+
+func (s *sqliteInternalDB) UpdateSetting(key string, value string, userID *int64) (*Settings, error) {
+	updateRecord := goqu.Record{
+		"value":      value,
+		"updated_at": goqu.L("CURRENT_TIMESTAMP"),
+	}
+
+	if userID != nil {
+		updateRecord["updated_by"] = *userID
+	}
+
+	result, err := s.goqu.Update("settings").
+		Prepared(true).
+		Set(updateRecord).
+		Where(goqu.Ex{"key": key}).
+		Executor().
+		Exec()
+	if err != nil {
+		s.logger.Error(
+			"failed to update setting",
+			logger.Field{Key: "key", Value: key},
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "error", Value: err},
+		)
+		return nil, fmt.Errorf("failed to update setting %s: %w", key, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rows affected for setting %s: %w", key, err)
+	}
+
+	if rowsAffected == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrSettingNotFound, key)
+	}
+
+	return s.GetSetting(key)
 }
 
 func (s *sqliteInternalDB) SetSetting(key string, value string, userID *int64) error {
@@ -130,7 +216,7 @@ func (s *sqliteInternalDB) SetSettingIfNotExists(key string, value string, userI
 }
 
 func (s *sqliteInternalDB) DeleteSetting(key string) error {
-	_, err := s.goqu.Delete("settings").
+	result, err := s.goqu.Delete("settings").
 		Prepared(true).
 		Where(goqu.Ex{"key": key}).
 		Executor().
@@ -142,6 +228,15 @@ func (s *sqliteInternalDB) DeleteSetting(key string) error {
 			logger.Field{Key: "error", Value: err},
 		)
 		return fmt.Errorf("failed to delete setting %s: %w", key, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for setting %s: %w", key, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("%w: %s", ErrSettingNotFound, key)
 	}
 
 	return nil
@@ -156,4 +251,9 @@ func (s *sqliteInternalDB) SetDefaultSettings() error {
 	}
 
 	return nil
+}
+
+func isUniqueConstraintError(err error) bool {
+	lowerMessage := strings.ToLower(err.Error())
+	return strings.Contains(lowerMessage, "unique constraint")
 }

@@ -53,7 +53,7 @@ import {
   type ServerProcess,
   type ProcessStatus,
 } from '@/lib/api';
-import { formatBytes, formatDate, cn } from '@/lib/utils';
+import { formatBytes, formatDate, cn } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';

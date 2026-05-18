@@ -340,6 +340,234 @@ func (_c *MockInternalDB_Connect_Call) RunAndReturn(run func() error) *MockInter
 	return _c
 }
 
+// CreateBackupJob provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateBackupJob(payload BackupJobPayload, userID *int64) (*BackupJob, error) {
+	ret := _mock.Called(payload, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBackupJob")
+	}
+
+	var r0 *BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(BackupJobPayload, *int64) (*BackupJob, error)); ok {
+		return returnFunc(payload, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(BackupJobPayload, *int64) *BackupJob); ok {
+		r0 = returnFunc(payload, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(BackupJobPayload, *int64) error); ok {
+		r1 = returnFunc(payload, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateBackupJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBackupJob'
+type MockInternalDB_CreateBackupJob_Call struct {
+	*mock.Call
+}
+
+// CreateBackupJob is a helper method to define mock.On call
+//   - payload BackupJobPayload
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateBackupJob(payload interface{}, userID interface{}) *MockInternalDB_CreateBackupJob_Call {
+	return &MockInternalDB_CreateBackupJob_Call{Call: _e.mock.On("CreateBackupJob", payload, userID)}
+}
+
+func (_c *MockInternalDB_CreateBackupJob_Call) Run(run func(payload BackupJobPayload, userID *int64)) *MockInternalDB_CreateBackupJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 BackupJobPayload
+		if args[0] != nil {
+			arg0 = args[0].(BackupJobPayload)
+		}
+		var arg1 *int64
+		if args[1] != nil {
+			arg1 = args[1].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupJob_Call) Return(backupJob *BackupJob, err error) *MockInternalDB_CreateBackupJob_Call {
+	_c.Call.Return(backupJob, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupJob_Call) RunAndReturn(run func(payload BackupJobPayload, userID *int64) (*BackupJob, error)) *MockInternalDB_CreateBackupJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateBackupRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateBackupRun(jobID int64, triggerType string, previousJobStatus string, userID *int64) (*BackupRun, error) {
+	ret := _mock.Called(jobID, triggerType, previousJobStatus, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBackupRun")
+	}
+
+	var r0 *BackupRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, *int64) (*BackupRun, error)); ok {
+		return returnFunc(jobID, triggerType, previousJobStatus, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, *int64) *BackupRun); ok {
+		r0 = returnFunc(jobID, triggerType, previousJobStatus, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, string, string, *int64) error); ok {
+		r1 = returnFunc(jobID, triggerType, previousJobStatus, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateBackupRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBackupRun'
+type MockInternalDB_CreateBackupRun_Call struct {
+	*mock.Call
+}
+
+// CreateBackupRun is a helper method to define mock.On call
+//   - jobID int64
+//   - triggerType string
+//   - previousJobStatus string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateBackupRun(jobID interface{}, triggerType interface{}, previousJobStatus interface{}, userID interface{}) *MockInternalDB_CreateBackupRun_Call {
+	return &MockInternalDB_CreateBackupRun_Call{Call: _e.mock.On("CreateBackupRun", jobID, triggerType, previousJobStatus, userID)}
+}
+
+func (_c *MockInternalDB_CreateBackupRun_Call) Run(run func(jobID int64, triggerType string, previousJobStatus string, userID *int64)) *MockInternalDB_CreateBackupRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 *int64
+		if args[3] != nil {
+			arg3 = args[3].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupRun_Call) Return(backupRun *BackupRun, err error) *MockInternalDB_CreateBackupRun_Call {
+	_c.Call.Return(backupRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupRun_Call) RunAndReturn(run func(jobID int64, triggerType string, previousJobStatus string, userID *int64) (*BackupRun, error)) *MockInternalDB_CreateBackupRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateBackupRunFile provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateBackupRunFile(runID int64, itemName string, filePath string, fileSize int64) (*BackupRunFile, error) {
+	ret := _mock.Called(runID, itemName, filePath, fileSize)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateBackupRunFile")
+	}
+
+	var r0 *BackupRunFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, int64) (*BackupRunFile, error)); ok {
+		return returnFunc(runID, itemName, filePath, fileSize)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, int64) *BackupRunFile); ok {
+		r0 = returnFunc(runID, itemName, filePath, fileSize)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRunFile)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, string, string, int64) error); ok {
+		r1 = returnFunc(runID, itemName, filePath, fileSize)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateBackupRunFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateBackupRunFile'
+type MockInternalDB_CreateBackupRunFile_Call struct {
+	*mock.Call
+}
+
+// CreateBackupRunFile is a helper method to define mock.On call
+//   - runID int64
+//   - itemName string
+//   - filePath string
+//   - fileSize int64
+func (_e *MockInternalDB_Expecter) CreateBackupRunFile(runID interface{}, itemName interface{}, filePath interface{}, fileSize interface{}) *MockInternalDB_CreateBackupRunFile_Call {
+	return &MockInternalDB_CreateBackupRunFile_Call{Call: _e.mock.On("CreateBackupRunFile", runID, itemName, filePath, fileSize)}
+}
+
+func (_c *MockInternalDB_CreateBackupRunFile_Call) Run(run func(runID int64, itemName string, filePath string, fileSize int64)) *MockInternalDB_CreateBackupRunFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 int64
+		if args[3] != nil {
+			arg3 = args[3].(int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupRunFile_Call) Return(backupRunFile *BackupRunFile, err error) *MockInternalDB_CreateBackupRunFile_Call {
+	_c.Call.Return(backupRunFile, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateBackupRunFile_Call) RunAndReturn(run func(runID int64, itemName string, filePath string, fileSize int64) (*BackupRunFile, error)) *MockInternalDB_CreateBackupRunFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateDirectoryShortcut provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateDirectoryShortcut(userID int64, name string, path string) (*DirectoryShortcut, error) {
 	ret := _mock.Called(userID, name, path)
@@ -670,6 +898,166 @@ func (_c *MockInternalDB_CreateSession_Call) RunAndReturn(run func(userID int64,
 	return _c
 }
 
+// CreateSetting provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateSetting(key string, value string, userID *int64) (*Settings, error) {
+	ret := _mock.Called(key, value, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateSetting")
+	}
+
+	var r0 *Settings
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) (*Settings, error)); ok {
+		return returnFunc(key, value, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) *Settings); ok {
+		r0 = returnFunc(key, value, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Settings)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string, *int64) error); ok {
+		r1 = returnFunc(key, value, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSetting'
+type MockInternalDB_CreateSetting_Call struct {
+	*mock.Call
+}
+
+// CreateSetting is a helper method to define mock.On call
+//   - key string
+//   - value string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateSetting(key interface{}, value interface{}, userID interface{}) *MockInternalDB_CreateSetting_Call {
+	return &MockInternalDB_CreateSetting_Call{Call: _e.mock.On("CreateSetting", key, value, userID)}
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) Run(run func(key string, value string, userID *int64)) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) Return(settings *Settings, err error) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Return(settings, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSetting_Call) RunAndReturn(run func(key string, value string, userID *int64) (*Settings, error)) *MockInternalDB_CreateSetting_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateSkippedBackupRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateSkippedBackupRun(jobID int64, triggerType string, previousJobStatus string, output string, userID *int64) (*BackupRun, error) {
+	ret := _mock.Called(jobID, triggerType, previousJobStatus, output, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateSkippedBackupRun")
+	}
+
+	var r0 *BackupRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, string, *int64) (*BackupRun, error)); ok {
+		return returnFunc(jobID, triggerType, previousJobStatus, output, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string, string, *int64) *BackupRun); ok {
+		r0 = returnFunc(jobID, triggerType, previousJobStatus, output, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, string, string, string, *int64) error); ok {
+		r1 = returnFunc(jobID, triggerType, previousJobStatus, output, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateSkippedBackupRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateSkippedBackupRun'
+type MockInternalDB_CreateSkippedBackupRun_Call struct {
+	*mock.Call
+}
+
+// CreateSkippedBackupRun is a helper method to define mock.On call
+//   - jobID int64
+//   - triggerType string
+//   - previousJobStatus string
+//   - output string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateSkippedBackupRun(jobID interface{}, triggerType interface{}, previousJobStatus interface{}, output interface{}, userID interface{}) *MockInternalDB_CreateSkippedBackupRun_Call {
+	return &MockInternalDB_CreateSkippedBackupRun_Call{Call: _e.mock.On("CreateSkippedBackupRun", jobID, triggerType, previousJobStatus, output, userID)}
+}
+
+func (_c *MockInternalDB_CreateSkippedBackupRun_Call) Run(run func(jobID int64, triggerType string, previousJobStatus string, output string, userID *int64)) *MockInternalDB_CreateSkippedBackupRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 *int64
+		if args[4] != nil {
+			arg4 = args[4].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSkippedBackupRun_Call) Return(backupRun *BackupRun, err error) *MockInternalDB_CreateSkippedBackupRun_Call {
+	_c.Call.Return(backupRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateSkippedBackupRun_Call) RunAndReturn(run func(jobID int64, triggerType string, previousJobStatus string, output string, userID *int64) (*BackupRun, error)) *MockInternalDB_CreateSkippedBackupRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateUser provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateUser(email string, password string, roles string, createdBy *int64) (*User, error) {
 	ret := _mock.Called(email, password, roles, createdBy)
@@ -832,6 +1220,63 @@ func (_c *MockInternalDB_CreateUserWithStatus_Call) Return(user *User, err error
 }
 
 func (_c *MockInternalDB_CreateUserWithStatus_Call) RunAndReturn(run func(email string, password string, roles string, status string, createdBy *int64) (*User, error)) *MockInternalDB_CreateUserWithStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteBackupJob provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) DeleteBackupJob(id int64, userID *int64) error {
+	ret := _mock.Called(id, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBackupJob")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, *int64) error); ok {
+		r0 = returnFunc(id, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_DeleteBackupJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBackupJob'
+type MockInternalDB_DeleteBackupJob_Call struct {
+	*mock.Call
+}
+
+// DeleteBackupJob is a helper method to define mock.On call
+//   - id int64
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) DeleteBackupJob(id interface{}, userID interface{}) *MockInternalDB_DeleteBackupJob_Call {
+	return &MockInternalDB_DeleteBackupJob_Call{Call: _e.mock.On("DeleteBackupJob", id, userID)}
+}
+
+func (_c *MockInternalDB_DeleteBackupJob_Call) Run(run func(id int64, userID *int64)) *MockInternalDB_DeleteBackupJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 *int64
+		if args[1] != nil {
+			arg1 = args[1].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteBackupJob_Call) Return(err error) *MockInternalDB_DeleteBackupJob_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_DeleteBackupJob_Call) RunAndReturn(run func(id int64, userID *int64) error) *MockInternalDB_DeleteBackupJob_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1306,6 +1751,87 @@ func (_c *MockInternalDB_DeleteUserSessionsExcept_Call) RunAndReturn(run func(us
 	return _c
 }
 
+// FinishBackupRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) FinishBackupRun(runID int64, jobID int64, runStatus string, jobStatus string, output *string, errorDetails *string) error {
+	ret := _mock.Called(runID, jobID, runStatus, jobStatus, output, errorDetails)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FinishBackupRun")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, int64, string, string, *string, *string) error); ok {
+		r0 = returnFunc(runID, jobID, runStatus, jobStatus, output, errorDetails)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_FinishBackupRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FinishBackupRun'
+type MockInternalDB_FinishBackupRun_Call struct {
+	*mock.Call
+}
+
+// FinishBackupRun is a helper method to define mock.On call
+//   - runID int64
+//   - jobID int64
+//   - runStatus string
+//   - jobStatus string
+//   - output *string
+//   - errorDetails *string
+func (_e *MockInternalDB_Expecter) FinishBackupRun(runID interface{}, jobID interface{}, runStatus interface{}, jobStatus interface{}, output interface{}, errorDetails interface{}) *MockInternalDB_FinishBackupRun_Call {
+	return &MockInternalDB_FinishBackupRun_Call{Call: _e.mock.On("FinishBackupRun", runID, jobID, runStatus, jobStatus, output, errorDetails)}
+}
+
+func (_c *MockInternalDB_FinishBackupRun_Call) Run(run func(runID int64, jobID int64, runStatus string, jobStatus string, output *string, errorDetails *string)) *MockInternalDB_FinishBackupRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		var arg4 *string
+		if args[4] != nil {
+			arg4 = args[4].(*string)
+		}
+		var arg5 *string
+		if args[5] != nil {
+			arg5 = args[5].(*string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+			arg4,
+			arg5,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_FinishBackupRun_Call) Return(err error) *MockInternalDB_FinishBackupRun_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_FinishBackupRun_Call) RunAndReturn(run func(runID int64, jobID int64, runStatus string, jobStatus string, output *string, errorDetails *string) error) *MockInternalDB_FinishBackupRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetActiveUserByID provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetActiveUserByID(userID int64) (*User, error) {
 	ret := _mock.Called(userID)
@@ -1603,6 +2129,389 @@ func (_c *MockInternalDB_GetAllMonsterClientData_Call) Return(monsterClientDatas
 }
 
 func (_c *MockInternalDB_GetAllMonsterClientData_Call) RunAndReturn(run func(search string) ([]MonsterClientData, error)) *MockInternalDB_GetAllMonsterClientData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupJob provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupJob(id int64) (*BackupJob, error) {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupJob")
+	}
+
+	var r0 *BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*BackupJob, error)); ok {
+		return returnFunc(id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *BackupJob); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupJob'
+type MockInternalDB_GetBackupJob_Call struct {
+	*mock.Call
+}
+
+// GetBackupJob is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) GetBackupJob(id interface{}) *MockInternalDB_GetBackupJob_Call {
+	return &MockInternalDB_GetBackupJob_Call{Call: _e.mock.On("GetBackupJob", id)}
+}
+
+func (_c *MockInternalDB_GetBackupJob_Call) Run(run func(id int64)) *MockInternalDB_GetBackupJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJob_Call) Return(backupJob *BackupJob, err error) *MockInternalDB_GetBackupJob_Call {
+	_c.Call.Return(backupJob, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJob_Call) RunAndReturn(run func(id int64) (*BackupJob, error)) *MockInternalDB_GetBackupJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupJobs provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupJobs() ([]BackupJob, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupJobs")
+	}
+
+	var r0 []BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]BackupJob, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []BackupJob); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupJobs'
+type MockInternalDB_GetBackupJobs_Call struct {
+	*mock.Call
+}
+
+// GetBackupJobs is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetBackupJobs() *MockInternalDB_GetBackupJobs_Call {
+	return &MockInternalDB_GetBackupJobs_Call{Call: _e.mock.On("GetBackupJobs")}
+}
+
+func (_c *MockInternalDB_GetBackupJobs_Call) Run(run func()) *MockInternalDB_GetBackupJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJobs_Call) Return(backupJobs []BackupJob, err error) *MockInternalDB_GetBackupJobs_Call {
+	_c.Call.Return(backupJobs, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJobs_Call) RunAndReturn(run func() ([]BackupJob, error)) *MockInternalDB_GetBackupJobs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupRun(id int64) (*BackupRun, error) {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupRun")
+	}
+
+	var r0 *BackupRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*BackupRun, error)); ok {
+		return returnFunc(id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *BackupRun); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupRun'
+type MockInternalDB_GetBackupRun_Call struct {
+	*mock.Call
+}
+
+// GetBackupRun is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) GetBackupRun(id interface{}) *MockInternalDB_GetBackupRun_Call {
+	return &MockInternalDB_GetBackupRun_Call{Call: _e.mock.On("GetBackupRun", id)}
+}
+
+func (_c *MockInternalDB_GetBackupRun_Call) Run(run func(id int64)) *MockInternalDB_GetBackupRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRun_Call) Return(backupRun *BackupRun, err error) *MockInternalDB_GetBackupRun_Call {
+	_c.Call.Return(backupRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRun_Call) RunAndReturn(run func(id int64) (*BackupRun, error)) *MockInternalDB_GetBackupRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupRunFile provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupRunFile(id int64) (*BackupRunFile, error) {
+	ret := _mock.Called(id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupRunFile")
+	}
+
+	var r0 *BackupRunFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*BackupRunFile, error)); ok {
+		return returnFunc(id)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *BackupRunFile); ok {
+		r0 = returnFunc(id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRunFile)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupRunFile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupRunFile'
+type MockInternalDB_GetBackupRunFile_Call struct {
+	*mock.Call
+}
+
+// GetBackupRunFile is a helper method to define mock.On call
+//   - id int64
+func (_e *MockInternalDB_Expecter) GetBackupRunFile(id interface{}) *MockInternalDB_GetBackupRunFile_Call {
+	return &MockInternalDB_GetBackupRunFile_Call{Call: _e.mock.On("GetBackupRunFile", id)}
+}
+
+func (_c *MockInternalDB_GetBackupRunFile_Call) Run(run func(id int64)) *MockInternalDB_GetBackupRunFile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRunFile_Call) Return(backupRunFile *BackupRunFile, err error) *MockInternalDB_GetBackupRunFile_Call {
+	_c.Call.Return(backupRunFile, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRunFile_Call) RunAndReturn(run func(id int64) (*BackupRunFile, error)) *MockInternalDB_GetBackupRunFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupRunFiles provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupRunFiles(runID int64) ([]BackupRunFile, error) {
+	ret := _mock.Called(runID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupRunFiles")
+	}
+
+	var r0 []BackupRunFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) ([]BackupRunFile, error)); ok {
+		return returnFunc(runID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) []BackupRunFile); ok {
+		r0 = returnFunc(runID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]BackupRunFile)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(runID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupRunFiles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupRunFiles'
+type MockInternalDB_GetBackupRunFiles_Call struct {
+	*mock.Call
+}
+
+// GetBackupRunFiles is a helper method to define mock.On call
+//   - runID int64
+func (_e *MockInternalDB_Expecter) GetBackupRunFiles(runID interface{}) *MockInternalDB_GetBackupRunFiles_Call {
+	return &MockInternalDB_GetBackupRunFiles_Call{Call: _e.mock.On("GetBackupRunFiles", runID)}
+}
+
+func (_c *MockInternalDB_GetBackupRunFiles_Call) Run(run func(runID int64)) *MockInternalDB_GetBackupRunFiles_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRunFiles_Call) Return(backupRunFiles []BackupRunFile, err error) *MockInternalDB_GetBackupRunFiles_Call {
+	_c.Call.Return(backupRunFiles, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRunFiles_Call) RunAndReturn(run func(runID int64) ([]BackupRunFile, error)) *MockInternalDB_GetBackupRunFiles_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBackupRuns provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupRuns(jobID int64, page int, pageSize int) ([]BackupRun, int64, error) {
+	ret := _mock.Called(jobID, page, pageSize)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupRuns")
+	}
+
+	var r0 []BackupRun
+	var r1 int64
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(int64, int, int) ([]BackupRun, int64, error)); ok {
+		return returnFunc(jobID, page, pageSize)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, int, int) []BackupRun); ok {
+		r0 = returnFunc(jobID, page, pageSize)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, int, int) int64); ok {
+		r1 = returnFunc(jobID, page, pageSize)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+	if returnFunc, ok := ret.Get(2).(func(int64, int, int) error); ok {
+		r2 = returnFunc(jobID, page, pageSize)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockInternalDB_GetBackupRuns_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupRuns'
+type MockInternalDB_GetBackupRuns_Call struct {
+	*mock.Call
+}
+
+// GetBackupRuns is a helper method to define mock.On call
+//   - jobID int64
+//   - page int
+//   - pageSize int
+func (_e *MockInternalDB_Expecter) GetBackupRuns(jobID interface{}, page interface{}, pageSize interface{}) *MockInternalDB_GetBackupRuns_Call {
+	return &MockInternalDB_GetBackupRuns_Call{Call: _e.mock.On("GetBackupRuns", jobID, page, pageSize)}
+}
+
+func (_c *MockInternalDB_GetBackupRuns_Call) Run(run func(jobID int64, page int, pageSize int)) *MockInternalDB_GetBackupRuns_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRuns_Call) Return(backupRuns []BackupRun, n int64, err error) *MockInternalDB_GetBackupRuns_Call {
+	_c.Call.Return(backupRuns, n, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupRuns_Call) RunAndReturn(run func(jobID int64, page int, pageSize int) ([]BackupRun, int64, error)) *MockInternalDB_GetBackupRuns_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2522,6 +3431,123 @@ func (_c *MockInternalDB_GetRevisionSummary_Call) Return(revisionSummary *Revisi
 }
 
 func (_c *MockInternalDB_GetRevisionSummary_Call) RunAndReturn(run func(fileID string) (*RevisionSummary, error)) *MockInternalDB_GetRevisionSummary_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRunningBackupRunForJob provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetRunningBackupRunForJob(jobID int64) (*BackupRun, error) {
+	ret := _mock.Called(jobID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRunningBackupRunForJob")
+	}
+
+	var r0 *BackupRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) (*BackupRun, error)); ok {
+		return returnFunc(jobID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) *BackupRun); ok {
+		r0 = returnFunc(jobID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(jobID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetRunningBackupRunForJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRunningBackupRunForJob'
+type MockInternalDB_GetRunningBackupRunForJob_Call struct {
+	*mock.Call
+}
+
+// GetRunningBackupRunForJob is a helper method to define mock.On call
+//   - jobID int64
+func (_e *MockInternalDB_Expecter) GetRunningBackupRunForJob(jobID interface{}) *MockInternalDB_GetRunningBackupRunForJob_Call {
+	return &MockInternalDB_GetRunningBackupRunForJob_Call{Call: _e.mock.On("GetRunningBackupRunForJob", jobID)}
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) Run(run func(jobID int64)) *MockInternalDB_GetRunningBackupRunForJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) Return(backupRun *BackupRun, err error) *MockInternalDB_GetRunningBackupRunForJob_Call {
+	_c.Call.Return(backupRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) RunAndReturn(run func(jobID int64) (*BackupRun, error)) *MockInternalDB_GetRunningBackupRunForJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetSchedulableBackupJobs provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetSchedulableBackupJobs() ([]BackupJob, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSchedulableBackupJobs")
+	}
+
+	var r0 []BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]BackupJob, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []BackupJob); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetSchedulableBackupJobs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSchedulableBackupJobs'
+type MockInternalDB_GetSchedulableBackupJobs_Call struct {
+	*mock.Call
+}
+
+// GetSchedulableBackupJobs is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetSchedulableBackupJobs() *MockInternalDB_GetSchedulableBackupJobs_Call {
+	return &MockInternalDB_GetSchedulableBackupJobs_Call{Call: _e.mock.On("GetSchedulableBackupJobs")}
+}
+
+func (_c *MockInternalDB_GetSchedulableBackupJobs_Call) Run(run func()) *MockInternalDB_GetSchedulableBackupJobs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetSchedulableBackupJobs_Call) Return(backupJobs []BackupJob, err error) *MockInternalDB_GetSchedulableBackupJobs_Call {
+	_c.Call.Return(backupJobs, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetSchedulableBackupJobs_Call) RunAndReturn(run func() ([]BackupJob, error)) *MockInternalDB_GetSchedulableBackupJobs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3472,6 +4498,101 @@ func (_c *MockInternalDB_InsertMetricSample_Call) RunAndReturn(run func(seriesID
 	return _c
 }
 
+// MarkBackupRunCancelRequested provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) MarkBackupRunCancelRequested(runID int64) error {
+	ret := _mock.Called(runID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkBackupRunCancelRequested")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = returnFunc(runID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_MarkBackupRunCancelRequested_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkBackupRunCancelRequested'
+type MockInternalDB_MarkBackupRunCancelRequested_Call struct {
+	*mock.Call
+}
+
+// MarkBackupRunCancelRequested is a helper method to define mock.On call
+//   - runID int64
+func (_e *MockInternalDB_Expecter) MarkBackupRunCancelRequested(runID interface{}) *MockInternalDB_MarkBackupRunCancelRequested_Call {
+	return &MockInternalDB_MarkBackupRunCancelRequested_Call{Call: _e.mock.On("MarkBackupRunCancelRequested", runID)}
+}
+
+func (_c *MockInternalDB_MarkBackupRunCancelRequested_Call) Run(run func(runID int64)) *MockInternalDB_MarkBackupRunCancelRequested_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_MarkBackupRunCancelRequested_Call) Return(err error) *MockInternalDB_MarkBackupRunCancelRequested_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_MarkBackupRunCancelRequested_Call) RunAndReturn(run func(runID int64) error) *MockInternalDB_MarkBackupRunCancelRequested_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkOrphanedBackupRunsFailed provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) MarkOrphanedBackupRunsFailed() error {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkOrphanedBackupRunsFailed")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func() error); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_MarkOrphanedBackupRunsFailed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkOrphanedBackupRunsFailed'
+type MockInternalDB_MarkOrphanedBackupRunsFailed_Call struct {
+	*mock.Call
+}
+
+// MarkOrphanedBackupRunsFailed is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) MarkOrphanedBackupRunsFailed() *MockInternalDB_MarkOrphanedBackupRunsFailed_Call {
+	return &MockInternalDB_MarkOrphanedBackupRunsFailed_Call{Call: _e.mock.On("MarkOrphanedBackupRunsFailed")}
+}
+
+func (_c *MockInternalDB_MarkOrphanedBackupRunsFailed_Call) Run(run func()) *MockInternalDB_MarkOrphanedBackupRunsFailed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_MarkOrphanedBackupRunsFailed_Call) Return(err error) *MockInternalDB_MarkOrphanedBackupRunsFailed_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_MarkOrphanedBackupRunsFailed_Call) RunAndReturn(run func() error) *MockInternalDB_MarkOrphanedBackupRunsFailed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MigrateDown provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) MigrateDown() error {
 	ret := _mock.Called()
@@ -3777,6 +4898,143 @@ func (_c *MockInternalDB_SetSettingIfNotExists_Call) Return(err error) *MockInte
 }
 
 func (_c *MockInternalDB_SetSettingIfNotExists_Call) RunAndReturn(run func(key string, value string, userID *int64) error) *MockInternalDB_SetSettingIfNotExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateBackupJob provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateBackupJob(id int64, payload BackupJobPayload, userID *int64) (*BackupJob, error) {
+	ret := _mock.Called(id, payload, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateBackupJob")
+	}
+
+	var r0 *BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64, BackupJobPayload, *int64) (*BackupJob, error)); ok {
+		return returnFunc(id, payload, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64, BackupJobPayload, *int64) *BackupJob); ok {
+		r0 = returnFunc(id, payload, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64, BackupJobPayload, *int64) error); ok {
+		r1 = returnFunc(id, payload, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_UpdateBackupJob_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateBackupJob'
+type MockInternalDB_UpdateBackupJob_Call struct {
+	*mock.Call
+}
+
+// UpdateBackupJob is a helper method to define mock.On call
+//   - id int64
+//   - payload BackupJobPayload
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) UpdateBackupJob(id interface{}, payload interface{}, userID interface{}) *MockInternalDB_UpdateBackupJob_Call {
+	return &MockInternalDB_UpdateBackupJob_Call{Call: _e.mock.On("UpdateBackupJob", id, payload, userID)}
+}
+
+func (_c *MockInternalDB_UpdateBackupJob_Call) Run(run func(id int64, payload BackupJobPayload, userID *int64)) *MockInternalDB_UpdateBackupJob_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 BackupJobPayload
+		if args[1] != nil {
+			arg1 = args[1].(BackupJobPayload)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateBackupJob_Call) Return(backupJob *BackupJob, err error) *MockInternalDB_UpdateBackupJob_Call {
+	_c.Call.Return(backupJob, err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateBackupJob_Call) RunAndReturn(run func(id int64, payload BackupJobPayload, userID *int64) (*BackupJob, error)) *MockInternalDB_UpdateBackupJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateBackupJobStatus provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateBackupJobStatus(id int64, status string, userID *int64) error {
+	ret := _mock.Called(id, status, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateBackupJobStatus")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, *int64) error); ok {
+		r0 = returnFunc(id, status, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_UpdateBackupJobStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateBackupJobStatus'
+type MockInternalDB_UpdateBackupJobStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateBackupJobStatus is a helper method to define mock.On call
+//   - id int64
+//   - status string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) UpdateBackupJobStatus(id interface{}, status interface{}, userID interface{}) *MockInternalDB_UpdateBackupJobStatus_Call {
+	return &MockInternalDB_UpdateBackupJobStatus_Call{Call: _e.mock.On("UpdateBackupJobStatus", id, status, userID)}
+}
+
+func (_c *MockInternalDB_UpdateBackupJobStatus_Call) Run(run func(id int64, status string, userID *int64)) *MockInternalDB_UpdateBackupJobStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateBackupJobStatus_Call) Return(err error) *MockInternalDB_UpdateBackupJobStatus_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateBackupJobStatus_Call) RunAndReturn(run func(id int64, status string, userID *int64) error) *MockInternalDB_UpdateBackupJobStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4149,6 +5407,80 @@ func (_c *MockInternalDB_UpdateSessionLastAccessed_Call) Return(err error) *Mock
 }
 
 func (_c *MockInternalDB_UpdateSessionLastAccessed_Call) RunAndReturn(run func(sessionID string) error) *MockInternalDB_UpdateSessionLastAccessed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateSetting provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpdateSetting(key string, value string, userID *int64) (*Settings, error) {
+	ret := _mock.Called(key, value, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateSetting")
+	}
+
+	var r0 *Settings
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) (*Settings, error)); ok {
+		return returnFunc(key, value, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string, *int64) *Settings); ok {
+		r0 = returnFunc(key, value, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*Settings)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string, *int64) error); ok {
+		r1 = returnFunc(key, value, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_UpdateSetting_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateSetting'
+type MockInternalDB_UpdateSetting_Call struct {
+	*mock.Call
+}
+
+// UpdateSetting is a helper method to define mock.On call
+//   - key string
+//   - value string
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) UpdateSetting(key interface{}, value interface{}, userID interface{}) *MockInternalDB_UpdateSetting_Call {
+	return &MockInternalDB_UpdateSetting_Call{Call: _e.mock.On("UpdateSetting", key, value, userID)}
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) Run(run func(key string, value string, userID *int64)) *MockInternalDB_UpdateSetting_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) Return(settings *Settings, err error) *MockInternalDB_UpdateSetting_Call {
+	_c.Call.Return(settings, err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpdateSetting_Call) RunAndReturn(run func(key string, value string, userID *int64) (*Settings, error)) *MockInternalDB_UpdateSetting_Call {
 	_c.Call.Return(run)
 	return _c
 }
