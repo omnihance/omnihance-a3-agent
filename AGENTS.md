@@ -57,6 +57,7 @@ This project has Omnihance A3 Agent Go code along with Omnihance A3 Agent UI whi
 - In Omnihance A3 Agent UI implement accessibility features on elements. For example, a tag should have a tabindex=“0”, aria-label, on:click, and on:keydown, and similar attributes.
 - In Omnihance A3 Agent UI always use curly braces even for single line conditions and loops.
 - In Omnihance A3 Agent UI please make the UI beautiful and responsive.
+- In Omnihance A3 Agent UI after adding or updating any component run style fix.
 
 ## Don't
 
