@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   keepPreviousData,
   useMutation,
@@ -145,6 +145,8 @@ export function BackupPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<BackupJob | null>(null);
   const [form, setForm] = useState<BackupFormState>(emptyForm);
+  const sqlDefaultsAppliedRef = useRef(false);
+  const sqlDefaultsRequestIdRef = useRef(0);
   const [deleteJob, setDeleteJob] = useState<BackupJob | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
   const [runPaging, setRunPaging] = useState<{
@@ -215,6 +217,37 @@ export function BackupPage() {
     queryFn: getBackupSQLServerDefaults,
     enabled: formOpen && form.job_type === 'sql_server' && editingJob === null,
   });
+
+  const prefillCreateSQLDefaults = () => {
+    if (sqlDefaultsAppliedRef.current) {
+      return;
+    }
+
+    const requestId = sqlDefaultsRequestIdRef.current;
+    void queryClient
+      .fetchQuery({
+        queryKey: queryKeys.backupSqlServerDefaults,
+        queryFn: getBackupSQLServerDefaults,
+      })
+      .then((defaults) => {
+        if (
+          requestId !== sqlDefaultsRequestIdRef.current ||
+          sqlDefaultsAppliedRef.current
+        ) {
+          return;
+        }
+
+        sqlDefaultsAppliedRef.current = true;
+        setForm((current) => ({
+          ...current,
+          sql_host: defaults.host,
+          sql_port: defaults.port.toString(),
+          sql_username: defaults.username,
+          sql_password: defaults.password,
+        }));
+      })
+      .catch(() => undefined);
+  };
 
   const createMutation = useMutation({
     mutationFn: createBackupJob,
@@ -298,23 +331,28 @@ export function BackupPage() {
   const openCreate = () => {
     setEditingJob(null);
     setForm(emptyForm);
+    sqlDefaultsRequestIdRef.current += 1;
+    sqlDefaultsAppliedRef.current = false;
     setFormOpen(true);
+    prefillCreateSQLDefaults();
   };
 
   const openEdit = (job: BackupJob) => {
     setEditingJob(job);
     setForm(jobToForm(job));
+    sqlDefaultsRequestIdRef.current += 1;
+    sqlDefaultsAppliedRef.current = true;
     setFormOpen(true);
   };
 
   const handleSave = () => {
-    const validationError = validateForm(form, sqlDefaults);
+    const validationError = validateForm(form);
     if (validationError) {
       toast.error(validationError);
       return;
     }
 
-    const payload = formToPayload(form, sqlDefaults);
+    const payload = formToPayload(form);
     if (editingJob) {
       updateMutation.mutate({ id: editingJob.id, payload });
       return;
@@ -659,6 +697,7 @@ export function BackupPage() {
         onSave={handleSave}
         isSaving={isSaving}
         sqlDefaults={sqlDefaults}
+        onSqlServerSelected={prefillCreateSQLDefaults}
       />
 
       <AlertDialog
@@ -763,6 +802,7 @@ function BackupJobDialog({
   onSave,
   isSaving,
   sqlDefaults,
+  onSqlServerSelected,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -772,6 +812,7 @@ function BackupJobDialog({
   onSave: () => void;
   isSaving: boolean;
   sqlDefaults?: BackupSQLServerDefaults;
+  onSqlServerSelected: () => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -804,12 +845,16 @@ function BackupJobDialog({
               <Label htmlFor="backup-type">Type</Label>
               <Select
                 value={form.job_type}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
+                  const jobType = value as BackupJobType;
                   setForm((current) => ({
                     ...current,
-                    job_type: value as BackupJobType,
-                  }))
-                }
+                    job_type: jobType,
+                  }));
+                  if (jobType === 'sql_server' && !editingJob) {
+                    onSqlServerSelected();
+                  }
+                }}
               >
                 <SelectTrigger id="backup-type">
                   <SelectValue />
@@ -905,7 +950,7 @@ function BackupJobDialog({
                   <Label htmlFor="backup-sql-host">SQL Server Host</Label>
                   <Input
                     id="backup-sql-host"
-                    value={form.sql_host || sqlDefaults?.host || ''}
+                    value={form.sql_host}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
@@ -919,7 +964,7 @@ function BackupJobDialog({
                   <Input
                     id="backup-sql-port"
                     type="number"
-                    value={form.sql_port || sqlDefaults?.port.toString() || ''}
+                    value={form.sql_port}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
@@ -936,7 +981,7 @@ function BackupJobDialog({
                   <Label htmlFor="backup-sql-user">SQL Username</Label>
                   <Input
                     id="backup-sql-user"
-                    value={form.sql_username || sqlDefaults?.username || ''}
+                    value={form.sql_username}
                     onChange={(event) =>
                       setForm((current) => ({
                         ...current,
@@ -949,7 +994,7 @@ function BackupJobDialog({
                   <Label htmlFor="backup-sql-password">SQL Password</Label>
                   <PasswordInput
                     id="backup-sql-password"
-                    value={form.sql_password || sqlDefaults?.password || ''}
+                    value={form.sql_password}
                     onChange={(value) =>
                       setForm((current) => ({
                         ...current,
@@ -1363,10 +1408,7 @@ function jobToForm(job: BackupJob): BackupFormState {
   };
 }
 
-function formToPayload(
-  form: BackupFormState,
-  sqlDefaults?: BackupSQLServerDefaults,
-): BackupJobRequest {
+function formToPayload(form: BackupFormState): BackupJobRequest {
   const payload: BackupJobRequest = {
     job_type: form.job_type,
     name: form.name.trim(),
@@ -1381,22 +1423,15 @@ function formToPayload(
     return payload;
   }
 
-  payload.sql_host = emptyToNull(form.sql_host || sqlDefaults?.host || '');
-  payload.sql_port = form.sql_port.trim()
-    ? Number(form.sql_port)
-    : sqlDefaults?.port || null;
-  payload.sql_username = emptyToNull(
-    form.sql_username || sqlDefaults?.username || '',
-  );
-  payload.sql_password = form.sql_password || sqlDefaults?.password || '';
+  payload.sql_host = emptyToNull(form.sql_host);
+  payload.sql_port = form.sql_port.trim() ? Number(form.sql_port) : null;
+  payload.sql_username = emptyToNull(form.sql_username);
+  payload.sql_password = form.sql_password;
   payload.sql_database_names = emptyToNull(form.sql_database_names);
   return payload;
 }
 
-function validateForm(
-  form: BackupFormState,
-  sqlDefaults?: BackupSQLServerDefaults,
-): string | null {
+function validateForm(form: BackupFormState): string | null {
   if (!form.name.trim()) {
     return 'Job name is required';
   }
@@ -1410,20 +1445,16 @@ function validateForm(
   }
 
   if (form.job_type === 'sql_server') {
-    const sqlHost = form.sql_host || sqlDefaults?.host || '';
-    const sqlPort = form.sql_port || sqlDefaults?.port.toString() || '';
-    const sqlUsername = form.sql_username || sqlDefaults?.username || '';
-
-    if (!sqlHost.trim()) {
+    if (!form.sql_host.trim()) {
       return 'SQL Server host is required';
     }
 
-    const port = Number(sqlPort);
+    const port = Number(form.sql_port);
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
       return 'SQL Server port must be between 1 and 65535';
     }
 
-    if (!sqlUsername.trim()) {
+    if (!form.sql_username.trim()) {
       return 'SQL Server username is required';
     }
 
