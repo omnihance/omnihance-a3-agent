@@ -20,6 +20,24 @@ function BackupPageWithLayout() {
   );
 }
 
+function getErrorStatus(error: unknown) {
+  if (error instanceof Response) {
+    return error.status;
+  }
+
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = error.status;
+    return typeof status === 'number' ? status : null;
+  }
+
+  return null;
+}
+
+function isAuthError(error: unknown) {
+  const status = getErrorStatus(error);
+  return status === 401 || status === 403;
+}
+
 export default (parentRoute: AnyRootRoute) =>
   createRoute({
     getParentRoute: () => parentRoute,
@@ -34,7 +52,11 @@ export default (parentRoute: AnyRootRoute) =>
     beforeLoad: async ({ location }) => {
       try {
         await getSession();
-      } catch {
+      } catch (error) {
+        if (!isAuthError(error)) {
+          throw error;
+        }
+
         throw redirect({
           to: '/',
           search: {
