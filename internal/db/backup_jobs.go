@@ -265,6 +265,13 @@ func (s *sqliteInternalDB) DeleteBackupJob(id int64, userID *int64) error {
 }
 
 func (s *sqliteInternalDB) CreateBackupRun(jobID int64, triggerType string, previousJobStatus string, userID *int64) (*BackupRun, error) {
+	tx, err := s.BeginTx()
+	if err != nil {
+		return nil, err
+	}
+
+	rollback := func() { _ = tx.Rollback() }
+
 	record := goqu.Record{
 		"job_id":              jobID,
 		"trigger_type":        triggerType,
@@ -275,22 +282,24 @@ func (s *sqliteInternalDB) CreateBackupRun(jobID int64, triggerType string, prev
 		record["created_by"] = *userID
 	}
 
-	result, err := s.goqu.Insert("backup_runs").
+	result, err := tx.Insert("backup_runs").
 		Prepared(true).
 		Rows(record).
 		Executor().
 		Exec()
 	if err != nil {
+		rollback()
 		s.logger.Error("failed to create backup run", logger.Field{Key: "job_id", Value: jobID}, logger.Field{Key: "error", Value: err})
 		return nil, fmt.Errorf("failed to create backup run: %w", err)
 	}
 
 	id, err := result.LastInsertId()
 	if err != nil {
+		rollback()
 		return nil, fmt.Errorf("failed to get backup run id: %w", err)
 	}
 
-	if _, err := s.goqu.Update("backup_jobs").
+	if _, err := tx.Update("backup_jobs").
 		Prepared(true).
 		Set(goqu.Record{
 			"status":      BackupJobStatusRunning,
@@ -300,7 +309,13 @@ func (s *sqliteInternalDB) CreateBackupRun(jobID int64, triggerType string, prev
 		Where(goqu.Ex{"id": jobID}).
 		Executor().
 		Exec(); err != nil {
+		rollback()
 		return nil, fmt.Errorf("failed to update backup job run state: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		rollback()
+		return nil, fmt.Errorf("failed to commit backup run creation: %w", err)
 	}
 
 	return s.GetBackupRun(id)
