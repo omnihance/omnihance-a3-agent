@@ -21,6 +21,7 @@ import {
   getTextFile,
   getNPCFile,
   getSpawnFile,
+  getDropFile,
   getQuestFile,
   getMaps,
 } from '@/lib/api';
@@ -28,6 +29,7 @@ import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileEdit } from './text-file-edit';
 import { NPCFileEdit } from './npc-file-edit';
 import { SpawnFileEdit } from './spawn-file-edit';
+import { DropFileEdit } from './drop-file-edit';
 import { QuestFileEdit } from './quest-file-edit';
 import { queryKeys } from '@/constants';
 import { useMemo } from 'react';
@@ -104,6 +106,18 @@ export function FileEdit({ filePath }: FileEditProps) {
     enabled: !!filePath && fileType === 'a3_quest_file' && canEditFiles,
   });
 
+  const {
+    data: dropFileData,
+    isLoading: dropFileLoading,
+    error: dropFileError,
+  } = useQuery({
+    queryKey: queryKeys.dropFile(filePath),
+    queryFn: () => {
+      return getDropFile({ path: filePath });
+    },
+    enabled: !!filePath && fileType === 'a3_drop_file' && canEditFiles,
+  });
+
   const { data: maps } = useQuery({
     queryKey: queryKeys.maps,
     queryFn: () => getMaps(),
@@ -167,6 +181,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     textFileError,
     npcFileError,
     spawnFileError,
+    dropFileError,
     questFileError,
   ]);
 
@@ -210,7 +225,11 @@ export function FileEdit({ filePath }: FileEditProps) {
         </Alert>
       )}
 
-      {(textFileError || npcFileError || spawnFileError || questFileError) && (
+      {(textFileError ||
+        npcFileError ||
+        spawnFileError ||
+        dropFileError ||
+        questFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
         </Alert>
@@ -329,6 +348,18 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
             </>
           )}
+          {fileType === 'a3_drop_file' && (
+            <>
+              {dropFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {dropFileData && !dropFileError && (
+                <DropFileEdit filePath={filePath} defaultData={dropFileData} />
+              )}
+            </>
+          )}
           {fileType === 'a3_quest_file' && (
             <>
               {questFileLoading && (
@@ -348,6 +379,7 @@ export function FileEdit({ filePath }: FileEditProps) {
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
             fileType !== 'a3_spawn_file' &&
+            fileType !== 'a3_drop_file' &&
             fileType !== 'a3_quest_file' && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 	mock "github.com/stretchr/testify/mock"
@@ -1112,6 +1113,68 @@ func (_c *MockFileEditorService_ReadDir_Call) RunAndReturn(run func(name string)
 	return _c
 }
 
+// ReadDropFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadDropFileData(path string) (dropfile.DropFile, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadDropFileData")
+	}
+
+	var r0 dropfile.DropFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (dropfile.DropFile, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) dropfile.DropFile); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(dropfile.DropFile)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadDropFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadDropFileData'
+type MockFileEditorService_ReadDropFileData_Call struct {
+	*mock.Call
+}
+
+// ReadDropFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadDropFileData(path interface{}) *MockFileEditorService_ReadDropFileData_Call {
+	return &MockFileEditorService_ReadDropFileData_Call{Call: _e.mock.On("ReadDropFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadDropFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadDropFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadDropFileData_Call) Return(dropFile dropfile.DropFile, err error) *MockFileEditorService_ReadDropFileData_Call {
+	_c.Call.Return(dropFile, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadDropFileData_Call) RunAndReturn(run func(path string) (dropfile.DropFile, error)) *MockFileEditorService_ReadDropFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadFile provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) ReadFile(name string) ([]byte, error) {
 	ret := _mock.Called(name)
@@ -1518,6 +1581,63 @@ func (_c *MockFileEditorService_Stat_Call) Return(fileInfo fs.FileInfo, err erro
 }
 
 func (_c *MockFileEditorService_Stat_Call) RunAndReturn(run func(name string) (fs.FileInfo, error)) *MockFileEditorService_Stat_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteDropFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteDropFileData(path string, data dropfile.DropFile) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteDropFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, dropfile.DropFile) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteDropFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteDropFileData'
+type MockFileEditorService_WriteDropFileData_Call struct {
+	*mock.Call
+}
+
+// WriteDropFileData is a helper method to define mock.On call
+//   - path string
+//   - data dropfile.DropFile
+func (_e *MockFileEditorService_Expecter) WriteDropFileData(path interface{}, data interface{}) *MockFileEditorService_WriteDropFileData_Call {
+	return &MockFileEditorService_WriteDropFileData_Call{Call: _e.mock.On("WriteDropFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteDropFileData_Call) Run(run func(path string, data dropfile.DropFile)) *MockFileEditorService_WriteDropFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 dropfile.DropFile
+		if args[1] != nil {
+			arg1 = args[1].(dropfile.DropFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteDropFileData_Call) Return(err error) *MockFileEditorService_WriteDropFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteDropFileData_Call) RunAndReturn(run func(path string, data dropfile.DropFile) error) *MockFileEditorService_WriteDropFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }

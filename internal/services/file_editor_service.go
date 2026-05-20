@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
@@ -48,6 +49,8 @@ type FileEditorService interface {
 	WriteTextFileData(path string, content string) error
 	ReadSpawnFileData(path string) ([]NPCSpawnData, error)
 	WriteSpawnFileData(path string, data []NPCSpawnData) error
+	ReadDropFileData(path string) (dropfile.DropFile, error)
+	WriteDropFileData(path string, data dropfile.DropFile) error
 	Stat(name string) (fs.FileInfo, error)
 	ReadDir(name string) ([]fs.DirEntry, error)
 	ReadFile(name string) ([]byte, error)
@@ -89,6 +92,8 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeQuest:
 		return true
+	case FileTypeDrop:
+		return true
 	default:
 		return false
 	}
@@ -129,6 +134,8 @@ func (fes *fileEditorService) IsFileViewable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeQuest:
 		return true
+	case FileTypeDrop:
+		return true
 	default:
 		return false
 	}
@@ -144,6 +151,8 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 		return "/file-tree/spawn-file"
 	case FileTypeQuest:
 		return "/file-tree/quest-file"
+	case FileTypeDrop:
+		return "/file-tree/drop-file"
 	default:
 		return ""
 	}
@@ -238,6 +247,47 @@ func (fes *fileEditorService) WriteSpawnFileData(path string, data []NPCSpawnDat
 	}
 
 	return nil
+}
+
+func (fes *fileEditorService) ReadDropFileData(path string) (dropfile.DropFile, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return dropfile.Read(file)
+}
+
+func (fes *fileEditorService) WriteDropFileData(path string, data dropfile.DropFile) error {
+	var buf bytes.Buffer
+	if err := dropfile.Write(&buf, data); err != nil {
+		return err
+	}
+
+	_, err := dropfile.Read(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	_, err = file.Write(buf.Bytes())
+	return err
 }
 
 func (fes *fileEditorService) Stat(name string) (fs.FileInfo, error) {

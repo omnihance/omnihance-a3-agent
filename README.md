@@ -73,7 +73,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Drop files (.itm)
   - Map files (.map)
   - Text files (MIME type detection)
-- **File Viewing**: View NPC files, quest files, spawn files, and text files in the browser
+- **File Viewing**: View NPC files, quest files, spawn files, drop files, and text files in the browser
 - **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
@@ -101,6 +101,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Table-based interface for managing multiple spawn points
     - **Monster Name Display**: Real-time monster name lookup based on NPC ID
     - **Map Name Display**: Shows map name in brackets when viewing spawn files (e.g., "0.n_ndt (Wolfreck)")
+  - **Drop File Editor**: Edit monster drop file configurations:
+    - Add, remove, and modify drop entries
+    - Configure item code, drop rate, and drop group values
+    - Choose uploaded item client data from a dropdown or enter custom item codes manually
+    - **Item Name Display**: Shows item names when IT0-IT3 client data has been uploaded
   - **Text File Editor**: Edit text-based configuration files
 - **File Locking**: Prevents concurrent editing conflicts
 - **File Revisions**: Automatic version control for all file edits
@@ -519,6 +524,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `PUT /api/file-tree/spawn-file` - Update spawn file
 - `GET /api/file-tree/text-file` - Read text file content
 - `PUT /api/file-tree/text-file` - Update text file
+- `GET /api/file-tree/drop-file` - Read A3 drop file data
+- `PUT /api/file-tree/drop-file` - Update A3 drop file data
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
@@ -642,9 +649,11 @@ The application uses SQLite with the following main tables:
 
 6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
 
-7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
+7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), or text files) to view and edit them (requires admin or super admin role).
 
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
+   - **Drop File Editor**: Edit drop files (monster drop configurations) by adding, removing, and modifying entries, selecting item codes, and displaying item names when IT0-IT3 client data has been uploaded
+   - **Text File Editor**: Edit text-based configuration files
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
