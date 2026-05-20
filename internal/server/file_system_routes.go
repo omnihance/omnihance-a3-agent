@@ -26,6 +26,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
+	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -41,6 +42,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Put("/spawn-file", s.handleUpdateSpawnFile)
 		r.Get("/drop-file", s.handleDropFileData)
 		r.Put("/drop-file", s.handleUpdateDropFile)
+		r.Get("/item-combination-data", s.handleItemCombinationDataFileData)
+		r.Put("/item-combination-data", s.handleUpdateItemCombinationDataFile)
 		r.Get("/quest-file", s.handleQuestFileData)
 		r.Put("/quest-file", s.handleUpdateQuestFile)
 		r.Post("/revert-file", s.handleRevertFile)
@@ -542,6 +545,69 @@ func (s *Server) handleDropFileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = utils.WriteJSONResponse(w, dropFileToAPIData(dropData))
+}
+
+func (s *Server) handleItemCombinationDataFileData(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Path parameter is required"},
+		})
+		return
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return
+	}
+
+	if info.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return
+	}
+
+	fileType := s.fileEditor.GetFileType(cleanPath, info)
+	if fileType != services.FileTypeItemCombinationData {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"File is not an item combination data file"},
+		})
+		return
+	}
+
+	itemCombinationData, err := s.fileEditor.ReadItemCombinationData(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read item combination data: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, itemCombinationDataToAPIData(itemCombinationData))
 }
 
 func (s *Server) validateFileUpdateRequest(w http.ResponseWriter, r *http.Request, expectedFileType services.FileType, fileTypeName string) (*fileUpdateContext, bool) {
@@ -1118,6 +1184,193 @@ func (s *Server) handleUpdateDropFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = s.fileEditor.WriteDropFileData(ctx.cleanPath, dropData); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":     "File updated successfully",
+		"revision_id": revisionID,
+	})
+}
+
+const (
+	itemCombinationIngredientCount = 10
+	maxItemCombinationSuccessRate  = 120
+)
+
+func itemCombinationDataToAPIData(data itemcombinationdata.ItemCombinationData) ItemCombinationDataFileAPIData {
+	apiFormulas := make([]ItemCombinationFormulaAPIData, len(data))
+	for i, formula := range data {
+		successRate := formula.SuccessRate
+		outcome := formula.Outcome
+		apiFormulas[i] = ItemCombinationFormulaAPIData{
+			Ingredients: []*uint16{
+				uint16Ptr(formula.Item1),
+				uint16Ptr(formula.Item2),
+				uint16Ptr(formula.Item3),
+				uint16Ptr(formula.Item4),
+				uint16Ptr(formula.Item5),
+				uint16Ptr(formula.Item6),
+				uint16Ptr(formula.Item7),
+				uint16Ptr(formula.Item8),
+				uint16Ptr(formula.Item9),
+				uint16Ptr(formula.Item10),
+			},
+			SuccessRate: &successRate,
+			Outcome:     &outcome,
+		}
+	}
+
+	return ItemCombinationDataFileAPIData{Formulas: apiFormulas}
+}
+
+func itemCombinationDataFromAPIData(req ItemCombinationDataFileAPIData, existingData itemcombinationdata.ItemCombinationData) itemcombinationdata.ItemCombinationData {
+	data := make(itemcombinationdata.ItemCombinationData, len(req.Formulas))
+	for i, formula := range req.Formulas {
+		data[i] = itemCombinationFormulaFromAPIData(formula)
+		if i < len(existingData) {
+			data[i].Unknown1 = existingData[i].Unknown1
+			data[i].Unknown2 = existingData[i].Unknown2
+			data[i].Unknown3 = existingData[i].Unknown3
+			data[i].Unknown4 = existingData[i].Unknown4
+		}
+	}
+
+	return data
+}
+
+func itemCombinationFormulaFromAPIData(formula ItemCombinationFormulaAPIData) itemcombinationdata.CraftFormula {
+	itemAt := func(index int) uint16 {
+		if index >= len(formula.Ingredients) || formula.Ingredients[index] == nil {
+			return 0
+		}
+
+		return *formula.Ingredients[index]
+	}
+
+	var successRate uint16
+	if formula.SuccessRate != nil {
+		successRate = *formula.SuccessRate
+	}
+
+	var outcome uint16
+	if formula.Outcome != nil {
+		outcome = *formula.Outcome
+	}
+
+	return itemcombinationdata.CraftFormula{
+		Item1:       itemAt(0),
+		Item2:       itemAt(1),
+		Item3:       itemAt(2),
+		Item4:       itemAt(3),
+		Item5:       itemAt(4),
+		Item6:       itemAt(5),
+		Item7:       itemAt(6),
+		Item8:       itemAt(7),
+		Item9:       itemAt(8),
+		Item10:      itemAt(9),
+		SuccessRate: successRate,
+		Outcome:     outcome,
+	}
+}
+
+func (s *Server) handleUpdateItemCombinationDataFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeItemCombinationData, "item combination data")
+	if !ok {
+		return
+	}
+
+	var req ItemCombinationDataFileAPIData
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		var errors []string
+		for _, err := range err.(validator.ValidationErrors) {
+			errors = append(errors, err.Field()+" is required")
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    errors,
+		})
+		return
+	}
+
+	if validationErrs := validateItemCombinationDataRequest(req); len(validationErrs) > 0 {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    validationErrs,
+		})
+		return
+	}
+
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read file: " + err.Error()},
+		})
+		return
+	}
+
+	existingData, err := s.fileEditor.ReadItemCombinationData(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read item combination data: " + err.Error()},
+		})
+		return
+	}
+
+	itemCombinationData := itemCombinationDataFromAPIData(req, existingData)
+
+	var currentDataBuffer bytes.Buffer
+	if err := itemcombinationdata.Write(&currentDataBuffer, itemCombinationData); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to serialize item combination data: " + err.Error()},
+		})
+		return
+	}
+
+	currentData := currentDataBuffer.Bytes()
+	if _, err := itemcombinationdata.Read(bytes.NewReader(currentData)); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to validate item combination data: " + err.Error()},
+		})
+		return
+	}
+
+	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	if !ok {
+		return
+	}
+
+	if err = s.fileEditor.WriteItemCombinationData(ctx.cleanPath, itemCombinationData); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
@@ -1960,6 +2213,38 @@ func duplicateFileContents(fileEditor duplicateFileEditor, sourcePath string, ta
 	return fileEditor.WriteFile(targetPath, content, perm)
 }
 
+func validateItemCombinationDataRequest(req ItemCombinationDataFileAPIData) []string {
+	var errs []string
+	if req.Formulas == nil {
+		errs = append(errs, "formulas is required")
+		return errs
+	}
+
+	for i, formula := range req.Formulas {
+		if len(formula.Ingredients) != itemCombinationIngredientCount {
+			errs = append(errs, fmt.Sprintf("formulas[%d]: ingredients must contain exactly %d items", i, itemCombinationIngredientCount))
+		} else {
+			for j, ingredient := range formula.Ingredients {
+				if ingredient == nil {
+					errs = append(errs, fmt.Sprintf("formulas[%d]: ingredients[%d] is required", i, j))
+				}
+			}
+		}
+
+		if formula.SuccessRate == nil {
+			errs = append(errs, fmt.Sprintf("formulas[%d]: success_rate is required", i))
+		} else if *formula.SuccessRate == 0 || *formula.SuccessRate > maxItemCombinationSuccessRate {
+			errs = append(errs, fmt.Sprintf("formulas[%d]: success_rate must be between 1 and %d", i, maxItemCombinationSuccessRate))
+		}
+
+		if formula.Outcome == nil {
+			errs = append(errs, fmt.Sprintf("formulas[%d]: outcome is required", i))
+		}
+	}
+
+	return errs
+}
+
 func validateQuestFileRequest(req QuestFileAPIData) []string {
 	var errs []string
 	if *req.MinLevel != 0xff && *req.MaxLevel != 0xff && *req.MinLevel > *req.MaxLevel {
@@ -1993,6 +2278,10 @@ func validateQuestFileRequest(req QuestFileAPIData) []string {
 		}
 	}
 	return errs
+}
+
+func uint16Ptr(value uint16) *uint16 {
+	return &value
 }
 
 type FileNode struct {
@@ -2064,6 +2353,16 @@ type DropAPIData struct {
 	ItemCode  *uint16 `json:"item_code" validate:"required"`
 	DropRate  *uint16 `json:"drop_rate" validate:"required"`
 	DropGroup *uint16 `json:"drop_group" validate:"required"`
+}
+
+type ItemCombinationDataFileAPIData struct {
+	Formulas []ItemCombinationFormulaAPIData `json:"formulas" validate:"required,dive"`
+}
+
+type ItemCombinationFormulaAPIData struct {
+	Ingredients []*uint16 `json:"ingredients" validate:"required,len=10,dive,required"`
+	SuccessRate *uint16   `json:"success_rate" validate:"required"`
+	Outcome     *uint16   `json:"outcome" validate:"required"`
 }
 
 type QuestFileAPIData struct {

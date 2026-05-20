@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
+	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -184,6 +185,141 @@ func TestDropFileToAPIDataPreservesFlaggedItemCode(t *testing.T) {
 	}
 	if *apiData.Drops[0].ItemCode != 0x4001 {
 		t.Fatalf("item code = %d, want %d", *apiData.Drops[0].ItemCode, 0x4001)
+	}
+}
+
+func TestItemCombinationAPIDataRoundTripPreservesBytes(t *testing.T) {
+	original := itemcombinationdata.ItemCombinationData{
+		{
+			Item1:       1,
+			Item2:       2,
+			Item10:      10,
+			SuccessRate: 120,
+			Outcome:     500,
+			Unknown1:    0x1111,
+			Unknown2:    0x2222,
+			Unknown3:    0x3333,
+			Unknown4:    0x4444,
+		},
+		{
+			Item1:       100,
+			SuccessRate: 1,
+			Outcome:     600,
+			Unknown1:    0xAAAA,
+			Unknown2:    0xBBBB,
+			Unknown3:    0xCCCC,
+			Unknown4:    0xDDDD,
+		},
+	}
+
+	var raw bytes.Buffer
+	if err := itemcombinationdata.Write(&raw, original); err != nil {
+		t.Fatalf("itemcombinationdata.Write() error = %v", err)
+	}
+
+	apiData := itemCombinationDataToAPIData(original)
+	next := itemCombinationDataFromAPIData(apiData, original)
+
+	var buf bytes.Buffer
+	if err := itemcombinationdata.Write(&buf, next); err != nil {
+		t.Fatalf("itemcombinationdata.Write() error = %v", err)
+	}
+
+	if !bytes.Equal(raw.Bytes(), buf.Bytes()) {
+		t.Fatalf("round-trip changed item combination bytes: before=%d after=%d", raw.Len(), buf.Len())
+	}
+}
+
+func TestItemCombinationAPIDataPreservesUnknownsForUpdatedRows(t *testing.T) {
+	existing := itemcombinationdata.ItemCombinationData{
+		{
+			Item1:       1,
+			SuccessRate: 50,
+			Outcome:     500,
+			Unknown1:    0x1111,
+			Unknown2:    0x2222,
+			Unknown3:    0x3333,
+			Unknown4:    0x4444,
+		},
+	}
+
+	apiData := itemCombinationDataToAPIData(existing)
+	*apiData.Formulas[0].Ingredients[0] = 99
+	*apiData.Formulas[0].SuccessRate = 75
+	*apiData.Formulas[0].Outcome = 600
+
+	next := itemCombinationDataFromAPIData(apiData, existing)
+	if next[0].Item1 != 99 || next[0].SuccessRate != 75 || next[0].Outcome != 600 {
+		t.Fatal("visible fields were not updated")
+	}
+
+	if next[0].Unknown1 != existing[0].Unknown1 ||
+		next[0].Unknown2 != existing[0].Unknown2 ||
+		next[0].Unknown3 != existing[0].Unknown3 ||
+		next[0].Unknown4 != existing[0].Unknown4 {
+		t.Fatal("unknown fields changed for existing row")
+	}
+}
+
+func TestItemCombinationAPIDataDefaultsNewRowUnknownsToZero(t *testing.T) {
+	existing := itemcombinationdata.ItemCombinationData{
+		{
+			Item1:       1,
+			SuccessRate: 50,
+			Outcome:     500,
+			Unknown1:    0x1111,
+			Unknown2:    0x2222,
+			Unknown3:    0x3333,
+			Unknown4:    0x4444,
+		},
+	}
+
+	apiData := itemCombinationDataToAPIData(existing)
+	newSuccessRate := uint16(1)
+	newOutcome := uint16(700)
+	apiData.Formulas = append(apiData.Formulas, ItemCombinationFormulaAPIData{
+		Ingredients: []*uint16{
+			uint16Ptr(0),
+			uint16Ptr(2),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+			uint16Ptr(0),
+		},
+		SuccessRate: &newSuccessRate,
+		Outcome:     &newOutcome,
+	})
+
+	next := itemCombinationDataFromAPIData(apiData, existing)
+	if len(next) != 2 {
+		t.Fatalf("formula count = %d, want 2", len(next))
+	}
+
+	if next[1].Unknown1 != 0 || next[1].Unknown2 != 0 || next[1].Unknown3 != 0 || next[1].Unknown4 != 0 {
+		t.Fatal("new row unknown fields should default to zero")
+	}
+}
+
+func TestValidateItemCombinationDataRequest(t *testing.T) {
+	successRate := uint16(0)
+	outcome := uint16(500)
+	req := ItemCombinationDataFileAPIData{
+		Formulas: []ItemCombinationFormulaAPIData{
+			{
+				Ingredients: []*uint16{uint16Ptr(1)},
+				SuccessRate: &successRate,
+				Outcome:     &outcome,
+			},
+		},
+	}
+
+	errs := validateItemCombinationDataRequest(req)
+	if len(errs) != 2 {
+		t.Fatalf("validation error count = %d, want 2: %v", len(errs), errs)
 	}
 }
 

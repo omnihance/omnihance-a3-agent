@@ -8,6 +8,7 @@ import (
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
+	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -148,5 +149,73 @@ func TestReadDropFileDataTruncated(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte{1, 2, 3}, 0644))
 
 	_, err := service.ReadDropFileData(path)
+	require.Error(t, err)
+}
+
+func TestGetFileTypeItemCombinationData(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "itemcombinationdata")
+	require.NoError(t, os.WriteFile(path, nil, 0644))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, FileTypeItemCombinationData, service.GetFileType(path, info))
+	require.True(t, service.IsFileViewable(path, info))
+	require.True(t, service.IsFileEditable(path, info))
+	require.Equal(t, "/file-tree/item-combination-data", service.GetFileAPIEndpoint(path, info))
+}
+
+func TestItemCombinationDataRoundTrip(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "ItemCombinationData")
+
+	expected := itemcombinationdata.ItemCombinationData{
+		{
+			Item1:       1,
+			Item2:       2,
+			Item3:       0,
+			Item10:      10,
+			SuccessRate: 120,
+			Outcome:     500,
+			Unknown1:    0x1111,
+			Unknown2:    0x2222,
+			Unknown3:    0x3333,
+			Unknown4:    0x4444,
+		},
+		{
+			Item1:       100,
+			Item2:       101,
+			SuccessRate: 1,
+			Outcome:     600,
+		},
+	}
+
+	require.NoError(t, service.WriteItemCombinationData(path, expected))
+	actual, err := service.ReadItemCombinationData(path)
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func TestReadItemCombinationDataEmpty(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "ItemCombinationData")
+	require.NoError(t, os.WriteFile(path, nil, 0644))
+
+	actual, err := service.ReadItemCombinationData(path)
+	require.NoError(t, err)
+	require.NotNil(t, actual)
+	require.Empty(t, actual)
+}
+
+func TestReadItemCombinationDataTruncated(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "ItemCombinationData")
+	require.NoError(t, os.WriteFile(path, []byte{1, 2, 3}, 0644))
+
+	_, err := service.ReadItemCombinationData(path)
 	require.Error(t, err)
 }

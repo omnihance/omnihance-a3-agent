@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
+	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 	mock "github.com/stretchr/testify/mock"
@@ -1237,6 +1238,68 @@ func (_c *MockFileEditorService_ReadFile_Call) RunAndReturn(run func(name string
 	return _c
 }
 
+// ReadItemCombinationData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadItemCombinationData")
+	}
+
+	var r0 itemcombinationdata.ItemCombinationData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemcombinationdata.ItemCombinationData, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemcombinationdata.ItemCombinationData); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemcombinationdata.ItemCombinationData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadItemCombinationData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadItemCombinationData'
+type MockFileEditorService_ReadItemCombinationData_Call struct {
+	*mock.Call
+}
+
+// ReadItemCombinationData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadItemCombinationData(path interface{}) *MockFileEditorService_ReadItemCombinationData_Call {
+	return &MockFileEditorService_ReadItemCombinationData_Call{Call: _e.mock.On("ReadItemCombinationData", path)}
+}
+
+func (_c *MockFileEditorService_ReadItemCombinationData_Call) Run(run func(path string)) *MockFileEditorService_ReadItemCombinationData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadItemCombinationData_Call) Return(itemCombinationData itemcombinationdata.ItemCombinationData, err error) *MockFileEditorService_ReadItemCombinationData_Call {
+	_c.Call.Return(itemCombinationData, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadItemCombinationData_Call) RunAndReturn(run func(path string) (itemcombinationdata.ItemCombinationData, error)) *MockFileEditorService_ReadItemCombinationData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadNPCFileData provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) ReadNPCFileData(path string) (*NPCFileData, error) {
 	ret := _mock.Called(path)
@@ -1701,6 +1764,63 @@ func (_c *MockFileEditorService_WriteFile_Call) Return(err error) *MockFileEdito
 }
 
 func (_c *MockFileEditorService_WriteFile_Call) RunAndReturn(run func(name string, data []byte, perm fs.FileMode) error) *MockFileEditorService_WriteFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteItemCombinationData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteItemCombinationData(path string, data itemcombinationdata.ItemCombinationData) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteItemCombinationData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemcombinationdata.ItemCombinationData) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteItemCombinationData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteItemCombinationData'
+type MockFileEditorService_WriteItemCombinationData_Call struct {
+	*mock.Call
+}
+
+// WriteItemCombinationData is a helper method to define mock.On call
+//   - path string
+//   - data itemcombinationdata.ItemCombinationData
+func (_e *MockFileEditorService_Expecter) WriteItemCombinationData(path interface{}, data interface{}) *MockFileEditorService_WriteItemCombinationData_Call {
+	return &MockFileEditorService_WriteItemCombinationData_Call{Call: _e.mock.On("WriteItemCombinationData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteItemCombinationData_Call) Run(run func(path string, data itemcombinationdata.ItemCombinationData)) *MockFileEditorService_WriteItemCombinationData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemcombinationdata.ItemCombinationData
+		if args[1] != nil {
+			arg1 = args[1].(itemcombinationdata.ItemCombinationData)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteItemCombinationData_Call) Return(err error) *MockFileEditorService_WriteItemCombinationData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteItemCombinationData_Call) RunAndReturn(run func(path string, data itemcombinationdata.ItemCombinationData) error) *MockFileEditorService_WriteItemCombinationData_Call {
 	_c.Call.Return(run)
 	return _c
 }

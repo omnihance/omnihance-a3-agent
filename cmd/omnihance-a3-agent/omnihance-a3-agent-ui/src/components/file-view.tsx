@@ -35,6 +35,7 @@ import {
   getNPCFile,
   getSpawnFile,
   getDropFile,
+  getItemCombinationDataFile,
   getQuestFile,
   getRevisionSummary,
   revertFile,
@@ -45,6 +46,7 @@ import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
 import { SpawnFileView } from '@/components/spawn-file-view';
 import { DropFileView } from '@/components/drop-file-view';
+import { ItemCombinationDataFileView } from '@/components/item-combination-data-file-view';
 import { QuestFileView } from '@/components/quest-file-view';
 import { toast } from 'sonner';
 import { queryKeys } from '@/constants';
@@ -135,6 +137,18 @@ export function FileView({ filePath }: FileViewProps) {
     enabled: !!filePath && fileType === 'a3_drop_file',
   });
 
+  const {
+    data: itemCombinationDataFileData,
+    isLoading: itemCombinationDataFileLoading,
+    error: itemCombinationDataFileError,
+  } = useQuery({
+    queryKey: queryKeys.itemCombinationDataFile(filePath),
+    queryFn: () => {
+      return getItemCombinationDataFile({ path: filePath });
+    },
+    enabled: !!filePath && fileType === 'a3_item_combination_data_file',
+  });
+
   const { data: revisionSummary, isLoading: revisionSummaryLoading } = useQuery(
     {
       queryKey: queryKeys.revisionSummary(filePath),
@@ -191,6 +205,9 @@ export function FileView({ filePath }: FileViewProps) {
         queryKey: queryKeys.dropFile(filePath),
       });
       queryClient.invalidateQueries({
+        queryKey: queryKeys.itemCombinationDataFile(filePath),
+      });
+      queryClient.invalidateQueries({
         queryKey: queryKeys.questFile(filePath),
       });
       queryClient.invalidateQueries({
@@ -239,6 +256,7 @@ export function FileView({ filePath }: FileViewProps) {
     npcFileError,
     spawnFileError,
     dropFileError,
+    itemCombinationDataFileError,
     questFileError,
   ]);
 
@@ -326,6 +344,7 @@ export function FileView({ filePath }: FileViewProps) {
         npcFileError ||
         spawnFileError ||
         dropFileError ||
+        itemCombinationDataFileError ||
         questFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
@@ -509,6 +528,26 @@ export function FileView({ filePath }: FileViewProps) {
             </>
           )}
 
+          {fileType === 'a3_item_combination_data_file' && (
+            <>
+              {itemCombinationDataFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {itemCombinationDataFileData && !itemCombinationDataFileError && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">
+                    Item Combination Data
+                  </h2>
+                  <ItemCombinationDataFileView
+                    data={itemCombinationDataFileData}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
           {fileType === 'a3_quest_file' && (
             <>
               {questFileLoading && (
@@ -530,11 +569,13 @@ export function FileView({ filePath }: FileViewProps) {
             fileType !== 'a3_npc_file' &&
             fileType !== 'a3_spawn_file' &&
             fileType !== 'a3_drop_file' &&
+            fileType !== 'a3_item_combination_data_file' &&
             fileType !== 'a3_quest_file' &&
             !textFileLoading &&
             !npcFileLoading &&
             !spawnFileLoading &&
             !dropFileLoading &&
+            !itemCombinationDataFileLoading &&
             !questFileLoading && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
