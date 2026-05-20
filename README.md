@@ -649,9 +649,11 @@ The application uses SQLite with the following main tables:
 
 6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
 
-7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, or text files) to view and edit them (requires admin or super admin role).
+7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), or text files) to view and edit them (requires admin or super admin role).
 
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
+   - **Drop File Editor**: Edit drop files (monster drop configurations) by adding, removing, and modifying entries, selecting item codes, and displaying item names when IT0-IT3 client data has been uploaded
+   - **Text File Editor**: Edit text-based configuration files
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
 
