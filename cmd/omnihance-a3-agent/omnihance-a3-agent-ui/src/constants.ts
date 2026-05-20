@@ -30,6 +30,7 @@ export const queryKeys = {
   textFile: (path: string) => ['text-file', path] as const,
   npcFile: (path: string) => ['npc-file', path] as const,
   spawnFile: (path: string) => ['spawn-file', path] as const,
+  dropFile: (path: string) => ['drop-file', path] as const,
   questFile: (path: string) => ['quest-file', path] as const,
   revisionSummary: (path: string) => ['revision-summary', path] as const,
   users: (page: number, pageSize: number, search?: string) => {

@@ -2,9 +2,12 @@ package services
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -106,5 +109,44 @@ func TestReadClientItemFileBytesTruncated(t *testing.T) {
 	service := NewFileEditorService(log)
 
 	_, err := service.ReadClientIT1FileBytes([]byte{1, 2, 3})
+	require.Error(t, err)
+}
+
+func TestDropFileDataRoundTrip(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "100.itm")
+
+	expected := dropfile.DropFile{
+		{ItemID: 100, DropRate: 75, DropGroup: 1},
+		{ItemID: 0x4001, DropRate: 200, DropGroup: 2},
+		{ItemID: dropfile.EmptyItemID},
+	}
+
+	require.NoError(t, service.WriteDropFileData(path, expected))
+	actual, err := service.ReadDropFileData(path)
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func TestReadDropFileDataEmpty(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "empty.itm")
+	require.NoError(t, os.WriteFile(path, nil, 0644))
+
+	actual, err := service.ReadDropFileData(path)
+	require.NoError(t, err)
+	require.NotNil(t, actual)
+	require.Empty(t, actual)
+}
+
+func TestReadDropFileDataTruncated(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "bad.itm")
+	require.NoError(t, os.WriteFile(path, []byte{1, 2, 3}, 0644))
+
+	_, err := service.ReadDropFileData(path)
 	require.Error(t, err)
 }

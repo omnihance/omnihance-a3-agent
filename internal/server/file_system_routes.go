@@ -25,6 +25,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
+	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -38,6 +39,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Put("/text-file", s.handleUpdateTextFile)
 		r.Get("/spawn-file", s.handleSpawnFileData)
 		r.Put("/spawn-file", s.handleUpdateSpawnFile)
+		r.Get("/drop-file", s.handleDropFileData)
+		r.Put("/drop-file", s.handleUpdateDropFile)
 		r.Get("/quest-file", s.handleQuestFileData)
 		r.Put("/quest-file", s.handleUpdateQuestFile)
 		r.Post("/revert-file", s.handleRevertFile)
@@ -476,6 +479,69 @@ func (s *Server) handleSpawnFileData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = utils.WriteJSONResponse(w, apiData)
+}
+
+func (s *Server) handleDropFileData(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Path parameter is required"},
+		})
+		return
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return
+	}
+
+	if info.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return
+	}
+
+	fileType := s.fileEditor.GetFileType(cleanPath, info)
+	if fileType != services.FileTypeDrop {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"File is not a drop file"},
+		})
+		return
+	}
+
+	dropData, err := s.fileEditor.ReadDropFileData(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read drop file data: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, dropFileToAPIData(dropData))
 }
 
 func (s *Server) validateFileUpdateRequest(w http.ResponseWriter, r *http.Request, expectedFileType services.FileType, fileTypeName string) (*fileUpdateContext, bool) {
@@ -936,6 +1002,122 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = s.fileEditor.WriteSpawnFileData(ctx.cleanPath, spawnData); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":     "File updated successfully",
+		"revision_id": revisionID,
+	})
+}
+
+func dropFileToAPIData(dropData dropfile.DropFile) DropFileAPIData {
+	apiDrops := make([]DropAPIData, len(dropData))
+	for i, drop := range dropData {
+		itemCode := drop.ItemID
+		dropRate := drop.DropRate
+		dropGroup := drop.DropGroup
+		apiDrops[i] = DropAPIData{
+			ItemCode:  &itemCode,
+			DropRate:  &dropRate,
+			DropGroup: &dropGroup,
+		}
+	}
+
+	return DropFileAPIData{Drops: apiDrops}
+}
+
+func dropFileFromAPIData(req DropFileAPIData) dropfile.DropFile {
+	dropData := make(dropfile.DropFile, len(req.Drops))
+	for i, drop := range req.Drops {
+		dropData[i] = dropfile.Drop{
+			ItemID:    *drop.ItemCode,
+			DropRate:  *drop.DropRate,
+			DropGroup: *drop.DropGroup,
+		}
+	}
+
+	return dropData
+}
+
+func (s *Server) handleUpdateDropFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	ctx, ok := s.validateFileUpdateRequest(w, r, services.FileTypeDrop, "drop")
+	if !ok {
+		return
+	}
+
+	var req DropFileAPIData
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(req); err != nil {
+		var errors []string
+		for _, err := range err.(validator.ValidationErrors) {
+			errors = append(errors, err.Field()+" is required")
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    errors,
+		})
+		return
+	}
+
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read file: " + err.Error()},
+		})
+		return
+	}
+
+	dropData := dropFileFromAPIData(req)
+
+	var currentDataBuffer bytes.Buffer
+	if err := dropfile.Write(&currentDataBuffer, dropData); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to serialize drop data: " + err.Error()},
+		})
+		return
+	}
+
+	currentData := currentDataBuffer.Bytes()
+	if _, err := dropfile.Read(bytes.NewReader(currentData)); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to validate drop data: " + err.Error()},
+		})
+		return
+	}
+
+	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	if !ok {
+		return
+	}
+
+	if err = s.fileEditor.WriteDropFileData(ctx.cleanPath, dropData); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
@@ -1872,6 +2054,16 @@ type NPCSpawnAPIData struct {
 	Unknown1    *uint16 `json:"unknown1" validate:"required"`
 	Orientation *byte   `json:"orientation" validate:"required"`
 	SpwanStep   *byte   `json:"spwan_step" validate:"required"`
+}
+
+type DropFileAPIData struct {
+	Drops []DropAPIData `json:"drops" validate:"required,dive"`
+}
+
+type DropAPIData struct {
+	ItemCode  *uint16 `json:"item_code" validate:"required"`
+	DropRate  *uint16 `json:"drop_rate" validate:"required"`
+	DropGroup *uint16 `json:"drop_group" validate:"required"`
 }
 
 type QuestFileAPIData struct {

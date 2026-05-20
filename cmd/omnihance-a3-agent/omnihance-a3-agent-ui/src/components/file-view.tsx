@@ -34,6 +34,7 @@ import {
   getTextFile,
   getNPCFile,
   getSpawnFile,
+  getDropFile,
   getQuestFile,
   getRevisionSummary,
   revertFile,
@@ -43,6 +44,7 @@ import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
 import { SpawnFileView } from '@/components/spawn-file-view';
+import { DropFileView } from '@/components/drop-file-view';
 import { QuestFileView } from '@/components/quest-file-view';
 import { toast } from 'sonner';
 import { queryKeys } from '@/constants';
@@ -121,6 +123,18 @@ export function FileView({ filePath }: FileViewProps) {
     enabled: !!filePath && fileType === 'a3_quest_file',
   });
 
+  const {
+    data: dropFileData,
+    isLoading: dropFileLoading,
+    error: dropFileError,
+  } = useQuery({
+    queryKey: queryKeys.dropFile(filePath),
+    queryFn: () => {
+      return getDropFile({ path: filePath });
+    },
+    enabled: !!filePath && fileType === 'a3_drop_file',
+  });
+
   const { data: revisionSummary, isLoading: revisionSummaryLoading } = useQuery(
     {
       queryKey: queryKeys.revisionSummary(filePath),
@@ -174,6 +188,9 @@ export function FileView({ filePath }: FileViewProps) {
         queryKey: queryKeys.spawnFile(filePath),
       });
       queryClient.invalidateQueries({
+        queryKey: queryKeys.dropFile(filePath),
+      });
+      queryClient.invalidateQueries({
         queryKey: queryKeys.questFile(filePath),
       });
       queryClient.invalidateQueries({
@@ -203,24 +220,27 @@ export function FileView({ filePath }: FileViewProps) {
         ? fileTreeError.message
         : 'Failed to load file information';
 
-  const fileContentErrorMessage =
-    textFileError instanceof APIError
-      ? textFileError.getErrorMessage()
-      : npcFileError instanceof APIError
-        ? npcFileError.getErrorMessage()
-        : spawnFileError instanceof APIError
-          ? spawnFileError.getErrorMessage()
-          : questFileError instanceof APIError
-            ? questFileError.getErrorMessage()
-            : textFileError instanceof Error
-              ? textFileError.message
-              : npcFileError instanceof Error
-                ? npcFileError.message
-                : spawnFileError instanceof Error
-                  ? spawnFileError.message
-                  : questFileError instanceof Error
-                    ? questFileError.message
-                    : 'Failed to load file content';
+  const getFirstErrorMessage = (errors: Array<unknown>): string => {
+    for (const error of errors) {
+      if (error instanceof APIError) {
+        return error.getErrorMessage();
+      }
+
+      if (error instanceof Error) {
+        return error.message;
+      }
+    }
+
+    return 'Failed to load file content';
+  };
+
+  const fileContentErrorMessage = getFirstErrorMessage([
+    textFileError,
+    npcFileError,
+    spawnFileError,
+    dropFileError,
+    questFileError,
+  ]);
 
   const getDirectoryPath = (filePath: string): string => {
     const isWindowsPath = /^[A-Za-z]:/.test(filePath);
@@ -302,7 +322,11 @@ export function FileView({ filePath }: FileViewProps) {
       )}
 
       {/* File Content Error */}
-      {(textFileError || npcFileError || spawnFileError || questFileError) && (
+      {(textFileError ||
+        npcFileError ||
+        spawnFileError ||
+        dropFileError ||
+        questFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
@@ -469,6 +493,22 @@ export function FileView({ filePath }: FileViewProps) {
             </>
           )}
 
+          {fileType === 'a3_drop_file' && (
+            <>
+              {dropFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {dropFileData && !dropFileError && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Drop Data</h2>
+                  <DropFileView data={dropFileData} />
+                </div>
+              )}
+            </>
+          )}
+
           {fileType === 'a3_quest_file' && (
             <>
               {questFileLoading && (
@@ -489,10 +529,12 @@ export function FileView({ filePath }: FileViewProps) {
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
             fileType !== 'a3_spawn_file' &&
+            fileType !== 'a3_drop_file' &&
             fileType !== 'a3_quest_file' &&
             !textFileLoading &&
             !npcFileLoading &&
             !spawnFileLoading &&
+            !dropFileLoading &&
             !questFileLoading && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">

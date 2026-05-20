@@ -14,6 +14,7 @@ export const API_ROUTES = {
   NPC_FILE: '/api/file-tree/npc-file',
   TEXT_FILE: '/api/file-tree/text-file',
   SPAWN_FILE: '/api/file-tree/spawn-file',
+  DROP_FILE: '/api/file-tree/drop-file',
   QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
@@ -293,6 +294,10 @@ export interface GetSpawnFileParams {
   path: string;
 }
 
+export interface GetDropFileParams {
+  path: string;
+}
+
 export interface GetQuestFileParams {
   path: string;
 }
@@ -349,6 +354,20 @@ const SpawnFileAPIDataSchema = z.object({
 });
 
 export type SpawnFileAPIData = z.infer<typeof SpawnFileAPIDataSchema>;
+
+const DropAPIDataSchema = z.object({
+  item_code: z.number().int().min(0).max(65535),
+  drop_rate: z.number().int().min(0).max(65535),
+  drop_group: z.number().int().min(0).max(65535),
+});
+
+export type DropAPIData = z.infer<typeof DropAPIDataSchema>;
+
+const DropFileAPIDataSchema = z.object({
+  drops: z.array(DropAPIDataSchema),
+});
+
+export type DropFileAPIData = z.infer<typeof DropFileAPIDataSchema>;
 
 export const UNUSED_CONTINUATION = 0xffffffff;
 
@@ -768,6 +787,37 @@ export async function updateSpawnFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.SPAWN_FILE,
+  );
+}
+
+export async function getDropFile(
+  params: GetDropFileParams,
+): Promise<DropFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.DROP_FILE, {
+    params,
+  });
+  return validateResponse(
+    DropFileAPIDataSchema,
+    response.data,
+    API_ROUTES.DROP_FILE,
+  );
+}
+
+export async function updateDropFile(
+  params: GetDropFileParams,
+  data: DropFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.DROP_FILE,
+    DropFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.DROP_FILE,
   );
 }
 

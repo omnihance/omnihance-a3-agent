@@ -602,6 +602,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/drop-file:
+    get:
+      tags:
+        - file-system
+      summary: Get drop file data
+      description: Reads and parses an A3 Online monster drop file (.itm), returning its binary data as structured JSON. Item names are not stored in the file and can be resolved from uploaded item client data by masking item_code with 0x3FFF.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the drop file to read and parse.
+      responses:
+        '200':
+          description: Drop file data retrieved and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DropFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not a drop file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read/parse error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update drop file
+      description: Updates an A3 Online monster drop file (.itm) with new drop entries. Creates a revision entry in the database, saves the previous file copy, and writes the new data. Item code 65535 represents an empty slot.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the drop file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DropFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File updated successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not a drop file, file is not editable, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/quest-file:
     get:
       tags:
@@ -3530,10 +3636,10 @@ components:
           description: Whether the file can be edited
         is_viewable:
           type: boolean
-          description: Whether the file can be viewed (currently only NPC files are viewable)
+          description: Whether the file can be viewed by a structured file endpoint
         api_endpoint:
           type: string
-          description: API endpoint to access file data (only populated for files that have an associated endpoint, e.g., NPC files)
+          description: API endpoint to access file data (only populated for files that have an associated endpoint)
           example: "/api/file-tree/npc-file"
         children:
           type: array
@@ -3752,6 +3858,37 @@ components:
           type: integer
           format: byte
           description: Spawn step
+    DropFileAPIData:
+      type: object
+      description: Parsed binary data from a drop file (API request/response format). Each entry is one 6-byte .itm drop record.
+      required:
+        - drops
+      properties:
+        drops:
+          type: array
+          items:
+            $ref: '#/components/schemas/DropAPIData'
+          description: Array of drop entries
+    DropAPIData:
+      type: object
+      description: Monster drop entry information
+      required:
+        - item_code
+        - drop_rate
+        - drop_group
+      properties:
+        item_code:
+          type: integer
+          format: uint16
+          description: Raw item code stored in the file. Use item_code & 0x3FFF for item-name lookup; 65535 represents an empty slot.
+        drop_rate:
+          type: integer
+          format: uint16
+          description: Drop rate value
+        drop_group:
+          type: integer
+          format: uint16
+          description: Drop group value
     QuestFileAPIData:
       type: object
       description: Parsed binary data from a quest file (API request/response format). All fields are required when used as a request body.

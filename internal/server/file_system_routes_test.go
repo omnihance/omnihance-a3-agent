@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"testing"
 
+	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -147,6 +148,42 @@ func TestQuestSampleObjectiveTypes(t *testing.T) {
 
 	if binary.LittleEndian.Uint16(qf.Objectives[0].Block[28:30]) != 101 {
 		t.Fatal("KILL objective drop item sample did not parse as expected")
+	}
+}
+
+func TestDropAPIDataRoundTripPreservesBytes(t *testing.T) {
+	original := dropfile.DropFile{
+		{ItemID: 100, DropRate: 75, DropGroup: 1},
+		{ItemID: 0x4001, DropRate: 200, DropGroup: 2},
+		{ItemID: dropfile.EmptyItemID},
+	}
+
+	var raw bytes.Buffer
+	if err := dropfile.Write(&raw, original); err != nil {
+		t.Fatalf("dropfile.Write() error = %v", err)
+	}
+
+	apiData := dropFileToAPIData(original)
+	next := dropFileFromAPIData(apiData)
+
+	var buf bytes.Buffer
+	if err := dropfile.Write(&buf, next); err != nil {
+		t.Fatalf("dropfile.Write() error = %v", err)
+	}
+
+	if !bytes.Equal(raw.Bytes(), buf.Bytes()) {
+		t.Fatalf("round-trip changed drop file bytes: before=%d after=%d", raw.Len(), buf.Len())
+	}
+}
+
+func TestDropFileToAPIDataPreservesFlaggedItemCode(t *testing.T) {
+	apiData := dropFileToAPIData(dropfile.DropFile{{ItemID: 0x4001, DropRate: 100, DropGroup: 2}})
+
+	if len(apiData.Drops) != 1 {
+		t.Fatalf("drop count = %d, want 1", len(apiData.Drops))
+	}
+	if *apiData.Drops[0].ItemCode != 0x4001 {
+		t.Fatalf("item code = %d, want %d", *apiData.Drops[0].ItemCode, 0x4001)
 	}
 }
 
