@@ -17,33 +17,49 @@ export function useVirtualRows({
   overscan = 6,
 }: UseVirtualRowsOptions) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
 
+  const setContainerRef = useCallback((element: HTMLDivElement | null) => {
+    containerRef.current = element;
+    setContainerEl(element);
+  }, []);
+
   const measureViewport = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) {
+    if (!containerEl) {
       return;
     }
 
-    setViewportHeight(container.clientHeight);
-  }, []);
+    setViewportHeight(containerEl.clientHeight);
+  }, [containerEl]);
 
   useEffect(() => {
-    measureViewport();
+    const frameID = window.requestAnimationFrame(measureViewport);
 
-    const container = containerRef.current;
-    if (!container || typeof ResizeObserver === 'undefined') {
-      return;
+    if (!containerEl || typeof ResizeObserver === 'undefined') {
+      return () => window.cancelAnimationFrame(frameID);
     }
 
     const observer = new ResizeObserver(measureViewport);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [measureViewport]);
+    observer.observe(containerEl);
+    return () => {
+      window.cancelAnimationFrame(frameID);
+      observer.disconnect();
+    };
+  }, [containerEl, measureViewport]);
 
   const onScroll = useCallback(() => {
     setScrollTop(containerRef.current?.scrollTop ?? 0);
+  }, []);
+
+  const resetScrollTop = useCallback(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    containerRef.current.scrollTop = 0;
+    setScrollTop(0);
   }, []);
 
   const totalHeight = count * rowHeight;
@@ -74,8 +90,9 @@ export function useVirtualRows({
   }, [count, overscan, rowHeight, scrollTop, totalHeight, viewportHeight]);
 
   return {
-    containerRef,
+    containerRef: setContainerRef,
     onScroll,
+    resetScrollTop,
     totalHeight,
     virtualRows,
   };

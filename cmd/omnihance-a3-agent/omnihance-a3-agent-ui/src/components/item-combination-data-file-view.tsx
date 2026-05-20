@@ -44,23 +44,19 @@ export function ItemCombinationDataFileView({
         ),
     [data.formulas, itemLookup, normalizedSearchQuery],
   );
-  const { containerRef, onScroll, totalHeight, virtualRows } = useVirtualRows({
-    count: filteredFormulas.length,
-    rowHeight: FORMULA_ROW_HEIGHT,
-  });
+  const { containerRef, onScroll, resetScrollTop, totalHeight, virtualRows } =
+    useVirtualRows({
+      count: filteredFormulas.length,
+      rowHeight: FORMULA_ROW_HEIGHT,
+    });
   const hasSearchQuery = normalizedSearchQuery.length > 0;
   const formulaCountLabel = hasSearchQuery
     ? `${filteredFormulas.length}/${data.formulas.length}`
     : String(data.formulas.length);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-
-    container.scrollTop = 0;
-  }, [containerRef, normalizedSearchQuery]);
+    resetScrollTop();
+  }, [normalizedSearchQuery, resetScrollTop]);
 
   return (
     <div className="space-y-6">
