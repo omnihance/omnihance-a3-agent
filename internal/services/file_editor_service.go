@@ -12,6 +12,7 @@ import (
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
+	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
@@ -19,13 +20,14 @@ import (
 type FileType string
 
 const (
-	FileTypeNPC     FileType = "a3_npc_file"
-	FileTypeDrop    FileType = "a3_drop_file"
-	FileTypeMap     FileType = "a3_map_file"
-	FileTypeUnknown FileType = "a3_unknown_file"
-	FileTypeSpawn   FileType = "a3_spawn_file"
-	FileTypeQuest   FileType = "a3_quest_file"
-	FileTypeText    FileType = "text_file"
+	FileTypeNPC                 FileType = "a3_npc_file"
+	FileTypeDrop                FileType = "a3_drop_file"
+	FileTypeItemCombinationData FileType = "a3_item_combination_data_file"
+	FileTypeMap                 FileType = "a3_map_file"
+	FileTypeUnknown             FileType = "a3_unknown_file"
+	FileTypeSpawn               FileType = "a3_spawn_file"
+	FileTypeQuest               FileType = "a3_quest_file"
+	FileTypeText                FileType = "text_file"
 )
 
 const (
@@ -33,10 +35,11 @@ const (
 )
 
 const (
-	DropFileExtension  = ".itm"
-	MapFileExtension   = ".map"
-	SpawnFileExtension = ".n_ndt"
-	QuestFileExtension = ".dat"
+	DropFileExtension           = ".itm"
+	ItemCombinationDataFileName = "ItemCombinationData"
+	MapFileExtension            = ".map"
+	SpawnFileExtension          = ".n_ndt"
+	QuestFileExtension          = ".dat"
 )
 
 type FileEditorService interface {
@@ -51,6 +54,8 @@ type FileEditorService interface {
 	WriteSpawnFileData(path string, data []NPCSpawnData) error
 	ReadDropFileData(path string) (dropfile.DropFile, error)
 	WriteDropFileData(path string, data dropfile.DropFile) error
+	ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error)
+	WriteItemCombinationData(path string, data itemcombinationdata.ItemCombinationData) error
 	Stat(name string) (fs.FileInfo, error)
 	ReadDir(name string) ([]fs.DirEntry, error)
 	ReadFile(name string) ([]byte, error)
@@ -94,12 +99,18 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeDrop:
 		return true
+	case FileTypeItemCombinationData:
+		return true
 	default:
 		return false
 	}
 }
 
 func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) FileType {
+	if strings.EqualFold(filepath.Base(path), ItemCombinationDataFileName) {
+		return FileTypeItemCombinationData
+	}
+
 	extension := filepath.Ext(path)
 	switch strings.ToLower(extension) {
 	case DropFileExtension:
@@ -136,6 +147,8 @@ func (fes *fileEditorService) IsFileViewable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeDrop:
 		return true
+	case FileTypeItemCombinationData:
+		return true
 	default:
 		return false
 	}
@@ -153,6 +166,8 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 		return "/file-tree/quest-file"
 	case FileTypeDrop:
 		return "/file-tree/drop-file"
+	case FileTypeItemCombinationData:
+		return "/file-tree/item-combination-data"
 	default:
 		return ""
 	}
@@ -271,6 +286,47 @@ func (fes *fileEditorService) WriteDropFileData(path string, data dropfile.DropF
 	}
 
 	_, err := dropfile.Read(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	_, err = file.Write(buf.Bytes())
+	return err
+}
+
+func (fes *fileEditorService) ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemcombinationdata.Read(file)
+}
+
+func (fes *fileEditorService) WriteItemCombinationData(path string, data itemcombinationdata.ItemCombinationData) error {
+	var buf bytes.Buffer
+	if err := itemcombinationdata.Write(&buf, data); err != nil {
+		return err
+	}
+
+	_, err := itemcombinationdata.Read(bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return err
 	}

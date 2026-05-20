@@ -1,14 +1,26 @@
 package db
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/robfig/cron/v3"
-	_ "modernc.org/sqlite"
+	"modernc.org/sqlite"
+	sqlite3 "modernc.org/sqlite/lib"
+)
+
+const (
+	sqliteBusyTimeoutMilliseconds = 5000
+	sqliteMaxIdleConnections      = 1
+	sqliteMaxOpenConnections      = 1
+	sqlitePrimaryResultCodeMask   = 0xff
+	walCheckpointSchedule         = "@every 5m"
+	walCheckpointTimeout          = 10 * time.Second
 )
 
 type InternalDB interface {
@@ -123,15 +135,17 @@ func (s *sqliteInternalDB) Connect() error {
 		return err
 	}
 
+	db.SetMaxOpenConns(sqliteMaxOpenConnections)
+	db.SetMaxIdleConns(sqliteMaxIdleConnections)
+
 	pragmas := []string{
 		`PRAGMA journal_mode=WAL;`,
 		`PRAGMA synchronous=NORMAL;`,
-		`PRAGMA busy_timeout=5000;`,
+		fmt.Sprintf(`PRAGMA busy_timeout=%d;`, sqliteBusyTimeoutMilliseconds),
 		`PRAGMA foreign_keys=ON;`,
 		`PRAGMA cache_size=-64000;`,
 		`PRAGMA temp_store=MEMORY;`,
 		`PRAGMA mmap_size=30000000000;`,
-		`PRAGMA wal_checkpoint(TRUNCATE);`,
 	}
 
 	for _, pragma := range pragmas {
@@ -155,8 +169,10 @@ func (s *sqliteInternalDB) Connect() error {
 	s.db = db
 	s.goqu = goqu.New("sqlite", db)
 
+	s.runWALCheckpoint()
+
 	s.cron = cron.New(cron.WithSeconds())
-	_, err = s.cron.AddFunc("@every 5m", s.runWALCheckpoint)
+	_, err = s.cron.AddFunc(walCheckpointSchedule, s.runWALCheckpoint)
 	if err != nil {
 		if closeErr := db.Close(); closeErr != nil {
 			s.logger.Error("Failed to close database during cleanup", logger.Field{Key: "error", Value: closeErr})
@@ -336,8 +352,19 @@ func (s *sqliteInternalDB) runWALCheckpoint() {
 		return
 	}
 
-	_, err := s.db.Exec(`PRAGMA wal_checkpoint(TRUNCATE);`)
+	ctx, cancel := context.WithTimeout(context.Background(), walCheckpointTimeout)
+	defer cancel()
+
+	_, err := s.db.ExecContext(ctx, `PRAGMA wal_checkpoint(TRUNCATE);`)
 	if err != nil {
+		if isSQLiteBusyOrLockedError(err) || errors.Is(err, context.DeadlineExceeded) {
+			s.logger.Debug(
+				"WAL checkpoint skipped because database is busy",
+				logger.Field{Key: "error", Value: err},
+			)
+			return
+		}
+
 		s.logger.Error(
 			"failed to run WAL checkpoint",
 			logger.Field{Key: "error", Value: err},
@@ -346,6 +373,20 @@ func (s *sqliteInternalDB) runWALCheckpoint() {
 	}
 
 	s.logger.Debug("WAL checkpoint completed successfully")
+}
+
+func isSQLiteBusyOrLockedError(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+
+	switch sqliteErr.Code() & sqlitePrimaryResultCodeMask {
+	case sqlite3.SQLITE_BUSY, sqlite3.SQLITE_LOCKED:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *sqliteInternalDB) migrate001UsersTable() error {

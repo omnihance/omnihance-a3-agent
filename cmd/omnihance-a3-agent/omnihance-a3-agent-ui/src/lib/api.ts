@@ -15,6 +15,7 @@ export const API_ROUTES = {
   TEXT_FILE: '/api/file-tree/text-file',
   SPAWN_FILE: '/api/file-tree/spawn-file',
   DROP_FILE: '/api/file-tree/drop-file',
+  ITEM_COMBINATION_DATA_FILE: '/api/file-tree/item-combination-data',
   QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
@@ -228,6 +229,7 @@ type FileNode = {
   file_type?:
     | 'a3_npc_file'
     | 'a3_drop_file'
+    | 'a3_item_combination_data_file'
     | 'a3_map_file'
     | 'a3_spawn_file'
     | 'a3_unknown_file'
@@ -254,6 +256,7 @@ const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
       .enum([
         'a3_npc_file',
         'a3_drop_file',
+        'a3_item_combination_data_file',
         'a3_map_file',
         'a3_spawn_file',
         'a3_quest_file',
@@ -295,6 +298,10 @@ export interface GetSpawnFileParams {
 }
 
 export interface GetDropFileParams {
+  path: string;
+}
+
+export interface GetItemCombinationDataFileParams {
   path: string;
 }
 
@@ -368,6 +375,35 @@ const DropFileAPIDataSchema = z.object({
 });
 
 export type DropFileAPIData = z.infer<typeof DropFileAPIDataSchema>;
+
+const ItemCombinationUint16Schema = z.number().int().min(0).max(65535);
+
+const ItemCombinationFormulaAPIDataSchema = z.object({
+  ingredients: z.array(ItemCombinationUint16Schema).length(10),
+  success_rate: ItemCombinationUint16Schema,
+  outcome: ItemCombinationUint16Schema,
+});
+
+export type ItemCombinationFormulaAPIData = z.infer<
+  typeof ItemCombinationFormulaAPIDataSchema
+>;
+
+const ItemCombinationDataFileAPIDataSchema = z.object({
+  formulas: z.array(ItemCombinationFormulaAPIDataSchema),
+});
+
+export type ItemCombinationDataFileAPIData = z.infer<
+  typeof ItemCombinationDataFileAPIDataSchema
+>;
+
+const ItemCombinationFormulaUpdateSchema =
+  ItemCombinationFormulaAPIDataSchema.extend({
+    success_rate: z.number().int().min(1).max(120),
+  });
+
+const ItemCombinationDataFileUpdateSchema = z.object({
+  formulas: z.array(ItemCombinationFormulaUpdateSchema),
+});
 
 export const UNUSED_CONTINUATION = 0xffffffff;
 
@@ -818,6 +854,40 @@ export async function updateDropFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.DROP_FILE,
+  );
+}
+
+export async function getItemCombinationDataFile(
+  params: GetItemCombinationDataFileParams,
+): Promise<ItemCombinationDataFileAPIData> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.ITEM_COMBINATION_DATA_FILE,
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    ItemCombinationDataFileAPIDataSchema,
+    response.data,
+    API_ROUTES.ITEM_COMBINATION_DATA_FILE,
+  );
+}
+
+export async function updateItemCombinationDataFile(
+  params: GetItemCombinationDataFileParams,
+  data: ItemCombinationDataFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.ITEM_COMBINATION_DATA_FILE,
+    ItemCombinationDataFileUpdateSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.ITEM_COMBINATION_DATA_FILE,
   );
 }
 
