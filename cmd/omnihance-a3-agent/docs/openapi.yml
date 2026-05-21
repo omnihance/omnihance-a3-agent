@@ -2432,7 +2432,7 @@ paths:
       tags:
         - settings
       summary: Create setting
-      description: Creates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
+      description: Creates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Server path settings must point to a directory containing SvrInfo.ini. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2449,7 +2449,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Setting'
         '400':
-          description: Bad Request - Invalid request body, unsupported key, invalid value, or setting already exists
+          description: Bad Request - Invalid request body, unsupported key, invalid value, missing SvrInfo.ini for server path settings, or setting already exists
           content:
             application/json:
               schema:
@@ -2477,7 +2477,7 @@ paths:
       tags:
         - settings
       summary: Update setting
-      description: Updates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
+      description: Updates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Server path settings must point to a directory containing SvrInfo.ini. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -2503,7 +2503,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Setting'
         '400':
-          description: Bad Request - Invalid request body, unsupported key, or invalid value
+          description: Bad Request - Invalid request body, unsupported key, invalid value, or missing SvrInfo.ini for server path settings
           content:
             application/json:
               schema:

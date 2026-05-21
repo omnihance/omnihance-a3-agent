@@ -20,6 +20,8 @@ import (
 
 const settingsErrorContext = "settings"
 
+const requiredServerInfoFileName = "SvrInfo.ini"
+
 type SettingDefinition struct {
 	Key         string `json:"key"`
 	Label       string `json:"label"`
@@ -60,28 +62,28 @@ var supportedSettingDefinitions = []SettingDefinition{
 	{
 		Key:         constants.SettingKeyZoneServerPath,
 		Label:       "Zone Server Path",
-		Description: "Directory path used for the Zone Server.",
+		Description: "Directory path used for the Zone Server. Must contain SvrInfo.ini.",
 		ValueType:   "string",
 		InputType:   "directory",
 	},
 	{
 		Key:         constants.SettingKeyAccountServerPath,
 		Label:       "Account Server Path",
-		Description: "Directory path used for the Account Server.",
+		Description: "Directory path used for the Account Server. Must contain SvrInfo.ini.",
 		ValueType:   "string",
 		InputType:   "directory",
 	},
 	{
 		Key:         constants.SettingKeyMainServerPath,
 		Label:       "Main Server Path",
-		Description: "Directory path used for the Main Server.",
+		Description: "Directory path used for the Main Server. Must contain SvrInfo.ini.",
 		ValueType:   "string",
 		InputType:   "directory",
 	},
 	{
 		Key:         constants.SettingKeyBattleServerPath,
 		Label:       "Battle Server Path",
-		Description: "Directory path used for the Battle Server.",
+		Description: "Directory path used for the Battle Server. Must contain SvrInfo.ini.",
 		ValueType:   "string",
 		InputType:   "directory",
 	},
@@ -262,6 +264,20 @@ func (s *Server) validateDirectorySetting(value string, label string) (string, e
 
 	if !info.IsDir() {
 		return "", fmt.Errorf("%s must be a directory", label)
+	}
+
+	serverInfoPath := filepath.Join(normalizedValue, requiredServerInfoFileName)
+	serverInfo, err := s.fileEditor.Stat(serverInfoPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			return "", fmt.Errorf("%s must contain %s", label, requiredServerInfoFileName)
+		}
+
+		return "", fmt.Errorf("cannot access %s in %s: %v", requiredServerInfoFileName, label, err)
+	}
+
+	if serverInfo.IsDir() {
+		return "", fmt.Errorf("%s must contain %s as a file", label, requiredServerInfoFileName)
 	}
 
 	return normalizedValue, nil

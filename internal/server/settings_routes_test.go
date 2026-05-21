@@ -82,9 +82,11 @@ func TestHandleCreateSettingRejectsDuplicate(t *testing.T) {
 
 func TestHandleCreateSettingValidatesValues(t *testing.T) {
 	validDir := t.TempDir()
+	createSettingsSvrInfo(t, validDir)
 	filePath := filepath.Join(validDir, "not-directory.txt")
 	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0600))
 	missingDir := filepath.Join(validDir, "missing")
+	dirWithoutSvrInfo := t.TempDir()
 
 	tests := []struct {
 		name           string
@@ -104,6 +106,7 @@ func TestHandleCreateSettingValidatesValues(t *testing.T) {
 		{name: "valid zone server path", key: constants.SettingKeyZoneServerPath, value: " " + validDir + " ", expectedStatus: http.StatusOK, expectedValue: filepath.Clean(validDir)},
 		{name: "invalid zone server file path", key: constants.SettingKeyZoneServerPath, value: filePath, expectedStatus: http.StatusBadRequest},
 		{name: "invalid zone server missing path", key: constants.SettingKeyZoneServerPath, value: missingDir, expectedStatus: http.StatusBadRequest},
+		{name: "invalid zone server path without svr info", key: constants.SettingKeyZoneServerPath, value: dirWithoutSvrInfo, expectedStatus: http.StatusBadRequest},
 	}
 
 	for _, test := range tests {
@@ -160,7 +163,10 @@ func TestHandleUpdateSettingValidatesDirectoryPath(t *testing.T) {
 	internalDB := newTestInternalDB(t)
 	createSettingsTestUser(t, internalDB)
 	initialDir := t.TempDir()
+	createSettingsSvrInfo(t, initialDir)
 	updatedDir := t.TempDir()
+	createSettingsSvrInfo(t, updatedDir)
+	dirWithoutSvrInfo := t.TempDir()
 	filePath := filepath.Join(updatedDir, "not-directory.txt")
 	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0600))
 	_, err := internalDB.CreateSetting(constants.SettingKeyMainServerPath, initialDir, nil)
@@ -177,6 +183,19 @@ func TestHandleUpdateSettingValidatesDirectoryPath(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 
 	setting, err := internalDB.GetSetting(constants.SettingKeyMainServerPath)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Clean(updatedDir), setting.Value)
+
+	body = bytes.NewBufferString(`{"value":` + jsonString(dirWithoutSvrInfo) + `}`)
+	req = settingsRequest(http.MethodPut, "/api/settings/MAIN_SERVER_PATH", body, constants.RoleAdmin)
+	req = withURLParam(req, "key", constants.SettingKeyMainServerPath)
+	rr = httptest.NewRecorder()
+
+	server.handleUpdateSetting(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+
+	setting, err = internalDB.GetSetting(constants.SettingKeyMainServerPath)
 	require.NoError(t, err)
 	require.Equal(t, filepath.Clean(updatedDir), setting.Value)
 
@@ -241,4 +260,9 @@ func createSettingsTestUser(t *testing.T, internalDB db.InternalDB) {
 	t.Helper()
 	_, err := internalDB.CreateUser("settings-admin@example.com", "password", constants.RoleAdmin, nil)
 	require.NoError(t, err)
+}
+
+func createSettingsSvrInfo(t *testing.T, dir string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SvrInfo.ini"), []byte("test"), 0600))
 }
