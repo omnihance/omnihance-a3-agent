@@ -1258,7 +1258,16 @@ const MessageResponseSchema = z.object({
 
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
 
-const SettingKeySchema = z.enum(['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS']);
+const SettingKeySchema = z.enum([
+  'DB_HOST',
+  'DB_PORT',
+  'DB_USER',
+  'DB_PASS',
+  'ZONE_SERVER_PATH',
+  'ACCOUNT_SERVER_PATH',
+  'MAIN_SERVER_PATH',
+  'BATTLE_SERVER_PATH',
+]);
 
 export type SettingKey = z.infer<typeof SettingKeySchema>;
 
@@ -1267,7 +1276,7 @@ const SettingDefinitionSchema = z.object({
   label: z.string(),
   description: z.string(),
   value_type: z.string(),
-  input_type: z.enum(['text', 'number', 'password']),
+  input_type: z.enum(['text', 'number', 'password', 'directory']),
 });
 
 export type SettingDefinition = z.infer<typeof SettingDefinitionSchema>;

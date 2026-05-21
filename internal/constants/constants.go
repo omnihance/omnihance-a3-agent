@@ -43,8 +43,12 @@ const (
 )
 
 const (
-	SettingKeyDBHost = "DB_HOST"
-	SettingKeyDBPort = "DB_PORT"
-	SettingKeyDBUser = "DB_USER"
-	SettingKeyDBPass = "DB_PASS"
+	SettingKeyDBHost            = "DB_HOST"
+	SettingKeyDBPort            = "DB_PORT"
+	SettingKeyDBUser            = "DB_USER"
+	SettingKeyDBPass            = "DB_PASS"
+	SettingKeyZoneServerPath    = "ZONE_SERVER_PATH"
+	SettingKeyAccountServerPath = "ACCOUNT_SERVER_PATH"
+	SettingKeyMainServerPath    = "MAIN_SERVER_PATH"
+	SettingKeyBattleServerPath  = "BATTLE_SERVER_PATH"
 )

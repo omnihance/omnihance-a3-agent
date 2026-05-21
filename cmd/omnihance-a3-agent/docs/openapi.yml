@@ -2400,7 +2400,7 @@ paths:
       tags:
         - settings
       summary: List settings
-      description: Returns supported game server database settings and their UI definitions. Requires manage_server permission.
+      description: Returns supported game server settings and their UI definitions. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       responses:
@@ -2432,7 +2432,7 @@ paths:
       tags:
         - settings
       summary: Create setting
-      description: Creates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Creates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2477,7 +2477,7 @@ paths:
       tags:
         - settings
       summary: Update setting
-      description: Updates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Updates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -2486,7 +2486,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
       requestBody:
@@ -2536,7 +2536,7 @@ paths:
       tags:
         - settings
       summary: Delete setting
-      description: Deletes a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Deletes a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -2545,7 +2545,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
       responses:
@@ -4692,7 +4692,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
         value:
@@ -4728,7 +4728,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Supported setting key
           example: DB_HOST
         label:
@@ -4746,7 +4746,7 @@ components:
           example: string
         input_type:
           type: string
-          enum: [text, number, password]
+          enum: [text, number, password, directory]
           description: Preferred UI input type
           example: text
     SettingsResponse:
@@ -4771,7 +4771,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
         value:
