@@ -71,9 +71,10 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Quest files (.dat)
   - Spawn files (.n_ndt)
   - Drop files (.itm)
+  - Item combination data files
   - Map files (.map)
   - Text files (MIME type detection)
-- **File Viewing**: View NPC files, quest files, spawn files, drop files, and text files in the browser
+- **File Viewing**: View NPC files, quest files, spawn files, drop files, item combination data files, and text files in the browser
 - **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
@@ -106,6 +107,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Configure item code, drop rate, and drop group values
     - Choose uploaded item client data from a dropdown or enter custom item codes manually
     - **Item Name Display**: Shows item names when IT0-IT3 client data has been uploaded
+  - **Item Combination Data Editor**: Edit craft formula data:
+    - Add, remove, and modify formulas
+    - Configure 10 ingredient item codes, success rate, and outcome item code
+    - Search formulas by outcome code or uploaded item name
+    - Preserve unknown bytes for existing rows while saving edited formula fields
   - **Text File Editor**: Edit text-based configuration files
 - **File Locking**: Prevents concurrent editing conflicts
 - **File Revisions**: Automatic version control for all file edits
@@ -230,8 +236,10 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Prevent duplicate shortcuts through normalized path checks
   - Reject root-directory shortcuts to keep navigation focused
   - Limit shortcut count with `DIRECTORY_SHORTCUTS_LIMIT`
-- **Game server database settings**:
+- **Game server settings**:
   - Manage `DB_HOST`, `DB_PORT`, `DB_USER`, and `DB_PASS` from the Settings page
+  - Manage `ZONE_SERVER_PATH`, `ACCOUNT_SERVER_PATH`, `MAIN_SERVER_PATH`, and `BATTLE_SERVER_PATH`
+  - Server path settings use searchable directory suggestions and must point to directories containing `SvrInfo.ini`
   - Validate supported keys and value types before save
   - Reuse saved SQL Server values as backup defaults
 
@@ -305,7 +313,7 @@ internal/
   │   ├── session_routes.go     # Session management
   │   ├── server_routes.go      # Server process management endpoints
   │   ├── directory_shortcuts_routes.go # Directory shortcut endpoints
-  │   ├── settings_routes.go    # Game server database settings endpoints
+  │   ├── settings_routes.go    # Game server settings endpoints
   │   ├── sqlserver_odbc_routes.go # SQL Server ODBC DSN endpoints
   │   ├── backup_routes.go      # Backup job and run endpoints
   │   ├── permissions.go        # Permission checking utilities
@@ -341,6 +349,8 @@ omnihance-a3-agent-ui/
   │   │   ├── quest-file-view.tsx
   │   │   ├── spawn-file-edit.tsx
   │   │   ├── spawn-file-view.tsx
+  │   │   ├── item-combination-data-file-edit.tsx
+  │   │   ├── item-combination-data-file-view.tsx
   │   │   ├── text-file-edit.tsx
   │   │   ├── metric-chart.tsx
   │   │   ├── client-data-page.tsx
@@ -526,6 +536,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `PUT /api/file-tree/text-file` - Update text file
 - `GET /api/file-tree/drop-file` - Read A3 drop file data
 - `PUT /api/file-tree/drop-file` - Update A3 drop file data
+- `GET /api/file-tree/item-combination-data` - Read A3 item combination data
+- `PUT /api/file-tree/item-combination-data` - Update A3 item combination data
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
@@ -557,10 +569,12 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 
 ### Settings
 
-- `GET /api/settings` - List supported game server database settings and definitions (requires `manage_server` permission)
+- `GET /api/settings` - List supported game server settings and definitions (requires `manage_server` permission)
 - `POST /api/settings` - Create a supported setting (requires `manage_server` permission)
 - `PUT /api/settings/{key}` - Update a supported setting (requires `manage_server` permission)
 - `DELETE /api/settings/{key}` - Delete a supported setting (requires `manage_server` permission)
+  - Supported keys: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `ZONE_SERVER_PATH`, `ACCOUNT_SERVER_PATH`, `MAIN_SERVER_PATH`, and `BATTLE_SERVER_PATH`
+  - Server path settings must point to directories containing `SvrInfo.ini`
 
 ### Server Management
 
@@ -649,10 +663,11 @@ The application uses SQLite with the following main tables:
 
 6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
 
-7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), or text files) to view and edit them (requires admin or super admin role).
+7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item combination data files, or text files) to view and edit them (requires admin or super admin role).
 
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
    - **Drop File Editor**: Edit drop files (monster drop configurations) by adding, removing, and modifying entries, selecting item codes, and displaying item names when IT0-IT3 client data has been uploaded
+   - **Item Combination Data Editor**: Edit craft formulas with 10 ingredients, success rates, outcomes, item-name lookup, and revision-backed saves
    - **Text File Editor**: Edit text-based configuration files
    - When editing spawn files, monster names are automatically displayed based on NPC ID
    - When viewing spawn files, map names are shown in brackets (e.g., "0.n_ndt (Wolfreck)")
@@ -683,6 +698,8 @@ The application uses SQLite with the following main tables:
 12. **Configure Game Server Settings** (Admin and Super Admin only):
     - Navigate to the Settings page
     - Configure game server database host, port, username, and password
+    - Configure Zone, Account, Main, and Battle server directory paths using searchable suggestions
+    - Server directory paths must contain `SvrInfo.ini` before they can be saved
     - Reuse saved database settings as local SQL Server backup defaults
 
 13. **Create and Run Backups** (Admin and Super Admin only):
