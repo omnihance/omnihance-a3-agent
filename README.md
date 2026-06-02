@@ -179,6 +179,28 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Map name extraction from spawn file filenames (e.g., "0.n_ndt" → "Wolfreck")
   - Real-time updates when editing NPC IDs
 
+### Server View
+
+- **High-level server overview**:
+  - Shows Main, Account, Zone, and Battle server cards from each server's `SvrInfo.ini`
+  - Missing server paths stay visible as "Missing Path" cards so users know what to configure
+  - Uses `MAIN_SERVER_PATH`, `ACCOUNT_SERVER_PATH`, `ZONE_SERVER_PATH`, and `BATTLE_SERVER_PATH` from Settings
+- **Sync from raw server files**:
+  - Syncs Main and Zone `MapInfo.ini` map-to-zone data
+  - Syncs raw monster spawn rows from Zone Server `ZoneData/map/*.n_ndt`
+  - Syncs raw monster drop rows from Zone Server `ZoneData/npc/*.itm`
+  - Syncs raw shop rows from Zone Server `ZoneData/shop/*.txt`
+  - Syncs game master rows from Zone Server `GMInfo.ini`
+  - Continues syncing when individual files fail and records warnings for skipped files
+  - Uses a sync lock so only one Server View sync can run at a time
+- **Server View pages**:
+  - Main Server Map Info shows map name, map ID, and zone ID
+  - Zone Loaded Maps shows maps loaded by the Zone Server
+  - Monster Spawns starts map-first with map or monster search, then shows monster counts per map
+  - Monster Drops supports universal NPC, item name, and item ID search, with per-NPC drop details
+  - Shops supports NPC and item search, with per-NPC shop item details
+  - Uploaded client data is used for `Name (ID)` labels for maps, monsters, and items
+
 ### 🚀 Server Process Management
 
 - **Sequential Server Startup/Shutdown**: Manage complex multi-process server startup sequences
@@ -298,7 +320,8 @@ internal/
   │   ├── metrics.go            # Metrics storage
   │   ├── monster_client_data.go # Monster client data storage
   │   ├── map_client_data.go    # Map client data storage
-  │   └── item_client_data.go   # Item client data storage
+  │   ├── item_client_data.go   # Item client data storage
+  │   └── server_view.go        # Synced server overview data storage
   ├── logger/                    # Logging abstraction
   ├── mw/                        # Middleware (auth, IP checks)
   ├── permissions/               # RBAC permission system
@@ -314,6 +337,7 @@ internal/
   │   ├── server_routes.go      # Server process management endpoints
   │   ├── directory_shortcuts_routes.go # Directory shortcut endpoints
   │   ├── settings_routes.go    # Game server settings endpoints
+  │   ├── server_view_routes.go # Server View sync and query endpoints
   │   ├── sqlserver_odbc_routes.go # SQL Server ODBC DSN endpoints
   │   ├── backup_routes.go      # Backup job and run endpoints
   │   ├── permissions.go        # Permission checking utilities
@@ -322,6 +346,7 @@ internal/
   │   ├── file_editor_service.go
   │   ├── metrics_collector_service.go
   │   ├── process_service.go    # Process management (start, stop, health checks)
+  │   ├── server_view_service.go # Server View file sync and aggregation
   │   ├── server_manager_service.go # Server sequence orchestration
   │   ├── collectors/           # Metric collectors (CPU, Memory)
   │   └── echarts/              # Chart generation
@@ -470,24 +495,24 @@ The application uses environment variables for configuration. A `.env` file is a
 
 ### Environment Variables
 
-| Variable                              | Default                                            | Description                              |
-| ------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
-| `PORT`                                | `8080`                                             | HTTP server port                         |
-| `LOG_LEVEL`                           | `info`                                             | Logging level (debug, info, warn, error) |
-| `LOG_DIR`                             | `logs`                                             | Directory for log files                  |
-| `DATABASE_URL`                        | `file:omnihance-a3-agent.db?cache=shared&mode=rwc` | SQLite database connection string        |
-| `METRICS_ENABLED`                     | `true`                                             | Enable/disable metrics collection        |
-| `METRICS_COLLECTION_INTERVAL_SECONDS` | `60`                                               | How often to collect metrics             |
-| `METRICS_RETENTION_DAYS`              | `7`                                                | How long to keep metrics data            |
-| `METRICS_CLEANUP_INTERVAL_SECONDS`    | `3600`                                             | How often to clean up old metrics        |
-| `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases |
-| `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups      |
-| `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files |
-| `MAX_FILE_UPLOAD_SIZE_MB`             | `2`                                                | Maximum multipart upload size in MB      |
+| Variable                              | Default                                            | Description                                                  |
+| ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| `PORT`                                | `8080`                                             | HTTP server port                                             |
+| `LOG_LEVEL`                           | `info`                                             | Logging level (debug, info, warn, error)                     |
+| `LOG_DIR`                             | `logs`                                             | Directory for log files                                      |
+| `DATABASE_URL`                        | `file:omnihance-a3-agent.db?cache=shared&mode=rwc` | SQLite database connection string                            |
+| `METRICS_ENABLED`                     | `true`                                             | Enable/disable metrics collection                            |
+| `METRICS_COLLECTION_INTERVAL_SECONDS` | `60`                                               | How often to collect metrics                                 |
+| `METRICS_RETENTION_DAYS`              | `7`                                                | How long to keep metrics data                                |
+| `METRICS_CLEANUP_INTERVAL_SECONDS`    | `3600`                                             | How often to clean up old metrics                            |
+| `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases                   |
+| `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups                          |
+| `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files                     |
+| `MAX_FILE_UPLOAD_SIZE_MB`             | `2`                                                | Maximum multipart upload size in MB                          |
 | `DIRECTORY_SHORTCUTS_LIMIT`           | `5`                                                | Maximum pinned directories per user (`0` disables the limit) |
-| `RUNNING_IN_DOCKER`                   | `false`                                            | Disable host metrics collection when running in Docker |
-| `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                |
-| `COOKIE_SECRET`                       | Auto-generated                                     | Secret for signing session cookies       |
+| `RUNNING_IN_DOCKER`                   | `false`                                            | Disable host metrics collection when running in Docker       |
+| `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                                    |
+| `COOKIE_SECRET`                       | Auto-generated                                     | Secret for signing session cookies                           |
 
 ### Version Checks
 
@@ -576,6 +601,19 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
   - Supported keys: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `ZONE_SERVER_PATH`, `ACCOUNT_SERVER_PATH`, `MAIN_SERVER_PATH`, and `BATTLE_SERVER_PATH`
   - Server path settings must point to directories containing `SvrInfo.ini`
 
+### Server View
+
+- `GET /api/server-view` - Get Server View overview cards, sync status, missing settings, and recent warnings (requires `view_game_data` permission)
+- `GET /api/server-view/sync/status` - Get current and latest Server View sync status (requires `view_game_data` permission)
+- `POST /api/server-view/sync` - Start a background Server View sync (requires `manage_server` permission; returns conflict if a sync is already running)
+- `GET /api/server-view/main/maps` - List Main Server map-to-zone rows (supports optional `q` search)
+- `GET /api/server-view/zone/maps` - List Zone Server loaded map-to-zone rows (supports optional `q` search)
+- `GET /api/server-view/zone/spawns` - List aggregated monster spawn rows (supports optional `map_q` and `npc_q` search)
+- `GET /api/server-view/zone/drops` - List NPCs with drop row counts (supports optional `q` search by NPC, item name, or item ID)
+- `GET /api/server-view/zone/drops/{npc_id}` - List drop details for one NPC (supports optional `q` item search)
+- `GET /api/server-view/zone/shops` - List NPC shops with item counts (supports optional `q` search by NPC or item)
+- `GET /api/server-view/zone/shops/{npc_id}` - List shop item details for one NPC (supports optional `q` item search)
+
 ### Server Management
 
 - `GET /api/server/processes` - List all server processes (ordered by sequence)
@@ -638,6 +676,14 @@ The application uses SQLite with the following main tables:
 - **backup_jobs**: Backup job definitions, scheduling metadata, paths, SQL settings, and statuses
 - **backup_runs**: Backup run history, trigger type, status, output logs, errors, and cancellation timestamps
 - **backup_run_files**: Output archive files created by each backup run
+- **server_view_svr_info_rows**: Raw `SvrInfo.ini` rows for Main, Account, Zone, and Battle servers
+- **server_view_map_zones**: Raw Main and Zone Server map-to-zone references
+- **server_view_spawn_rows**: Raw monster spawn rows from zone map `.n_ndt` files
+- **server_view_drop_rows**: Raw monster drop rows from zone NPC `.itm` files
+- **server_view_shop_rows**: Raw NPC shop rows from zone shop `.txt` files
+- **server_view_game_master_rows**: Game master names and levels from Zone Server `GMInfo.ini`
+- **server_view_sync_runs**: Server View sync run status, timestamps, lock state, and errors
+- **server_view_sync_warnings**: Per-run warnings for skipped files or parser failures
 - **metric_names**: Metric definitions
 - **metric_series**: Metric time series
 - **metric_samples**: Metric data points
@@ -652,7 +698,6 @@ The application uses SQLite with the following main tables:
 3. **Sign In**: Use your registered credentials to sign in. Only users with "active" status can sign in.
 
 4. **User Management** (Super Admin only):
-
    - Navigate to the Users page to manage user accounts
    - View all registered users with pagination and search
    - Update user status (approve pending users, deactivate, or ban users)
@@ -664,7 +709,6 @@ The application uses SQLite with the following main tables:
 6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item combination data files, or text files) to view and edit them (requires admin or super admin role).
-
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
    - **Drop File Editor**: Edit drop files (monster drop configurations) by adding, removing, and modifying entries, selecting item codes, and displaying item names when IT0-IT3 client data has been uploaded
    - **Item Combination Data Editor**: Edit craft formulas with 10 ingredients, success rates, outcomes, item-name lookup, and revision-backed saves
@@ -702,7 +746,14 @@ The application uses SQLite with the following main tables:
     - Server directory paths must contain `SvrInfo.ini` before they can be saved
     - Reuse saved database settings as local SQL Server backup defaults
 
-13. **Create and Run Backups** (Admin and Super Admin only):
+13. **Use Server View**:
+    - Navigate to Server View after configuring server paths
+    - Click "Sync Data" as an Admin or Super Admin to read server files into the database
+    - Review Main, Account, Zone, and Battle `SvrInfo.ini` cards
+    - Open Main Map Info, Zone Loaded Maps, Monster Spawns, Monster Drops, and Shops to search synced server state
+    - Upload client map, monster, and item data first when you want labels shown as `Name (ID)`
+
+14. **Create and Run Backups** (Admin and Super Admin only):
     - Navigate to the Backups page
     - Create file/directory jobs or local SQL Server jobs
     - Leave the cron expression empty for manual-only backups, or add a cron expression for scheduled runs

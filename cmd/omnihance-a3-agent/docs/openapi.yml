@@ -26,6 +26,8 @@ tags:
     name: directory-shortcuts
   - description: Game server settings operations
     name: settings
+  - description: Server View sync and query operations
+    name: server-view
   - description: SQL Server ODBC User DSN management operations
     name: odbc-sqlserver
   - description: Backup job and run operations
@@ -161,7 +163,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: "Signed out successfully"
+                    example: 'Signed out successfully'
         '401':
           description: Unauthorized
           content:
@@ -201,7 +203,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: "Password updated successfully"
+                    example: 'Password updated successfully'
         '400':
           description: Bad Request - Invalid request body, validation failed, or current password is incorrect
           content:
@@ -360,7 +362,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -466,7 +468,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -572,7 +574,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -678,7 +680,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -784,7 +786,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -890,7 +892,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File updated successfully"
+                    example: 'File updated successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -945,7 +947,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "File reverted successfully"
+                    example: 'File reverted successfully'
                   revision_id:
                     type: integer
                     format: int64
@@ -1094,16 +1096,16 @@ paths:
                       $ref: '#/components/schemas/MetricCard'
               example:
                 cards:
-                  - name: "CPU"
-                    metric_name: "cpu_usage_percentage"
-                    description: "Usage Percentage"
+                  - name: 'CPU'
+                    metric_name: 'cpu_usage_percentage'
+                    description: 'Usage Percentage'
                     value: 15.56
-                    display_value: "15.56%"
-                  - name: "RAM"
-                    metric_name: "memory_usage_percentage"
-                    description: "Usage Percentage"
+                    display_value: '15.56%'
+                  - name: 'RAM'
+                    metric_name: 'memory_usage_percentage'
+                    description: 'Usage Percentage'
                     value: 45.23
-                    display_value: "45.23%"
+                    display_value: '45.23%'
         '401':
           description: Unauthorized
           content:
@@ -1129,8 +1131,8 @@ paths:
           name: range
           schema:
             type: string
-            default: "1h"
-            enum: ["1h", "6h", "1d", "7d"]
+            default: '1h'
+            enum: ['1h', '6h', '1d', '7d']
           description: Preset time range for chart data. Supported values are 1h (1 hour), 6h (6 hours), 1d (1 day), and 7d (7 days). Defaults to 1h. Ignored when from and to are both provided.
         - in: query
           name: from
@@ -1153,80 +1155,90 @@ paths:
                 $ref: '#/components/schemas/ChartsResponse'
               example:
                 charts:
-                  - title: "CPU Usage"
-                    metric_name: "cpu_usage_percentage"
+                  - title: 'CPU Usage'
+                    metric_name: 'cpu_usage_percentage'
                     options:
                       title:
-                        text: "CPU Usage"
-                        subtext: "Usage Percentage Over Time"
-                        left: "center"
+                        text: 'CPU Usage'
+                        subtext: 'Usage Percentage Over Time'
+                        left: 'center'
                       tooltip:
-                        trigger: "axis"
+                        trigger: 'axis'
                         axisPointer:
-                          type: "cross"
+                          type: 'cross'
                       legend:
                         show: true
-                        top: "10%"
+                        top: '10%'
                       grid:
-                        left: "3%"
-                        right: "4%"
-                        bottom: "3%"
+                        left: '3%'
+                        right: '4%'
+                        bottom: '3%'
                         containLabel: true
                       xAxis:
-                        - type: "time"
+                        - type: 'time'
                       yAxis:
-                        - type: "value"
-                          name: "Usage (%)"
+                        - type: 'value'
+                          name: 'Usage (%)'
                           min: 0
                           max: 100
                           axisLabel:
-                            formatter: "{value}%"
+                            formatter: '{value}%'
                       series:
-                        - name: "CPU Usage"
-                          type: "line"
-                          data: [[1609459200000, 15.5], [1609462800000, 18.2], [1609466400000, 16.8]]
+                        - name: 'CPU Usage'
+                          type: 'line'
+                          data:
+                            [
+                              [1609459200000, 15.5],
+                              [1609462800000, 18.2],
+                              [1609466400000, 16.8],
+                            ]
                           smooth: true
                     filters:
-                      - key: "cpu_usage_percentage_range"
-                        available_values: ["1h", "6h", "1d", "7d"]
-                        default_value: "1h"
-                  - title: "RAM Usage"
-                    metric_name: "memory_usage_percentage"
+                      - key: 'cpu_usage_percentage_range'
+                        available_values: ['1h', '6h', '1d', '7d']
+                        default_value: '1h'
+                  - title: 'RAM Usage'
+                    metric_name: 'memory_usage_percentage'
                     options:
                       title:
-                        text: "RAM Usage"
-                        subtext: "Usage Percentage Over Time"
-                        left: "center"
+                        text: 'RAM Usage'
+                        subtext: 'Usage Percentage Over Time'
+                        left: 'center'
                       tooltip:
-                        trigger: "axis"
+                        trigger: 'axis'
                         axisPointer:
-                          type: "cross"
+                          type: 'cross'
                       legend:
                         show: true
-                        top: "10%"
+                        top: '10%'
                       grid:
-                        left: "3%"
-                        right: "4%"
-                        bottom: "3%"
+                        left: '3%'
+                        right: '4%'
+                        bottom: '3%'
                         containLabel: true
                       xAxis:
-                        - type: "time"
+                        - type: 'time'
                       yAxis:
-                        - type: "value"
-                          name: "Usage (%)"
+                        - type: 'value'
+                          name: 'Usage (%)'
                           min: 0
                           max: 100
                           axisLabel:
-                            formatter: "{value}%"
+                            formatter: '{value}%'
                       series:
-                        - name: "RAM Usage"
-                          type: "line"
-                          data: [[1609459200000, 45.2], [1609462800000, 47.1], [1609466400000, 46.5]]
+                        - name: 'RAM Usage'
+                          type: 'line'
+                          data:
+                            [
+                              [1609459200000, 45.2],
+                              [1609462800000, 47.1],
+                              [1609466400000, 46.5],
+                            ]
                           smooth: true
                     filters:
-                      - key: "memory_usage_percentage_range"
-                        available_values: ["1h", "6h", "1d", "7d"]
-                        default_value: "1h"
+                      - key: 'memory_usage_percentage_range'
+                        available_values: ['1h', '6h', '1d', '7d']
+                        default_value: '1h'
         '400':
           description: Bad Request - Invalid time range format
           content:
@@ -1294,7 +1306,7 @@ paths:
           schema:
             type: string
           description: Optional search string to filter monsters by name (case-insensitive partial match). If not provided, returns all monsters.
-          example: "goblin"
+          example: 'goblin'
       responses:
         '200':
           description: Monster client data retrieved successfully
@@ -1306,9 +1318,9 @@ paths:
                   $ref: '#/components/schemas/GameClientDataResponse'
               example:
                 - id: 1
-                  name: "Goblin Warrior"
+                  name: 'Goblin Warrior'
                 - id: 2
-                  name: "Goblin Archer"
+                  name: 'Goblin Archer'
         '401':
           description: Unauthorized
           content:
@@ -1352,7 +1364,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Monster list file uploaded successfully"
+                    example: 'Monster list file uploaded successfully'
                   count:
                     type: integer
                     format: int64
@@ -1407,7 +1419,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Map list file uploaded successfully"
+                    example: 'Map list file uploaded successfully'
                   count:
                     type: integer
                     format: int64
@@ -1445,7 +1457,7 @@ paths:
           schema:
             type: string
           description: Optional search string to filter maps by name (case-insensitive partial match). If not provided, returns all maps.
-          example: "forest"
+          example: 'forest'
       responses:
         '200':
           description: Map client data retrieved successfully
@@ -1457,9 +1469,9 @@ paths:
                   $ref: '#/components/schemas/GameClientDataResponse'
               example:
                 - id: 1
-                  name: "Forest Map"
+                  name: 'Forest Map'
                 - id: 2
-                  name: "Forest Dungeon"
+                  name: 'Forest Dungeon'
         '401':
           description: Unauthorized
           content:
@@ -1486,7 +1498,7 @@ paths:
           schema:
             type: string
           description: Optional search string to filter items by name (case-insensitive partial match). If not provided, returns all items.
-          example: "sword"
+          example: 'sword'
       responses:
         '200':
           description: Item client data retrieved successfully
@@ -1498,11 +1510,11 @@ paths:
                   $ref: '#/components/schemas/GameClientDataResponse'
               example:
                 - id: 1
-                  name: "Iron Sword"
-                  item_type: "it0"
+                  name: 'Iron Sword'
+                  item_type: 'it0'
                 - id: 2
-                  name: "Steel Sword"
-                  item_type: "it1"
+                  name: 'Steel Sword'
+                  item_type: 'it1'
         '401':
           description: Unauthorized
           content:
@@ -1730,7 +1742,7 @@ paths:
           schema:
             type: string
           description: Optional search string to filter users by email (case-insensitive partial match)
-          example: "user@example.com"
+          example: 'user@example.com'
       responses:
         '200':
           description: Users retrieved successfully
@@ -1831,7 +1843,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: "User status updated successfully"
+                    example: 'User status updated successfully'
         '400':
           description: Bad Request - Invalid request body, validation failed, or status unchanged
           content:
@@ -1898,7 +1910,7 @@ paths:
                     example: true
                   message:
                     type: string
-                    example: "Password set successfully"
+                    example: 'Password set successfully'
         '400':
           description: Bad Request - Invalid request body or validation failed
           content:
@@ -2120,7 +2132,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Process deleted successfully"
+                    example: 'Process deleted successfully'
         '400':
           description: Bad Request - Invalid process ID
           content:
@@ -2163,7 +2175,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Processes reordered successfully"
+                    example: 'Processes reordered successfully'
         '400':
           description: Bad Request - Invalid request body or validation failed
           content:
@@ -2200,7 +2212,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Server started successfully"
+                    example: 'Server started successfully'
         '401':
           description: Unauthorized
           content:
@@ -2231,7 +2243,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Server stopped successfully"
+                    example: 'Server stopped successfully'
         '401':
           description: Unauthorized
           content:
@@ -2271,7 +2283,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Process started successfully"
+                    example: 'Process started successfully'
         '400':
           description: Bad Request - Invalid process ID
           content:
@@ -2317,7 +2329,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Process stopped successfully"
+                    example: 'Process stopped successfully'
         '400':
           description: Bad Request - Invalid process ID
           content:
@@ -2470,7 +2482,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Shortcut deleted successfully"
+                    example: 'Shortcut deleted successfully'
         '400':
           description: Bad Request - Invalid shortcut ID
           content:
@@ -2592,7 +2604,17 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
+            enum:
+              [
+                DB_HOST,
+                DB_PORT,
+                DB_USER,
+                DB_PASS,
+                ZONE_SERVER_PATH,
+                ACCOUNT_SERVER_PATH,
+                MAIN_SERVER_PATH,
+                BATTLE_SERVER_PATH,
+              ]
           description: Setting key
           example: DB_HOST
       requestBody:
@@ -2651,7 +2673,17 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
+            enum:
+              [
+                DB_HOST,
+                DB_PORT,
+                DB_USER,
+                DB_PASS,
+                ZONE_SERVER_PATH,
+                ACCOUNT_SERVER_PATH,
+                MAIN_SERVER_PATH,
+                BATTLE_SERVER_PATH,
+              ]
           description: Setting key
           example: DB_HOST
       responses:
@@ -2681,6 +2713,417 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Setting not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view:
+    get:
+      tags:
+        - server-view
+      summary: Get Server View overview
+      description: Returns Main, Account, Zone, and Battle server cards from synced SvrInfo data, available Server View actions, current sync status, missing server path settings, and latest warnings. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server View overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewOverview'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/sync/status:
+    get:
+      tags:
+        - server-view
+      summary: Get Server View sync status
+      description: Returns whether a Server View sync is running, the latest sync run, warnings for the latest run, and configured or missing server path settings. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server View sync status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewSyncStatus'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/sync:
+    post:
+      tags:
+        - server-view
+      summary: Start Server View sync
+      description: Starts a background sync that reads configured server paths, stores raw server view rows, records warnings for skipped files, and allows only one sync to run at a time. Requires manage_server permission.
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Server View sync started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewSyncRun'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Manage server permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - A Server View sync is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/main/maps:
+    get:
+      tags:
+        - server-view
+      summary: List Main Server maps
+      description: Returns synced Main Server map-to-zone rows from MapInfo.ini. Uploaded map client data is used for map_display labels when available. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search by map name or map ID
+      responses:
+        '200':
+          description: Main Server maps retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewMapsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/maps:
+    get:
+      tags:
+        - server-view
+      summary: List Zone Server maps
+      description: Returns synced Zone Server loaded map-to-zone rows from ZoneData/map/MapInfo.ini. Uploaded map client data is used for map_display labels when available. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search by map name or map ID
+      responses:
+        '200':
+          description: Zone Server maps retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewMapsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/spawns:
+    get:
+      tags:
+        - server-view
+      summary: List Zone Server monster spawns
+      description: Returns monster spawn rows aggregated from raw synced .n_ndt rows by map and NPC. Uploaded map and monster client data is used for display labels when available. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: map_q
+          schema:
+            type: string
+          description: Optional search by map name or map ID
+        - in: query
+          name: npc_q
+          schema:
+            type: string
+          description: Optional search by NPC name or NPC ID
+      responses:
+        '200':
+          description: Zone Server monster spawns retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewSpawnsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/drops:
+    get:
+      tags:
+        - server-view
+      summary: List Zone Server monster drops
+      description: Returns NPCs with synced drop row counts. Search can match NPC name, NPC ID, dropped item name, raw item ID, or masked item base ID. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional universal search by NPC or dropped item
+      responses:
+        '200':
+          description: Zone Server monster drops retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewDropsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/drops/{npc_id}:
+    get:
+      tags:
+        - server-view
+      summary: List drop details for one NPC
+      description: Returns synced drop rows for one NPC, including item display labels, raw item ID, drop rate, and group code. Item names are resolved with item_id & 0x3FFF. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: npc_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: NPC ID
+          example: 1001
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search by item name, raw item ID, or masked item base ID
+      responses:
+        '200':
+          description: NPC drop details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewDropDetailsResponse'
+        '400':
+          description: Bad Request - Invalid NPC ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/shops:
+    get:
+      tags:
+        - server-view
+      summary: List Zone Server shops
+      description: Returns NPCs with synced shop item counts. Search can match NPC name, NPC ID, shop item name, raw item ID, or masked item base ID. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional universal search by NPC or shop item
+      responses:
+        '200':
+          description: Zone Server shops retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewShopsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/server-view/zone/shops/{npc_id}:
+    get:
+      tags:
+        - server-view
+      summary: List shop details for one NPC
+      description: Returns synced shop item rows for one NPC, including item display labels, raw item ID, and 1-based line number. Item names are resolved with item_id & 0x3FFF. Requires view_game_data permission.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: npc_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+          description: NPC ID
+          example: 1001
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search by item name, raw item ID, or masked item base ID
+      responses:
+        '200':
+          description: NPC shop details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerViewShopDetailsResponse'
+        '400':
+          description: Bad Request - Invalid NPC ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - View game data permission is required
           content:
             application/json:
               schema:
@@ -2771,7 +3214,7 @@ paths:
           schema:
             type: string
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
       responses:
         '200':
           description: SQL Server DSN retrieved successfully
@@ -2811,7 +3254,7 @@ paths:
           schema:
             type: string
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
       requestBody:
         required: true
         content:
@@ -2863,7 +3306,7 @@ paths:
           schema:
             type: string
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
       responses:
         '200':
           description: SQL Server DSN deleted successfully
@@ -2874,7 +3317,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "DSN deleted successfully"
+                    example: 'DSN deleted successfully'
         '401':
           description: Unauthorized
           content:
@@ -2956,7 +3399,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: "Connection successful"
+                    example: 'Connection successful'
         '400':
           description: Bad Request - Validation failed or connection failed
           content:
@@ -3581,12 +4024,12 @@ components:
           type: string
           format: email
           description: User email address
-          example: "user@example.com"
+          example: 'user@example.com'
         password:
           type: string
           minLength: 6
           description: User password (minimum 6 characters)
-          example: "password123"
+          example: 'password123'
     AuthResponse:
       type: object
       properties:
@@ -3597,7 +4040,7 @@ components:
         message:
           type: string
           description: Response message
-          example: "Signed in successfully"
+          example: 'Signed in successfully'
     UpdatePasswordRequest:
       type: object
       required:
@@ -3607,19 +4050,19 @@ components:
         current_password:
           type: string
           description: Current user password for verification
-          example: "oldpassword123"
+          example: 'oldpassword123'
         new_password:
           type: string
           minLength: 6
           description: New password (minimum 6 characters)
-          example: "newpassword123"
+          example: 'newpassword123'
     GetSessionResponse:
       type: object
       properties:
         session_id:
           type: string
           description: Session identifier
-          example: "550e8400-e29b-41d4-a716-446655440000"
+          example: '550e8400-e29b-41d4-a716-446655440000'
         user_id:
           type: integer
           format: int64
@@ -3629,13 +4072,13 @@ components:
           type: string
           format: email
           description: User email address
-          example: "user@example.com"
+          example: 'user@example.com'
         roles:
           type: array
           items:
             type: string
           description: User roles
-          example: ["super_admin"]
+          example: ['super_admin']
         created_at:
           type: string
           format: date-time
@@ -3650,11 +4093,11 @@ components:
         name:
           type: string
           description: Server name
-          example: "omnihance-a3-agent"
+          example: 'omnihance-a3-agent'
         version:
           type: string
           description: Server version
-          example: "1.0.0"
+          example: '1.0.0'
         setup_done:
           type: boolean
           description: Whether the initial setup has been completed
@@ -3667,18 +4110,18 @@ components:
           type: string
           nullable: true
           description: Latest stable release version available on GitHub
-          example: "v1.1.0"
+          example: 'v1.1.0'
         latest_release_url:
           type: string
           nullable: true
           description: URL for the latest stable GitHub release
-          example: "https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0"
+          example: 'https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0'
         version_checked_at:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the cached version check was last refreshed
-          example: "2026-05-14T10:00:00Z"
+          example: '2026-05-14T10:00:00Z'
         metrics_enabled:
           type: boolean
           description: Whether metrics collection is enabled
@@ -3689,17 +4132,17 @@ components:
         errorCode:
           type: string
           description: Error code identifier
-          example: "SETUP_ALREADY_DONE"
+          example: 'SETUP_ALREADY_DONE'
         context:
           type: string
           description: Context where the error occurred
-          example: "setup"
+          example: 'setup'
         errors:
           type: array
           items:
             type: string
           description: Array of error messages
-          example: ["Setup has already been done"]
+          example: ['Setup has already been done']
     FileNode:
       type: object
       properties:
@@ -3736,7 +4179,16 @@ components:
         file_type:
           type: string
           description: Type of the file as determined by the file editor service
-          enum: [a3_npc_file, a3_drop_file, a3_map_file, a3_spawn_file, a3_quest_file, a3_unknown_file, text_file]
+          enum:
+            [
+              a3_npc_file,
+              a3_drop_file,
+              a3_map_file,
+              a3_spawn_file,
+              a3_quest_file,
+              a3_unknown_file,
+              text_file,
+            ]
         is_editable:
           type: boolean
           description: Whether the file can be edited
@@ -3746,7 +4198,7 @@ components:
         api_endpoint:
           type: string
           description: API endpoint to access file data (only populated for files that have an associated endpoint)
-          example: "/api/file-tree/npc-file"
+          example: '/api/file-tree/npc-file'
         children:
           type: array
           items:
@@ -3759,7 +4211,7 @@ components:
         os:
           type: string
           description: Operating system the agent is running on (e.g., "windows", "linux", "darwin")
-          example: "windows"
+          example: 'windows'
         file_tree:
           $ref: '#/components/schemas/FileNode'
           description: The file system tree structure
@@ -3907,13 +4359,13 @@ components:
         new_file_name:
           type: string
           description: New file name for the duplicate in the same directory
-          example: "server (copy).ini"
+          example: 'server (copy).ini'
     DuplicateFileResponse:
       type: object
       properties:
         message:
           type: string
-          example: "File duplicated successfully"
+          example: 'File duplicated successfully'
         duplicated_path:
           type: string
           description: Full path of the newly created duplicate file
@@ -4212,15 +4664,15 @@ components:
         name:
           type: string
           description: Display name of the metric
-          example: "CPU"
+          example: 'CPU'
         metric_name:
           type: string
           description: The name of the metric
-          example: "CPU"
+          example: 'CPU'
         description:
           type: string
           description: Description of what the metric represents
-          example: "Usage Percentage"
+          example: 'Usage Percentage'
         value:
           type: number
           format: double
@@ -4229,7 +4681,7 @@ components:
         display_value:
           type: string
           description: Formatted display value with 2 decimal places and percentage symbol
-          example: "15.56%"
+          example: '15.56%'
     ChartsResponse:
       type: object
       description: Response containing chart configurations with ECharts options
@@ -4246,44 +4698,44 @@ components:
         title:
           type: string
           description: Display title of the chart
-          example: "CPU Usage"
+          example: 'CPU Usage'
         metric_name:
           type: string
           description: The metric name identifier
-          example: "cpu_usage_percentage"
+          example: 'cpu_usage_percentage'
         options:
           type: object
           description: ECharts configuration options object. This is a complete ECharts option object that can be directly used with ECharts library in the frontend.
           additionalProperties: true
           example:
             title:
-              text: "CPU Usage"
-              subtext: "Usage Percentage Over Time"
-              left: "center"
+              text: 'CPU Usage'
+              subtext: 'Usage Percentage Over Time'
+              left: 'center'
             tooltip:
-              trigger: "axis"
+              trigger: 'axis'
               axisPointer:
-                type: "cross"
+                type: 'cross'
             legend:
               show: true
-              top: "10%"
+              top: '10%'
             grid:
-              left: "3%"
-              right: "4%"
-              bottom: "3%"
+              left: '3%'
+              right: '4%'
+              bottom: '3%'
               containLabel: true
             xAxis:
-              - type: "time"
+              - type: 'time'
             yAxis:
-              - type: "value"
-                name: "Usage (%)"
+              - type: 'value'
+                name: 'Usage (%)'
                 min: 0
                 max: 100
                 axisLabel:
-                  formatter: "{value}%"
+                  formatter: '{value}%'
             series:
-              - name: "CPU Usage"
-                type: "line"
+              - name: 'CPU Usage'
+                type: 'line'
                 data: [[1609459200000, 15.5], [1609462800000, 18.2]]
                 smooth: true
         filters:
@@ -4298,17 +4750,17 @@ components:
         key:
           type: string
           description: The filter key identifier
-          example: "cpu_usage_percentage_range"
+          example: 'cpu_usage_percentage_range'
         available_values:
           type: array
           items:
             type: string
           description: List of available time range values
-          example: ["1h", "6h", "1d", "7d"]
+          example: ['1h', '6h', '1d', '7d']
         default_value:
           type: string
           description: Default time range value
-          example: "1h"
+          example: '1h'
     RevisionSummary:
       type: object
       description: Summary of completed revisions for a file
@@ -4336,7 +4788,7 @@ components:
         name:
           type: string
           description: Name of the game data entry
-          example: "Goblin Warrior"
+          example: 'Goblin Warrior'
         item_type:
           type: string
           enum:
@@ -4345,7 +4797,7 @@ components:
             - it2
             - it3
           description: Source item file type. Present for item client data responses.
-          example: "it0"
+          example: 'it0'
     GameClientDataCountsResponse:
       type: object
       description: Total existing client data counts for uploadable datasets
@@ -4386,7 +4838,7 @@ components:
       properties:
         message:
           type: string
-          example: "IT1 item file uploaded successfully"
+          example: 'IT1 item file uploaded successfully'
         count:
           type: integer
           format: int64
@@ -4433,23 +4885,23 @@ components:
           type: string
           format: email
           description: User email address
-          example: "user@example.com"
+          example: 'user@example.com'
         roles:
           type: array
           items:
             type: string
           description: User roles
-          example: ["super_admin"]
+          example: ['super_admin']
         status:
           type: string
           enum: [pending, active, inactive, banned]
           description: User status
-          example: "active"
+          example: 'active'
         created_at:
           type: string
           format: date-time
           description: User creation timestamp
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
     UpdateUserStatusRequest:
       type: object
       required:
@@ -4459,7 +4911,7 @@ components:
           type: string
           enum: [pending, active, inactive, banned]
           description: New user status
-          example: "active"
+          example: 'active'
     SetUserPasswordRequest:
       type: object
       required:
@@ -4469,7 +4921,7 @@ components:
           type: string
           minLength: 6
           description: New password (minimum 6 characters)
-          example: "newpassword123"
+          example: 'newpassword123'
     GetUserStatusesResponse:
       type: object
       description: Response containing allowed user statuses
@@ -4480,7 +4932,7 @@ components:
             type: string
             enum: [pending, active, inactive, banned]
           description: List of allowed user status values
-          example: ["pending", "active", "inactive", "banned"]
+          example: ['pending', 'active', 'inactive', 'banned']
     ServerProcess:
       type: object
       description: Server process configuration and metadata
@@ -4493,7 +4945,7 @@ components:
         name:
           type: string
           description: Friendly name for the process
-          example: "Database Server"
+          example: 'Database Server'
         path:
           type: string
           description: Path to the executable or batch file
@@ -4512,24 +4964,24 @@ components:
           format: date-time
           nullable: true
           description: Timestamp when the process was last started
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         end_time:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the process was last stopped
-          example: "2024-01-01T01:00:00Z"
+          example: '2024-01-01T01:00:00Z'
         created_at:
           type: string
           format: date-time
           description: Timestamp when the process was created
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         updated_at:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the process was last updated
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
     CreateServerProcessRequest:
       type: object
       required:
@@ -4539,7 +4991,7 @@ components:
         name:
           type: string
           description: Friendly name for the process
-          example: "Database Server"
+          example: 'Database Server'
         path:
           type: string
           description: Path to the executable or batch file
@@ -4558,7 +5010,7 @@ components:
         name:
           type: string
           description: Friendly name for the process
-          example: "Database Server"
+          example: 'Database Server'
         path:
           type: string
           description: Path to the executable or batch file
@@ -4611,13 +5063,13 @@ components:
           format: date-time
           nullable: true
           description: Timestamp when the process was last started (ISO 8601 format)
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         end_time:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the process was last stopped (ISO 8601 format). Only present if the process is not running and has been stopped.
-          example: "2024-01-01T01:00:00Z"
+          example: '2024-01-01T01:00:00Z'
         current_uptime_seconds:
           type: integer
           format: int64
@@ -4637,7 +5089,7 @@ components:
         name:
           type: string
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
         server:
           type: string
           description: SQL Server host or instance name
@@ -4645,16 +5097,16 @@ components:
         database:
           type: string
           description: Default database name
-          example: "A3Game"
+          example: 'A3Game'
         login_id:
           type: string
           description: Last SQL user stored as LastUser in registry
-          example: "sa"
+          example: 'sa'
         last_user:
           type: string
           nullable: true
           description: LastUser value stored in registry
-          example: "sa"
+          example: 'sa'
     SQLServerODBCDSNRequest:
       type: object
       required:
@@ -4667,7 +5119,7 @@ components:
           type: string
           minLength: 1
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
         server:
           type: string
           minLength: 1
@@ -4677,16 +5129,16 @@ components:
           type: string
           minLength: 1
           description: Default database name
-          example: "A3Game"
+          example: 'A3Game'
         login_id:
           type: string
           minLength: 1
           description: SQL user stored as LastUser in registry
-          example: "sa"
+          example: 'sa'
         password:
           type: string
           description: Optional SQL authentication password for connection testing only
-          example: "StrongPassword123"
+          example: 'StrongPassword123'
     SQLServerODBCDSNTestRequest:
       type: object
       required:
@@ -4700,7 +5152,7 @@ components:
           type: string
           minLength: 1
           description: DSN name
-          example: "A3GameDB"
+          example: 'A3GameDB'
         server:
           type: string
           minLength: 1
@@ -4710,17 +5162,17 @@ components:
           type: string
           minLength: 1
           description: Default database name
-          example: "A3Game"
+          example: 'A3Game'
         login_id:
           type: string
           minLength: 1
           description: SQL authentication login id
-          example: "sa"
+          example: 'sa'
         password:
           type: string
           minLength: 1
           description: SQL authentication password
-          example: "StrongPassword123"
+          example: 'StrongPassword123'
     SQLServerODBCDefaultDSNRequest:
       type: object
       required:
@@ -4736,7 +5188,7 @@ components:
           type: string
           minLength: 1
           description: SQL user stored as LastUser for all default A3 DSNs
-          example: "sa"
+          example: 'sa'
     SQLServerODBCDefaultDSNResponse:
       type: object
       properties:
@@ -4780,7 +5232,7 @@ components:
         name:
           type: string
           description: Display name for the shortcut
-          example: "My Documents"
+          example: 'My Documents'
         path:
           type: string
           description: Full path to the directory
@@ -4788,18 +5240,18 @@ components:
         normalized_path:
           type: string
           description: Normalized path used for duplicate detection (internal use)
-          example: "c:/users/user/documents"
+          example: 'c:/users/user/documents'
         created_at:
           type: string
           format: date-time
           description: Timestamp when the shortcut was created
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         updated_at:
           type: string
           format: date-time
           nullable: true
           description: Timestamp when the shortcut was last updated
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
     DirectoryShortcutsResponse:
       type: object
       description: Response containing directory shortcuts with limit information
@@ -4827,7 +5279,7 @@ components:
           type: string
           minLength: 1
           description: Display name for the shortcut
-          example: "My Documents"
+          example: 'My Documents'
         path:
           type: string
           minLength: 1
@@ -4839,13 +5291,23 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
+          enum:
+            [
+              DB_HOST,
+              DB_PORT,
+              DB_USER,
+              DB_PASS,
+              ZONE_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              MAIN_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
           description: Setting key
           example: DB_HOST
         value:
           type: string
           description: Setting value
-          example: "127.0.0.1"
+          example: '127.0.0.1'
         created_by:
           type: integer
           format: int64
@@ -4856,7 +5318,7 @@ components:
           type: string
           format: date-time
           description: Timestamp when the setting was created
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
         updated_by:
           type: integer
           format: int64
@@ -4868,24 +5330,34 @@ components:
           format: date-time
           nullable: true
           description: Timestamp when the setting was last updated
-          example: "2024-01-01T00:00:00Z"
+          example: '2024-01-01T00:00:00Z'
     SettingDefinition:
       type: object
       description: Supported setting metadata used by the UI
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
+          enum:
+            [
+              DB_HOST,
+              DB_PORT,
+              DB_USER,
+              DB_PASS,
+              ZONE_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              MAIN_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
           description: Supported setting key
           example: DB_HOST
         label:
           type: string
           description: Human-readable setting label
-          example: "Game server DB host"
+          example: 'Game server DB host'
         description:
           type: string
           description: Setting help text
-          example: "SQL Server host name or IP address used by the game server database."
+          example: 'SQL Server host name or IP address used by the game server database.'
         value_type:
           type: string
           enum: [string, uint16]
@@ -4918,14 +5390,24 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
+          enum:
+            [
+              DB_HOST,
+              DB_PORT,
+              DB_USER,
+              DB_PASS,
+              ZONE_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              MAIN_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
           description: Setting key
           example: DB_HOST
         value:
           type: string
           minLength: 1
           description: Setting value
-          example: "127.0.0.1"
+          example: '127.0.0.1'
     UpdateSettingRequest:
       type: object
       required:
@@ -4935,13 +5417,407 @@ components:
           type: string
           minLength: 1
           description: Setting value
-          example: "127.0.0.1"
+          example: '127.0.0.1'
+    ServerViewOverview:
+      type: object
+      description: Server View overview response with server cards and sync state
+      properties:
+        servers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewServerInfo'
+        sync:
+          $ref: '#/components/schemas/ServerViewSyncStatus'
+    ServerViewServerInfo:
+      type: object
+      description: One Server View card for a configured or missing server path
+      properties:
+        server_type:
+          type: string
+          enum: [main, account, zone, battle]
+          example: main
+        label:
+          type: string
+          example: 'Main Server'
+        setting_key:
+          type: string
+          enum:
+            [
+              MAIN_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              ZONE_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
+          example: MAIN_SERVER_PATH
+        configured:
+          type: boolean
+          example: true
+        path:
+          type: string
+          nullable: true
+          description: Configured server base path, or null when not configured
+          example: "D:\\A3\\a3server\\4mainserver"
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewInfoSection'
+        available_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewAction'
+        unavailable_reason:
+          type: string
+          nullable: true
+          description: Explanation shown when the server path is not configured
+          example: 'Set Main Server path in Settings before syncing this card.'
+    ServerViewInfoSection:
+      type: object
+      description: Group of SvrInfo.ini rows by section name
+      properties:
+        name:
+          type: string
+          example: DEFAULT
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewInfoRow'
+    ServerViewInfoRow:
+      type: object
+      description: Raw SvrInfo.ini key/value row
+      properties:
+        key:
+          type: string
+          example: ServerIP
+        value:
+          type: string
+          example: '127.0.0.1'
+        value_index:
+          type: integer
+          description: Zero-based index for duplicate INI keys preserved during parsing
+          example: 0
+    ServerViewAction:
+      type: object
+      description: UI action exposed for a server card
+      properties:
+        label:
+          type: string
+          example: 'Map Info'
+        href:
+          type: string
+          example: '/server-view/main/maps'
+    ServerViewSyncStatus:
+      type: object
+      description: Current and latest Server View sync state
+      properties:
+        running:
+          type: boolean
+          example: false
+        latest_run:
+          allOf:
+            - $ref: '#/components/schemas/ServerViewSyncRun'
+          nullable: true
+          description: Latest sync run, or null before the first sync
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewSyncWarning'
+        missing_settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewMissingSetting'
+        configured_settings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewConfiguredSetting'
+    ServerViewSyncRun:
+      type: object
+      description: Server View sync run status row
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        status:
+          type: string
+          enum: [running, succeeded, failed]
+          example: succeeded
+        started_at:
+          type: string
+          format: date-time
+          example: '2026-06-02T10:00:00Z'
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-06-02T10:00:05Z'
+        warning_count:
+          type: integer
+          example: 2
+        error_details:
+          type: string
+          nullable: true
+          example: null
+        created_by:
+          type: integer
+          format: int64
+          nullable: true
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-06-02T10:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2026-06-02T10:00:05Z'
+    ServerViewSyncWarning:
+      type: object
+      description: Warning captured during a Server View sync run
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        run_id:
+          type: integer
+          format: int64
+          example: 1
+        source:
+          type: string
+          example: "D:\\A3\\a3server\\ZoneServer\\ZoneData\\npc\\1001.itm"
+        message:
+          type: string
+          example: 'invalid drop row'
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-06-02T10:00:01Z'
+    ServerViewMissingSetting:
+      type: object
+      description: Required server path setting that is missing or empty
+      properties:
+        server_type:
+          type: string
+          enum: [main, account, zone, battle]
+          example: account
+        setting_key:
+          type: string
+          enum:
+            [
+              MAIN_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              ZONE_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
+          example: ACCOUNT_SERVER_PATH
+        label:
+          type: string
+          example: 'Account Server'
+    ServerViewConfiguredSetting:
+      type: object
+      description: Required server path setting that has a configured value
+      properties:
+        server_type:
+          type: string
+          enum: [main, account, zone, battle]
+          example: zone
+        setting_key:
+          type: string
+          enum:
+            [
+              MAIN_SERVER_PATH,
+              ACCOUNT_SERVER_PATH,
+              ZONE_SERVER_PATH,
+              BATTLE_SERVER_PATH,
+            ]
+          example: ZONE_SERVER_PATH
+        label:
+          type: string
+          example: 'Zone Server'
+        path:
+          type: string
+          example: "D:\\A3\\a3server\\ZoneServer"
+    ServerViewMapRow:
+      type: object
+      description: Synced map-to-zone row with optional uploaded map name
+      properties:
+        map_id:
+          type: integer
+          format: int64
+          example: 0
+        map_name:
+          type: string
+          nullable: true
+          example: 'Wolfreck'
+        map_display:
+          type: string
+          example: 'Wolfreck (0)'
+        zone_id:
+          type: integer
+          format: int64
+          example: 1
+    ServerViewMapsResponse:
+      type: object
+      properties:
+        maps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewMapRow'
+    ServerViewSpawnSummaryRow:
+      type: object
+      description: Monster spawn count aggregated by map and NPC
+      properties:
+        map_id:
+          type: integer
+          format: int64
+          example: 0
+        map_name:
+          type: string
+          nullable: true
+          example: 'Wolfreck'
+        map_display:
+          type: string
+          example: 'Wolfreck (0)'
+        npc_id:
+          type: integer
+          format: int64
+          example: 1001
+        npc_name:
+          type: string
+          nullable: true
+          example: 'Hell Hound'
+        npc_display:
+          type: string
+          example: 'Hell Hound (1001)'
+        count:
+          type: integer
+          format: int64
+          example: 12
+    ServerViewSpawnsResponse:
+      type: object
+      properties:
+        spawns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewSpawnSummaryRow'
+    ServerViewDropSummaryRow:
+      type: object
+      description: NPC-level drop summary
+      properties:
+        npc_id:
+          type: integer
+          format: int64
+          example: 1001
+        npc_name:
+          type: string
+          nullable: true
+          example: 'Hell Hound'
+        npc_display:
+          type: string
+          example: 'Hell Hound (1001)'
+        drop_item_count:
+          type: integer
+          format: int64
+          example: 8
+    ServerViewDropsResponse:
+      type: object
+      properties:
+        drops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewDropSummaryRow'
+    ServerViewDropDetailRow:
+      type: object
+      description: Raw drop detail row for one NPC
+      properties:
+        row_index:
+          type: integer
+          example: 1
+        item_id:
+          type: integer
+          format: int64
+          description: Raw item ID from the drop file
+          example: 12345
+        item_name:
+          type: string
+          nullable: true
+          example: 'Blessed Stone'
+        item_display:
+          type: string
+          example: 'Blessed Stone (12345)'
+        drop_rate:
+          type: integer
+          example: 15
+        group_code:
+          type: integer
+          example: 2
+    ServerViewDropDetailsResponse:
+      type: object
+      properties:
+        drops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewDropDetailRow'
+    ServerViewShopSummaryRow:
+      type: object
+      description: NPC-level shop summary
+      properties:
+        npc_id:
+          type: integer
+          format: int64
+          example: 2001
+        npc_name:
+          type: string
+          nullable: true
+          example: 'Weapon Merchant'
+        npc_display:
+          type: string
+          example: 'Weapon Merchant (2001)'
+        item_count:
+          type: integer
+          format: int64
+          example: 24
+    ServerViewShopsResponse:
+      type: object
+      properties:
+        shops:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewShopSummaryRow'
+    ServerViewShopDetailRow:
+      type: object
+      description: Raw shop detail row for one NPC
+      properties:
+        line_number:
+          type: integer
+          description: 1-based line number in the source shop file
+          example: 1
+        item_id:
+          type: integer
+          format: int64
+          description: Raw item ID from the shop file
+          example: 12345
+        item_name:
+          type: string
+          nullable: true
+          example: 'Blessed Stone'
+        item_display:
+          type: string
+          example: 'Blessed Stone (12345)'
+    ServerViewShopDetailsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerViewShopDetailRow'
     MessageResponse:
       type: object
       properties:
         message:
           type: string
-          example: "Operation completed successfully"
+          example: 'Operation completed successfully'
     BackupJob:
       type: object
       properties:
