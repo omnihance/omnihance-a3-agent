@@ -104,8 +104,6 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
 ## omnihance-a3-agent Specific Coding Guidelines
 
 ### Do

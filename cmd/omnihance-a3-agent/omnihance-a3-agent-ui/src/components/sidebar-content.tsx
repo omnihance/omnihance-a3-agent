@@ -58,6 +58,12 @@ const sidebarLinks = [
     permission: 'view_files' as const,
   },
   {
+    href: '/server-view',
+    icon: Server,
+    label: 'Server View',
+    permission: 'view_game_data' as const,
+  },
+  {
     href: '/sql-server-odbc',
     icon: DatabaseZap,
     label: 'SQL ODBC',

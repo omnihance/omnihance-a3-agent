@@ -63,6 +63,18 @@ export const API_ROUTES = {
     `/api/backups/runs/${runId}/files/${fileId}/download`,
   BACKUP_PATH_SEARCH: '/api/backups/path-search',
   BACKUP_SQL_SERVER_DEFAULTS: '/api/backups/defaults/sql-server',
+  SERVER_VIEW: '/api/server-view',
+  SERVER_VIEW_SYNC_STATUS: '/api/server-view/sync/status',
+  SERVER_VIEW_SYNC: '/api/server-view/sync',
+  SERVER_VIEW_MAIN_MAPS: '/api/server-view/main/maps',
+  SERVER_VIEW_ZONE_MAPS: '/api/server-view/zone/maps',
+  SERVER_VIEW_ZONE_SPAWNS: '/api/server-view/zone/spawns',
+  SERVER_VIEW_ZONE_DROPS: '/api/server-view/zone/drops',
+  SERVER_VIEW_ZONE_DROP_DETAILS: (npcId: number) =>
+    `/api/server-view/zone/drops/${npcId}`,
+  SERVER_VIEW_ZONE_SHOPS: '/api/server-view/zone/shops',
+  SERVER_VIEW_ZONE_SHOP_DETAILS: (npcId: number) =>
+    `/api/server-view/zone/shops/${npcId}`,
 } as const;
 
 export class APIError extends Error {
@@ -1258,7 +1270,16 @@ const MessageResponseSchema = z.object({
 
 export type MessageResponse = z.infer<typeof MessageResponseSchema>;
 
-const SettingKeySchema = z.enum(['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS']);
+const SettingKeySchema = z.enum([
+  'DB_HOST',
+  'DB_PORT',
+  'DB_USER',
+  'DB_PASS',
+  'ZONE_SERVER_PATH',
+  'ACCOUNT_SERVER_PATH',
+  'MAIN_SERVER_PATH',
+  'BATTLE_SERVER_PATH',
+]);
 
 export type SettingKey = z.infer<typeof SettingKeySchema>;
 
@@ -1267,7 +1288,7 @@ const SettingDefinitionSchema = z.object({
   label: z.string(),
   description: z.string(),
   value_type: z.string(),
-  input_type: z.enum(['text', 'number', 'password']),
+  input_type: z.enum(['text', 'number', 'password', 'directory']),
 });
 
 export type SettingDefinition = z.infer<typeof SettingDefinitionSchema>;
@@ -1545,6 +1566,332 @@ export async function deleteDirectoryShortcut(
     response.data,
     API_ROUTES.DIRECTORY_SHORTCUT(id),
   );
+}
+
+const ServerViewInfoRowSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+  value_index: z.number().int(),
+});
+
+export type ServerViewInfoRow = z.infer<typeof ServerViewInfoRowSchema>;
+
+const ServerViewInfoSectionSchema = z.object({
+  name: z.string(),
+  rows: z.array(ServerViewInfoRowSchema),
+});
+
+export type ServerViewInfoSection = z.infer<typeof ServerViewInfoSectionSchema>;
+
+const ServerViewActionSchema = z.object({
+  label: z.string(),
+  href: z.string(),
+});
+
+export type ServerViewAction = z.infer<typeof ServerViewActionSchema>;
+
+const ServerViewServerInfoSchema = z.object({
+  server_type: z.string(),
+  label: z.string(),
+  setting_key: z.string(),
+  configured: z.boolean(),
+  path: z.string().nullable(),
+  sections: z.array(ServerViewInfoSectionSchema),
+  available_actions: z.array(ServerViewActionSchema),
+  unavailable_reason: z.string().nullable(),
+});
+
+export type ServerViewServerInfo = z.infer<typeof ServerViewServerInfoSchema>;
+
+const ServerViewSyncRunSchema = z.object({
+  id: z.number().int(),
+  status: z.string(),
+  started_at: z.string(),
+  finished_at: z.string().nullable(),
+  warning_count: z.number().int(),
+  error_details: z.string().nullable(),
+  created_by: z.number().int().nullable(),
+  created_at: z.string(),
+  updated_at: z.string().nullable(),
+});
+
+export type ServerViewSyncRun = z.infer<typeof ServerViewSyncRunSchema>;
+
+const ServerViewSyncWarningSchema = z.object({
+  id: z.number().int(),
+  run_id: z.number().int(),
+  source: z.string(),
+  message: z.string(),
+  created_at: z.string(),
+});
+
+export type ServerViewSyncWarning = z.infer<typeof ServerViewSyncWarningSchema>;
+
+const ServerViewMissingSettingSchema = z.object({
+  server_type: z.string(),
+  setting_key: z.string(),
+  label: z.string(),
+});
+
+const ServerViewConfiguredSettingSchema = z.object({
+  server_type: z.string(),
+  setting_key: z.string(),
+  label: z.string(),
+  path: z.string(),
+});
+
+const ServerViewSyncStatusSchema = z.object({
+  running: z.boolean(),
+  latest_run: ServerViewSyncRunSchema.nullable(),
+  warnings: z.array(ServerViewSyncWarningSchema),
+  missing_settings: z.array(ServerViewMissingSettingSchema),
+  configured_settings: z.array(ServerViewConfiguredSettingSchema),
+});
+
+export type ServerViewSyncStatus = z.infer<typeof ServerViewSyncStatusSchema>;
+
+const ServerViewOverviewSchema = z.object({
+  servers: z.array(ServerViewServerInfoSchema),
+  sync: ServerViewSyncStatusSchema,
+});
+
+export type ServerViewOverview = z.infer<typeof ServerViewOverviewSchema>;
+
+const ServerViewMapRowSchema = z.object({
+  map_id: z.number().int(),
+  map_name: z.string().nullable(),
+  map_display: z.string(),
+  zone_id: z.number().int(),
+});
+
+export type ServerViewMapRow = z.infer<typeof ServerViewMapRowSchema>;
+
+const ServerViewMapsResponseSchema = z.object({
+  maps: z.array(ServerViewMapRowSchema),
+});
+
+const ServerViewSpawnSummaryRowSchema = z.object({
+  map_id: z.number().int(),
+  map_name: z.string().nullable(),
+  map_display: z.string(),
+  npc_id: z.number().int(),
+  npc_name: z.string().nullable(),
+  npc_display: z.string(),
+  count: z.number().int(),
+});
+
+export type ServerViewSpawnSummaryRow = z.infer<
+  typeof ServerViewSpawnSummaryRowSchema
+>;
+
+const ServerViewSpawnsResponseSchema = z.object({
+  spawns: z.array(ServerViewSpawnSummaryRowSchema),
+});
+
+const ServerViewDropSummaryRowSchema = z.object({
+  npc_id: z.number().int(),
+  npc_name: z.string().nullable(),
+  npc_display: z.string(),
+  drop_item_count: z.number().int(),
+});
+
+export type ServerViewDropSummaryRow = z.infer<
+  typeof ServerViewDropSummaryRowSchema
+>;
+
+const ServerViewDropsResponseSchema = z.object({
+  drops: z.array(ServerViewDropSummaryRowSchema),
+});
+
+const ServerViewDropDetailRowSchema = z.object({
+  row_index: z.number().int(),
+  item_id: z.number().int(),
+  item_name: z.string().nullable(),
+  item_display: z.string(),
+  drop_rate: z.number().int(),
+  group_code: z.number().int(),
+});
+
+export type ServerViewDropDetailRow = z.infer<
+  typeof ServerViewDropDetailRowSchema
+>;
+
+const ServerViewDropDetailsResponseSchema = z.object({
+  drops: z.array(ServerViewDropDetailRowSchema),
+});
+
+const ServerViewShopSummaryRowSchema = z.object({
+  npc_id: z.number().int(),
+  npc_name: z.string().nullable(),
+  npc_display: z.string(),
+  item_count: z.number().int(),
+});
+
+export type ServerViewShopSummaryRow = z.infer<
+  typeof ServerViewShopSummaryRowSchema
+>;
+
+const ServerViewShopsResponseSchema = z.object({
+  shops: z.array(ServerViewShopSummaryRowSchema),
+});
+
+const ServerViewShopDetailRowSchema = z.object({
+  line_number: z.number().int(),
+  item_id: z.number().int(),
+  item_name: z.string().nullable(),
+  item_display: z.string(),
+});
+
+export type ServerViewShopDetailRow = z.infer<
+  typeof ServerViewShopDetailRowSchema
+>;
+
+const ServerViewShopDetailsResponseSchema = z.object({
+  items: z.array(ServerViewShopDetailRowSchema),
+});
+
+export async function getServerView(): Promise<ServerViewOverview> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.SERVER_VIEW);
+  return validateResponse(
+    ServerViewOverviewSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW,
+  );
+}
+
+export async function getServerViewSyncStatus(): Promise<ServerViewSyncStatus> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_SYNC_STATUS,
+  );
+  return validateResponse(
+    ServerViewSyncStatusSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_SYNC_STATUS,
+  );
+}
+
+export async function startServerViewSync(): Promise<ServerViewSyncRun> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.SERVER_VIEW_SYNC,
+  );
+  return validateResponse(
+    ServerViewSyncRunSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_SYNC,
+  );
+}
+
+export async function getServerViewMainMaps(
+  query?: string,
+): Promise<ServerViewMapRow[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_MAIN_MAPS,
+    { params: query ? { q: query } : undefined },
+  );
+  const data = validateResponse(
+    ServerViewMapsResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_MAIN_MAPS,
+  );
+  return data.maps;
+}
+
+export async function getServerViewZoneMaps(
+  query?: string,
+): Promise<ServerViewMapRow[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_ZONE_MAPS,
+    { params: query ? { q: query } : undefined },
+  );
+  const data = validateResponse(
+    ServerViewMapsResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_ZONE_MAPS,
+  );
+  return data.maps;
+}
+
+export async function getServerViewZoneSpawns(params?: {
+  mapQuery?: string;
+  npcQuery?: string;
+}): Promise<ServerViewSpawnSummaryRow[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_ZONE_SPAWNS,
+    {
+      params: {
+        map_q: params?.mapQuery || undefined,
+        npc_q: params?.npcQuery || undefined,
+      },
+    },
+  );
+  const data = validateResponse(
+    ServerViewSpawnsResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_ZONE_SPAWNS,
+  );
+  return data.spawns;
+}
+
+export async function getServerViewZoneDrops(
+  query?: string,
+): Promise<ServerViewDropSummaryRow[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_ZONE_DROPS,
+    { params: query ? { q: query } : undefined },
+  );
+  const data = validateResponse(
+    ServerViewDropsResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_ZONE_DROPS,
+  );
+  return data.drops;
+}
+
+export async function getServerViewZoneDropDetails(
+  npcId: number,
+  query?: string,
+): Promise<ServerViewDropDetailRow[]> {
+  const route = API_ROUTES.SERVER_VIEW_ZONE_DROP_DETAILS(npcId);
+  const response = await axiosInstance.get<unknown>(route, {
+    params: query ? { q: query } : undefined,
+  });
+  const data = validateResponse(
+    ServerViewDropDetailsResponseSchema,
+    response.data,
+    route,
+  );
+  return data.drops;
+}
+
+export async function getServerViewZoneShops(
+  query?: string,
+): Promise<ServerViewShopSummaryRow[]> {
+  const response = await axiosInstance.get<unknown>(
+    API_ROUTES.SERVER_VIEW_ZONE_SHOPS,
+    { params: query ? { q: query } : undefined },
+  );
+  const data = validateResponse(
+    ServerViewShopsResponseSchema,
+    response.data,
+    API_ROUTES.SERVER_VIEW_ZONE_SHOPS,
+  );
+  return data.shops;
+}
+
+export async function getServerViewZoneShopDetails(
+  npcId: number,
+  query?: string,
+): Promise<ServerViewShopDetailRow[]> {
+  const route = API_ROUTES.SERVER_VIEW_ZONE_SHOP_DETAILS(npcId);
+  const response = await axiosInstance.get<unknown>(route, {
+    params: query ? { q: query } : undefined,
+  });
+  const data = validateResponse(
+    ServerViewShopDetailsResponseSchema,
+    response.data,
+    route,
+  );
+  return data.items;
 }
 
 const BackupJobTypeSchema = z.enum(['file', 'sql_server']);

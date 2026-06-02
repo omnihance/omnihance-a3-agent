@@ -708,6 +708,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/item-combination-data:
+    get:
+      tags:
+        - file-system
+      summary: Get item combination data file
+      description: Reads and parses an A3 Online item combination data file, returning craft formulas as structured JSON. Only files detected as item combination data files are supported.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the item combination data file to read and parse.
+      responses:
+        '200':
+          description: Item combination data retrieved and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemCombinationDataFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not an item combination data file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read/parse error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update item combination data file
+      description: Updates an A3 Online item combination data file with craft formulas. Each formula has 10 ingredient item codes, a success rate from 1 to 120, and an outcome item code. Creates a revision entry in the database, saves the previous file copy, preserves unknown bytes for existing rows, and writes the new data.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the item combination data file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCombinationDataFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "File updated successfully"
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not an item combination data file, file is not editable, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/quest-file:
     get:
       tags:
@@ -2400,7 +2506,7 @@ paths:
       tags:
         - settings
       summary: List settings
-      description: Returns supported game server database settings and their UI definitions. Requires manage_server permission.
+      description: Returns supported game server settings and their UI definitions. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       responses:
@@ -2432,7 +2538,7 @@ paths:
       tags:
         - settings
       summary: Create setting
-      description: Creates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Creates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Server path settings must point to a directory containing SvrInfo.ini. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2449,7 +2555,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Setting'
         '400':
-          description: Bad Request - Invalid request body, unsupported key, invalid value, or setting already exists
+          description: Bad Request - Invalid request body, unsupported key, invalid value, missing SvrInfo.ini for server path settings, or setting already exists
           content:
             application/json:
               schema:
@@ -2477,7 +2583,7 @@ paths:
       tags:
         - settings
       summary: Update setting
-      description: Updates a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Updates a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Server path settings must point to a directory containing SvrInfo.ini. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -2486,7 +2592,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
       requestBody:
@@ -2503,7 +2609,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Setting'
         '400':
-          description: Bad Request - Invalid request body, unsupported key, or invalid value
+          description: Bad Request - Invalid request body, unsupported key, invalid value, or missing SvrInfo.ini for server path settings
           content:
             application/json:
               schema:
@@ -2536,7 +2642,7 @@ paths:
       tags:
         - settings
       summary: Delete setting
-      description: Deletes a supported game server database setting. Supported keys are DB_HOST, DB_PORT, DB_USER, and DB_PASS. Requires manage_server permission.
+      description: Deletes a supported game server setting. Supported keys are DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, and BATTLE_SERVER_PATH. Requires manage_server permission.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -2545,7 +2651,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+            enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
       responses:
@@ -3889,6 +3995,47 @@ components:
           type: integer
           format: uint16
           description: Drop group value
+    ItemCombinationDataFileAPIData:
+      type: object
+      description: Parsed binary data from an item combination data file. All fields are required when used as a request body.
+      required:
+        - formulas
+      properties:
+        formulas:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemCombinationFormulaAPIData'
+          description: Array of craft formulas
+    ItemCombinationFormulaAPIData:
+      type: object
+      description: Item combination craft formula information
+      required:
+        - ingredients
+        - success_rate
+        - outcome
+      properties:
+        ingredients:
+          type: array
+          items:
+            type: integer
+            format: uint16
+            minimum: 0
+            maximum: 65535
+          minItems: 10
+          maxItems: 10
+          description: Exactly 10 ingredient item codes
+        success_rate:
+          type: integer
+          format: uint16
+          minimum: 1
+          maximum: 120
+          description: Formula success rate. Update requests must use a value from 1 to 120.
+        outcome:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Outcome item code
     QuestFileAPIData:
       type: object
       description: Parsed binary data from a quest file (API request/response format). All fields are required when used as a request body.
@@ -4692,7 +4839,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
         value:
@@ -4728,7 +4875,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Supported setting key
           example: DB_HOST
         label:
@@ -4746,7 +4893,7 @@ components:
           example: string
         input_type:
           type: string
-          enum: [text, number, password]
+          enum: [text, number, password, directory]
           description: Preferred UI input type
           example: text
     SettingsResponse:
@@ -4771,7 +4918,7 @@ components:
       properties:
         key:
           type: string
-          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS]
+          enum: [DB_HOST, DB_PORT, DB_USER, DB_PASS, ZONE_SERVER_PATH, ACCOUNT_SERVER_PATH, MAIN_SERVER_PATH, BATTLE_SERVER_PATH]
           description: Setting key
           example: DB_HOST
         value:

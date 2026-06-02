@@ -60,4 +60,22 @@ export const queryKeys = {
   backupPathSearch: (query?: string, kind?: string) =>
     ['backup-path-search', query || '', kind || 'input'] as const,
   backupSqlServerDefaults: ['backup-sql-server-defaults'] as const,
+  serverView: ['server-view'] as const,
+  serverViewSyncStatus: ['server-view-sync-status'] as const,
+  serverViewMainMaps: (query?: string) =>
+    ['server-view-main-maps', query || ''] as const,
+  serverViewZoneMaps: (query?: string) =>
+    ['server-view-zone-maps', query || ''] as const,
+  serverViewZoneSpawns: (mapQuery?: string, npcQuery?: string) =>
+    ['server-view-zone-spawns', mapQuery || '', npcQuery || ''] as const,
+  serverViewZoneSpawnDetails: (mapId: number, npcQuery?: string) =>
+    ['server-view-zone-spawn-details', mapId, npcQuery || ''] as const,
+  serverViewZoneDrops: (query?: string) =>
+    ['server-view-zone-drops', query || ''] as const,
+  serverViewZoneDropDetails: (npcId: number, query?: string) =>
+    ['server-view-zone-drop-details', npcId, query || ''] as const,
+  serverViewZoneShops: (query?: string) =>
+    ['server-view-zone-shops', query || ''] as const,
+  serverViewZoneShopDetails: (npcId: number, query?: string) =>
+    ['server-view-zone-shop-details', npcId, query || ''] as const,
 } as const;

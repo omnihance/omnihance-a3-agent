@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useForm, type UseFormReturn } from 'react-hook-form';
+import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PathAutocomplete } from '@/components/path-autocomplete';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +77,16 @@ import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';
 
-const settingKeySchema = z.enum(['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASS']);
+const settingKeySchema = z.enum([
+  'DB_HOST',
+  'DB_PORT',
+  'DB_USER',
+  'DB_PASS',
+  'ZONE_SERVER_PATH',
+  'ACCOUNT_SERVER_PATH',
+  'MAIN_SERVER_PATH',
+  'BATTLE_SERVER_PATH',
+]);
 
 const settingFormSchema = z
   .object({
@@ -340,8 +350,10 @@ export function SettingsPage() {
           <Card>
             <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle>Game Server Database</CardTitle>
-                <CardDescription>SQL Server connection values</CardDescription>
+                <CardTitle>Game Server Settings</CardTitle>
+                <CardDescription>
+                  Database connection values and server directory paths
+                </CardDescription>
               </div>
               <Button
                 onClick={openCreateDialog}
@@ -587,9 +599,7 @@ export function SettingsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Setting</DialogTitle>
-            <DialogDescription>
-              Add a game server database setting
-            </DialogDescription>
+            <DialogDescription>Add a game server setting</DialogDescription>
           </DialogHeader>
           <form
             id="create-setting-form"
@@ -758,6 +768,9 @@ function SettingForm({
     (definition) => definition.key === selectedKey,
   );
   const inputType = selectedDefinition?.input_type || 'text';
+  const valueInputId = lockKey
+    ? 'update-setting-value'
+    : 'create-setting-value';
 
   return (
     <>
@@ -801,19 +814,34 @@ function SettingForm({
         )}
       </div>
       <div className="space-y-2">
-        <Label
-          htmlFor={lockKey ? 'update-setting-value' : 'create-setting-value'}
-        >
-          Value
-        </Label>
-        <Input
-          id={lockKey ? 'update-setting-value' : 'create-setting-value'}
-          type={inputType}
-          min={selectedKey === 'DB_PORT' ? 1 : undefined}
-          max={selectedKey === 'DB_PORT' ? 65535 : undefined}
-          {...form.register('value')}
-          disabled={disabled}
-        />
+        {inputType === 'directory' ? (
+          <Controller
+            name="value"
+            control={form.control}
+            render={({ field }) => (
+              <PathAutocomplete
+                id={valueInputId}
+                label="Value"
+                value={field.value}
+                kind="directory"
+                onChange={field.onChange}
+                disabled={disabled}
+              />
+            )}
+          />
+        ) : (
+          <>
+            <Label htmlFor={valueInputId}>Value</Label>
+            <Input
+              id={valueInputId}
+              type={inputType}
+              min={selectedKey === 'DB_PORT' ? 1 : undefined}
+              max={selectedKey === 'DB_PORT' ? 65535 : undefined}
+              {...form.register('value')}
+              disabled={disabled}
+            />
+          </>
+        )}
         {form.formState.errors.value && (
           <p className="text-sm text-destructive" role="alert">
             {form.formState.errors.value.message}
@@ -825,6 +853,11 @@ function SettingForm({
 }
 
 function getSettingValueError(key: SettingKey, value: string): string | null {
+  const directorySettingLabel = getDirectorySettingLabel(key);
+  if (directorySettingLabel && !value.trim()) {
+    return `${directorySettingLabel} is required`;
+  }
+
   if (key === 'DB_HOST') {
     const normalizedValue = value.trim();
     if (!normalizedValue) {
@@ -867,6 +900,26 @@ function getSettingValueError(key: SettingKey, value: string): string | null {
     if (value.length > 512) {
       return 'Game server DB password must be at most 512 characters';
     }
+  }
+
+  return null;
+}
+
+function getDirectorySettingLabel(key: SettingKey): string | null {
+  if (key === 'ZONE_SERVER_PATH') {
+    return 'Zone Server Path';
+  }
+
+  if (key === 'ACCOUNT_SERVER_PATH') {
+    return 'Account Server Path';
+  }
+
+  if (key === 'MAIN_SERVER_PATH') {
+    return 'Main Server Path';
+  }
+
+  if (key === 'BATTLE_SERVER_PATH') {
+    return 'Battle Server Path';
   }
 
   return null;

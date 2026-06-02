@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
+	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +38,7 @@ func TestHandleListSettingsReturnsSupportedSettingsAndDefinitions(t *testing.T) 
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &response))
 	require.Len(t, response.Settings, 1)
 	require.Equal(t, constants.SettingKeyDBHost, response.Settings[0].Key)
-	require.Len(t, response.Definitions, 4)
+	require.Len(t, response.Definitions, 8)
 }
 
 func TestHandleCreateSettingRequiresManageServer(t *testing.T) {
@@ -78,6 +81,13 @@ func TestHandleCreateSettingRejectsDuplicate(t *testing.T) {
 }
 
 func TestHandleCreateSettingValidatesValues(t *testing.T) {
+	validDir := t.TempDir()
+	createSettingsSvrInfo(t, validDir)
+	filePath := filepath.Join(validDir, "not-directory.txt")
+	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0600))
+	missingDir := filepath.Join(validDir, "missing")
+	dirWithoutSvrInfo := t.TempDir()
+
 	tests := []struct {
 		name           string
 		key            string
@@ -93,13 +103,17 @@ func TestHandleCreateSettingValidatesValues(t *testing.T) {
 		{name: "invalid user", key: constants.SettingKeyDBUser, value: "", expectedStatus: http.StatusBadRequest},
 		{name: "valid password", key: constants.SettingKeyDBPass, value: " secret ", expectedStatus: http.StatusOK, expectedValue: " secret "},
 		{name: "invalid password", key: constants.SettingKeyDBPass, value: "", expectedStatus: http.StatusBadRequest},
+		{name: "valid zone server path", key: constants.SettingKeyZoneServerPath, value: " " + validDir + " ", expectedStatus: http.StatusOK, expectedValue: filepath.Clean(validDir)},
+		{name: "invalid zone server file path", key: constants.SettingKeyZoneServerPath, value: filePath, expectedStatus: http.StatusBadRequest},
+		{name: "invalid zone server missing path", key: constants.SettingKeyZoneServerPath, value: missingDir, expectedStatus: http.StatusBadRequest},
+		{name: "invalid zone server path without svr info", key: constants.SettingKeyZoneServerPath, value: dirWithoutSvrInfo, expectedStatus: http.StatusBadRequest},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			internalDB := newTestInternalDB(t)
 			createSettingsTestUser(t, internalDB)
-			server := &Server{internalDB: internalDB}
+			server := &Server{internalDB: internalDB, fileEditor: services.NewFileEditorService(nil)}
 			body := bytes.NewBufferString(`{"key":"` + test.key + `","value":` + jsonString(test.value) + `}`)
 			req := settingsRequest(http.MethodPost, "/api/settings", body, constants.RoleAdmin)
 			rr := httptest.NewRecorder()
@@ -143,6 +157,60 @@ func TestHandleUpdateSettingUpdatesValueOnly(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &setting))
 	require.Equal(t, constants.SettingKeyDBPort, setting.Key)
 	require.Equal(t, "1444", setting.Value)
+}
+
+func TestHandleUpdateSettingValidatesDirectoryPath(t *testing.T) {
+	internalDB := newTestInternalDB(t)
+	createSettingsTestUser(t, internalDB)
+	initialDir := t.TempDir()
+	createSettingsSvrInfo(t, initialDir)
+	updatedDir := t.TempDir()
+	createSettingsSvrInfo(t, updatedDir)
+	dirWithoutSvrInfo := t.TempDir()
+	filePath := filepath.Join(updatedDir, "not-directory.txt")
+	require.NoError(t, os.WriteFile(filePath, []byte("test"), 0600))
+	_, err := internalDB.CreateSetting(constants.SettingKeyMainServerPath, initialDir, nil)
+	require.NoError(t, err)
+
+	server := &Server{internalDB: internalDB, fileEditor: services.NewFileEditorService(nil)}
+	body := bytes.NewBufferString(`{"value":` + jsonString(" "+updatedDir+" ") + `}`)
+	req := settingsRequest(http.MethodPut, "/api/settings/MAIN_SERVER_PATH", body, constants.RoleAdmin)
+	req = withURLParam(req, "key", constants.SettingKeyMainServerPath)
+	rr := httptest.NewRecorder()
+
+	server.handleUpdateSetting(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+
+	setting, err := internalDB.GetSetting(constants.SettingKeyMainServerPath)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Clean(updatedDir), setting.Value)
+
+	body = bytes.NewBufferString(`{"value":` + jsonString(dirWithoutSvrInfo) + `}`)
+	req = settingsRequest(http.MethodPut, "/api/settings/MAIN_SERVER_PATH", body, constants.RoleAdmin)
+	req = withURLParam(req, "key", constants.SettingKeyMainServerPath)
+	rr = httptest.NewRecorder()
+
+	server.handleUpdateSetting(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+
+	setting, err = internalDB.GetSetting(constants.SettingKeyMainServerPath)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Clean(updatedDir), setting.Value)
+
+	body = bytes.NewBufferString(`{"value":` + jsonString(filePath) + `}`)
+	req = settingsRequest(http.MethodPut, "/api/settings/MAIN_SERVER_PATH", body, constants.RoleAdmin)
+	req = withURLParam(req, "key", constants.SettingKeyMainServerPath)
+	rr = httptest.NewRecorder()
+
+	server.handleUpdateSetting(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+
+	setting, err = internalDB.GetSetting(constants.SettingKeyMainServerPath)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Clean(updatedDir), setting.Value)
 }
 
 func TestHandleDeleteSettingDeletesExistingSetting(t *testing.T) {
@@ -192,4 +260,9 @@ func createSettingsTestUser(t *testing.T, internalDB db.InternalDB) {
 	t.Helper()
 	_, err := internalDB.CreateUser("settings-admin@example.com", "password", constants.RoleAdmin, nil)
 	require.NoError(t, err)
+}
+
+func createSettingsSvrInfo(t *testing.T, dir string) {
+	t.Helper()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "SvrInfo.ini"), []byte("test"), 0600))
 }

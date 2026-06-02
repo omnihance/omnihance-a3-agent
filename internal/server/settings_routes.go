@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
@@ -18,6 +19,8 @@ import (
 )
 
 const settingsErrorContext = "settings"
+
+const requiredServerInfoFileName = "SvrInfo.ini"
 
 type SettingDefinition struct {
 	Key         string `json:"key"`
@@ -55,6 +58,34 @@ var supportedSettingDefinitions = []SettingDefinition{
 		Description: "SQL Server login password used by the game server database.",
 		ValueType:   "string",
 		InputType:   "password",
+	},
+	{
+		Key:         constants.SettingKeyZoneServerPath,
+		Label:       "Zone Server Path",
+		Description: "Directory path used for the Zone Server. Must contain SvrInfo.ini.",
+		ValueType:   "string",
+		InputType:   "directory",
+	},
+	{
+		Key:         constants.SettingKeyAccountServerPath,
+		Label:       "Account Server Path",
+		Description: "Directory path used for the Account Server. Must contain SvrInfo.ini.",
+		ValueType:   "string",
+		InputType:   "directory",
+	},
+	{
+		Key:         constants.SettingKeyMainServerPath,
+		Label:       "Main Server Path",
+		Description: "Directory path used for the Main Server. Must contain SvrInfo.ini.",
+		ValueType:   "string",
+		InputType:   "directory",
+	},
+	{
+		Key:         constants.SettingKeyBattleServerPath,
+		Label:       "Battle Server Path",
+		Description: "Directory path used for the Battle Server. Must contain SvrInfo.ini.",
+		ValueType:   "string",
+		InputType:   "directory",
 	},
 }
 
@@ -111,7 +142,7 @@ func (s *Server) handleCreateSetting(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := strings.TrimSpace(req.Key)
-	value, err := validateSettingValue(key, req.Value)
+	value, err := s.validateSettingValue(key, req.Value)
 	if err != nil {
 		writeSettingsError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, err.Error())
 		return
@@ -143,7 +174,7 @@ func (s *Server) handleUpdateSetting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := validateSettingValue(key, req.Value)
+	value, err := s.validateSettingValue(key, req.Value)
 	if err != nil {
 		writeSettingsError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, err.Error())
 		return
@@ -189,7 +220,7 @@ func (s *Server) handleDeleteSetting(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func validateSettingValue(key string, value string) (string, error) {
+func (s *Server) validateSettingValue(key string, value string) (string, error) {
 	if !isSupportedSettingKey(key) {
 		return "", fmt.Errorf("unsupported setting key")
 	}
@@ -203,9 +234,53 @@ func validateSettingValue(key string, value string) (string, error) {
 		return validateStringSetting(value, "Game server DB username", 128, true, false)
 	case constants.SettingKeyDBPass:
 		return validateStringSetting(value, "Game server DB password", 512, false, false)
+	case constants.SettingKeyZoneServerPath:
+		return s.validateDirectorySetting(value, "Zone Server Path")
+	case constants.SettingKeyAccountServerPath:
+		return s.validateDirectorySetting(value, "Account Server Path")
+	case constants.SettingKeyMainServerPath:
+		return s.validateDirectorySetting(value, "Main Server Path")
+	case constants.SettingKeyBattleServerPath:
+		return s.validateDirectorySetting(value, "Battle Server Path")
 	default:
 		return "", fmt.Errorf("unsupported setting key")
 	}
+}
+
+func (s *Server) validateDirectorySetting(value string, label string) (string, error) {
+	normalizedValue := filepath.Clean(strings.TrimSpace(value))
+	if normalizedValue == "" || normalizedValue == "." {
+		return "", fmt.Errorf("%s is required", label)
+	}
+
+	info, err := s.fileEditor.Stat(normalizedValue)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			return "", fmt.Errorf("%s must be an existing directory", label)
+		}
+
+		return "", fmt.Errorf("cannot access %s: %v", label, err)
+	}
+
+	if !info.IsDir() {
+		return "", fmt.Errorf("%s must be a directory", label)
+	}
+
+	serverInfoPath := filepath.Join(normalizedValue, requiredServerInfoFileName)
+	serverInfo, err := s.fileEditor.Stat(serverInfoPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			return "", fmt.Errorf("%s must contain %s", label, requiredServerInfoFileName)
+		}
+
+		return "", fmt.Errorf("cannot access %s in %s: %v", requiredServerInfoFileName, label, err)
+	}
+
+	if serverInfo.IsDir() {
+		return "", fmt.Errorf("%s must contain %s as a file", label, requiredServerInfoFileName)
+	}
+
+	return normalizedValue, nil
 }
 
 func validateStringSetting(value string, label string, maxLength int, trim bool, rejectControlCharacters bool) (string, error) {
