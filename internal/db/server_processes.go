@@ -133,7 +133,7 @@ func (s *sqliteInternalDB) UpdateServerProcess(id int64, name, path string, port
 		updateRecord["port"] = nil
 	}
 
-	_, err := s.goqu.Update("server_processes").
+	result, err := s.goqu.Update("server_processes").
 		Prepared(true).
 		Set(updateRecord).
 		Where(goqu.Ex{"id": id}).
@@ -148,11 +148,20 @@ func (s *sqliteInternalDB) UpdateServerProcess(id int64, name, path string, port
 		return fmt.Errorf("failed to update server process %d: %w", id, err)
 	}
 
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for server process %d: %w", id, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("server process %d not found", id)
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) DeleteServerProcess(id int64) error {
-	_, err := s.goqu.Delete("server_processes").
+	result, err := s.goqu.Delete("server_processes").
 		Prepared(true).
 		Where(goqu.Ex{"id": id}).
 		Executor().
@@ -166,6 +175,15 @@ func (s *sqliteInternalDB) DeleteServerProcess(id int64) error {
 		return fmt.Errorf("failed to delete server process %d: %w", id, err)
 	}
 
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected for server process %d: %w", id, err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("server process %d not found", id)
+	}
+
 	return nil
 }
 
@@ -176,7 +194,7 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 	}
 
 	for _, update := range updates {
-		_, err := tx.Update("server_processes").
+		result, err := tx.Update("server_processes").
 			Prepared(true).
 			Set(goqu.Record{
 				"sequence_order": update.SequenceOrder,
@@ -198,6 +216,27 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 				logger.Field{Key: "error", Value: err},
 			)
 			return fmt.Errorf("failed to reorder server process %d: %w", update.ID, err)
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+			return fmt.Errorf("failed to get rows affected for server process %d: %w", update.ID, err)
+		}
+
+		if rowsAffected == 0 {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+			return fmt.Errorf("server process %d not found", update.ID)
 		}
 	}
 

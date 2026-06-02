@@ -338,37 +338,38 @@ func (ps *processService) terminateProcessUnix(proc *os.Process, pid int) error 
 		return fmt.Errorf("failed to send SIGTERM: %w", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	done := make(chan error, 1)
-	go func() {
-		_, err := proc.Wait()
-		done <- err
-	}()
-
-	select {
-	case <-ctx.Done():
-		ps.logger.Warn("process did not terminate gracefully, sending SIGKILL", logger.Field{Key: "pid", Value: pid})
-		if err := proc.Signal(syscall.SIGKILL); err != nil {
-			return fmt.Errorf("failed to send SIGKILL: %w", err)
-		}
-
-		waitCtx, waitCancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer waitCancel()
-
-		select {
-		case <-done:
-			return nil
-		case <-waitCtx.Done():
-			return errors.New("process did not terminate after SIGKILL")
-		}
-	case err := <-done:
-		if err != nil {
-			return fmt.Errorf("process wait error: %w", err)
-		}
+	if err := ps.waitForPidExit(pid, 5*time.Second); err == nil {
 		return nil
 	}
+
+	ps.logger.Warn("process did not terminate gracefully, sending SIGKILL", logger.Field{Key: "pid", Value: pid})
+	if err := proc.Signal(syscall.SIGKILL); err != nil {
+		return fmt.Errorf("failed to send SIGKILL: %w", err)
+	}
+
+	if err := ps.waitForPidExit(pid, 2*time.Second); err != nil {
+		return errors.New("process did not terminate after SIGKILL")
+	}
+
+	return nil
+}
+
+func (ps *processService) waitForPidExit(pid int, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		exists, err := process.PidExists(int32(pid))
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return nil
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return errors.New("process did not terminate")
 }
 
 func (ps *processService) terminateProcessWindows(proc *os.Process, pid int) error {

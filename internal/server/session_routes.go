@@ -63,6 +63,7 @@ func (s *Server) signOutHandler(w http.ResponseWriter, r *http.Request) {
 			"context":   "authentication",
 			"errors":    []string{"Failed to sign out"},
 		})
+		return
 	}
 
 	cookie.Expires = time.Now().Add(-time.Hour * 24)

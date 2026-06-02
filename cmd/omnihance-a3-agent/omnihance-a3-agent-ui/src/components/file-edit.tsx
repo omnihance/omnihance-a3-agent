@@ -403,6 +403,7 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
               {questFileData && !questFileError && (
                 <QuestFileEdit
+                  key={filePath}
                   filePath={filePath}
                   defaultData={questFileData}
                 />

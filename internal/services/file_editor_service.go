@@ -34,6 +34,8 @@ const (
 	NPCFileSize = 78
 )
 
+const clientDataHeaderSize = 4
+
 const (
 	DropFileExtension           = ".itm"
 	ItemCombinationDataFileName = "ItemCombinationData"
@@ -401,15 +403,15 @@ func (fes *fileEditorService) ReadClientMonsterFileData(path string) ([]MonsterC
 
 func (fes *fileEditorService) ReadClientMonsterFileBytes(data []byte) ([]MonsterClientData, error) {
 	const entrySize = 96
-	entryCount := binary.LittleEndian.Uint32(data[:4])
-	if len(data) < int(entryCount*entrySize+4) {
-		return nil, errors.New("data is too small")
+	entryCount, err := readClientDataEntryCount(data, entrySize)
+	if err != nil {
+		return nil, err
 	}
 
-	reader := bytes.NewReader(data[4:])
-	monsterData := make([]MonsterClientData, entryCount)
+	reader := bytes.NewReader(data[clientDataHeaderSize:])
+	monsterData := make([]MonsterClientData, int(entryCount))
 	for i := range monsterData {
-		err := binary.Read(reader, binary.LittleEndian, &monsterData[i])
+		err = binary.Read(reader, binary.LittleEndian, &monsterData[i])
 		if err != nil {
 			return nil, err
 		}
@@ -429,21 +431,35 @@ func (fes *fileEditorService) ReadClientMapFileData(path string) ([]MapClientDat
 
 func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientData, error) {
 	const entrySize = 56
-	entryCount := binary.LittleEndian.Uint32(data[:4])
-	if len(data) < int(entryCount*entrySize+4) {
-		return nil, errors.New("data is too small")
+	entryCount, err := readClientDataEntryCount(data, entrySize)
+	if err != nil {
+		return nil, err
 	}
 
-	reader := bytes.NewReader(data[4:])
-	mapData := make([]MapClientData, entryCount)
+	reader := bytes.NewReader(data[clientDataHeaderSize:])
+	mapData := make([]MapClientData, int(entryCount))
 	for i := range mapData {
-		err := binary.Read(reader, binary.LittleEndian, &mapData[i])
+		err = binary.Read(reader, binary.LittleEndian, &mapData[i])
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return mapData, nil
+}
+
+func readClientDataEntryCount(data []byte, entrySize uint64) (uint32, error) {
+	if len(data) < clientDataHeaderSize {
+		return 0, errors.New("data is too small")
+	}
+
+	entryCount := binary.LittleEndian.Uint32(data[:clientDataHeaderSize])
+	requiredSize := uint64(clientDataHeaderSize) + uint64(entryCount)*entrySize
+	if requiredSize > uint64(len(data)) {
+		return 0, errors.New("data is too small")
+	}
+
+	return entryCount, nil
 }
 
 func (fes *fileEditorService) ReadClientIT0FileBytes(data []byte) ([]itemfile.Item, error) {

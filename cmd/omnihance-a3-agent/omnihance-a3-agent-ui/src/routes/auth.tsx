@@ -18,6 +18,10 @@ export default (parentRoute: AnyRootRoute) =>
   createRoute({
     getParentRoute: () => parentRoute,
     path: '/',
+    validateSearch: (search: Record<string, unknown>) => ({
+      redirect:
+        typeof search.redirect === 'string' ? search.redirect : undefined,
+    }),
     head: () => ({
       meta: [
         {
@@ -32,7 +36,10 @@ export default (parentRoute: AnyRootRoute) =>
           to: '/dashboard',
         });
       } catch (error) {
-        if (error instanceof APIError) {
+        if (
+          error instanceof APIError &&
+          (error.status === 401 || error.status === 403)
+        ) {
           return;
         }
 

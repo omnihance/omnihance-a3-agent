@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import {
+  type HTMLAttributes,
+  type KeyboardEvent,
+  useRef,
+  useState,
+} from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -128,7 +133,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const canManageServer = hasPermission('manage_server');
   const [internalPath, setInternalPath] = useState<string | null>(null);
   const [showDotfiles, setShowDotfiles] = useState(false);
-  const [contextMenuFile, setContextMenuFile] = useState<FileNode | null>(null);
+  const contextMenuFileRef = useRef<FileNode | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addDialogName, setAddDialogName] = useState('');
   const [addDialogPort, setAddDialogPort] = useState('');
@@ -136,7 +141,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const [pinDialogName, setPinDialogName] = useState('');
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicateDialogName, setDuplicateDialogName] = useState('');
-  const [duplicateSourcePath, setDuplicateSourcePath] = useState('');
+  const duplicateSourcePathRef = useRef('');
 
   const rawCurrentPath =
     internalPath !== null ? internalPath : (initialPath ?? '');
@@ -328,7 +333,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   };
 
   const handleAddToServer = (item: FileNode) => {
-    setContextMenuFile(item);
+    contextMenuFileRef.current = item;
     setAddDialogName(item.name.replace(/\.(exe|bat|cmd)$/i, ''));
     setAddDialogPort('');
     setShowAddDialog(true);
@@ -357,11 +362,12 @@ export function FileTree({ initialPath }: FileTreeProps) {
   };
 
   const getSuggestedDuplicateName = (fileName: string): string => {
-    const existingNames = new Set(
-      (files || [])
-        .filter((entry) => entry.kind === 'file')
-        .map((entry) => entry.name.toLowerCase()),
-    );
+    const existingNames = new Set<string>();
+    for (const entry of files || []) {
+      if (entry.kind === 'file') {
+        existingNames.add(entry.name.toLowerCase());
+      }
+    }
     const { baseName, extension } = splitFileName(fileName);
     const firstCandidate = `${baseName} (copy)${extension}`;
 
@@ -386,7 +392,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
       return;
     }
 
-    setDuplicateSourcePath(getFullPath(item));
+    duplicateSourcePathRef.current = getFullPath(item);
     setDuplicateDialogName(getSuggestedDuplicateName(item.name));
     setShowDuplicateDialog(true);
   };
@@ -396,10 +402,10 @@ export function FileTree({ initialPath }: FileTreeProps) {
       return createServerProcess(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.serverProcesses] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serverProcesses });
       toast.success('Process added to server startup list');
       setShowAddDialog(false);
-      setContextMenuFile(null);
+      contextMenuFileRef.current = null;
       setAddDialogName('');
       setAddDialogPort('');
     },
@@ -420,7 +426,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
       return deleteServerProcess(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.serverProcesses] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.serverProcesses });
       toast.success('Process removed from server startup list');
     },
     onError: (error: APIError) => {
@@ -429,6 +435,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   });
 
   const handleAddDialogSubmit = () => {
+    const contextMenuFile = contextMenuFileRef.current;
     if (!contextMenuFile || !addDialogName.trim()) {
       toast.error('Name is required');
       return;
@@ -480,7 +487,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
       toast.success('File duplicated successfully');
       setShowDuplicateDialog(false);
       setDuplicateDialogName('');
-      setDuplicateSourcePath('');
+      duplicateSourcePathRef.current = '';
     },
     onError: (error: APIError) => {
       toast.error(error.getErrorMessage());
@@ -550,6 +557,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
 
   const handleDuplicateDialogSubmit = () => {
     const trimmedName = duplicateDialogName.trim();
+    const duplicateSourcePath = duplicateSourcePathRef.current;
     if (!duplicateSourcePath) {
       toast.error('Source file is required');
       return;
@@ -712,6 +720,43 @@ export function FileTree({ initialPath }: FileTreeProps) {
               const existingProcess = isExecutable
                 ? findProcessByPath(fullPath)
                 : undefined;
+              const isInteractive =
+                item.kind === 'directory' ||
+                (item.kind === 'file' && item.is_viewable);
+              const openItem = () => {
+                if (item.kind === 'directory') {
+                  handleItemClick(item);
+                  return;
+                }
+
+                if (item.kind === 'file' && item.is_viewable) {
+                  navigate({
+                    to: '/file/view',
+                    search: { path: getFullPath(item) },
+                  });
+                }
+              };
+              const handleRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+                if (e.key !== 'Enter' && e.key !== ' ') {
+                  return;
+                }
+
+                e.preventDefault();
+                openItem();
+              };
+              const rowInteractionProps: HTMLAttributes<HTMLDivElement> =
+                isInteractive
+                  ? {
+                      onClick: openItem,
+                      onKeyDown: handleRowKeyDown,
+                      tabIndex: 0,
+                      role: 'button',
+                      'aria-label':
+                        item.kind === 'directory'
+                          ? `Open ${item.name}`
+                          : `View ${item.name}`,
+                    }
+                  : {};
               const fileItem = (
                 <div
                   key={item.id}
@@ -721,40 +766,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
                       (item.kind === 'file' && item.is_viewable)) &&
                       'cursor-pointer hover:bg-accent',
                   )}
-                  onClick={() => {
-                    if (item.kind === 'directory') {
-                      handleItemClick(item);
-                    } else if (item.kind === 'file' && item.is_viewable) {
-                      navigate({
-                        to: '/file/view',
-                        search: { path: getFullPath(item) },
-                      });
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (item.kind === 'file' && item.is_viewable) {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navigate({
-                          to: '/file/view',
-                          search: { path: getFullPath(item) },
-                        });
-                      }
-                    }
-                  }}
-                  tabIndex={
-                    item.kind === 'file' && item.is_viewable ? 0 : undefined
-                  }
-                  role={
-                    item.kind === 'file' && item.is_viewable
-                      ? 'button'
-                      : undefined
-                  }
-                  aria-label={
-                    item.kind === 'file' && item.is_viewable
-                      ? `View ${item.name}`
-                      : undefined
-                  }
+                  {...rowInteractionProps}
                 >
                   <div className="col-span-5 sm:col-span-4 flex items-center gap-3 truncate">
                     {item.kind === 'directory' ? (
@@ -857,7 +869,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
               variant="outline"
               onClick={() => {
                 setShowAddDialog(false);
-                setContextMenuFile(null);
+                contextMenuFileRef.current = null;
               }}
             >
               Cancel
@@ -952,7 +964,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
               onClick={() => {
                 setShowDuplicateDialog(false);
                 setDuplicateDialogName('');
-                setDuplicateSourcePath('');
+                duplicateSourcePathRef.current = '';
               }}
             >
               Cancel

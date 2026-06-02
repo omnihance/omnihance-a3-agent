@@ -47,6 +47,60 @@ func TestGetItemClientDataCounts(t *testing.T) {
 	require.Equal(t, ItemClientDataCounts{IT0: 2, IT2: 1}, counts)
 }
 
+func TestBulkReplaceMonsterClientDataRollsBackOnInsertFailure(t *testing.T) {
+	internalDB := newItemClientDataTestDB(t)
+
+	require.NoError(t, internalDB.BulkReplaceMonsterClientData([]MonsterClientData{
+		{ID: 1, Name: "Wolf"},
+	}))
+
+	err := internalDB.BulkReplaceMonsterClientData([]MonsterClientData{
+		{ID: 2, Name: "Bad Wolf"},
+		{ID: 2, Name: "Duplicate Wolf"},
+	})
+	require.Error(t, err)
+
+	monsters, err := internalDB.GetAllMonsterClientData("")
+	require.NoError(t, err)
+	require.Equal(t, []MonsterClientData{{ID: 1, Name: "Wolf"}}, stripMonsterClientDataAuditFields(monsters))
+}
+
+func TestBulkReplaceMapClientDataRollsBackOnInsertFailure(t *testing.T) {
+	internalDB := newItemClientDataTestDB(t)
+
+	require.NoError(t, internalDB.BulkReplaceMapClientData([]MapClientData{
+		{ID: 1, Name: "Temerina"},
+	}))
+
+	err := internalDB.BulkReplaceMapClientData([]MapClientData{
+		{ID: 2, Name: "Bad Map"},
+		{ID: 2, Name: "Duplicate Map"},
+	})
+	require.Error(t, err)
+
+	maps, err := internalDB.GetAllMapClientData("")
+	require.NoError(t, err)
+	require.Equal(t, []MapClientData{{ID: 1, Name: "Temerina"}}, stripMapClientDataAuditFields(maps))
+}
+
+func TestBulkReplaceItemClientDataRollsBackOnInsertFailure(t *testing.T) {
+	internalDB := newItemClientDataTestDB(t)
+
+	require.NoError(t, internalDB.BulkReplaceItemClientData(ItemClientDataTypeIT0, []ItemClientData{
+		{ID: 1, Name: "Sword"},
+	}))
+
+	err := internalDB.BulkReplaceItemClientData(ItemClientDataTypeIT0, []ItemClientData{
+		{ID: 2, Name: "Bad Item"},
+		{ID: 2, Name: "Duplicate Item"},
+	})
+	require.Error(t, err)
+
+	items, err := internalDB.GetAllItemClientData("")
+	require.NoError(t, err)
+	require.Equal(t, []ItemClientData{{ID: 1, Name: "Sword", ItemType: string(ItemClientDataTypeIT0)}}, stripItemClientDataAuditFields(items))
+}
+
 func newItemClientDataTestDB(t *testing.T) InternalDB {
 	t.Helper()
 
@@ -59,6 +113,30 @@ func newItemClientDataTestDB(t *testing.T) InternalDB {
 	})
 
 	return internalDB
+}
+
+func stripMonsterClientDataAuditFields(items []MonsterClientData) []MonsterClientData {
+	stripped := make([]MonsterClientData, 0, len(items))
+	for _, item := range items {
+		stripped = append(stripped, MonsterClientData{
+			ID:   item.ID,
+			Name: item.Name,
+		})
+	}
+
+	return stripped
+}
+
+func stripMapClientDataAuditFields(items []MapClientData) []MapClientData {
+	stripped := make([]MapClientData, 0, len(items))
+	for _, item := range items {
+		stripped = append(stripped, MapClientData{
+			ID:   item.ID,
+			Name: item.Name,
+		})
+	}
+
+	return stripped
 }
 
 func stripItemClientDataAuditFields(items []ItemClientData) []ItemClientData {

@@ -26,6 +26,7 @@ type EnvVars struct {
 	MetricsEnabled                   bool
 	SessionTimeoutSeconds            int
 	CookieSecret                     string
+	CookieSecure                     bool
 	MaxFileUploadSizeMb              int
 	DirectoryShortcutsLimit          int
 	VersionCheckIntervalSeconds      int
@@ -44,6 +45,7 @@ var defaultEnvVars = map[string]string{
 	"METRICS_ENABLED":                     "true",
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
 	"COOKIE_SECRET":                       externalUtils.GenerateRandomString(32),
+	"COOKIE_SECURE":                       "false",
 	"DIRECTORY_SHORTCUTS_LIMIT":           "5",
 	"VERSION_CHECK_INTERVAL_SECONDS":      "3600",
 }
@@ -101,6 +103,12 @@ func New() *EnvVars {
 		cookieSecret = externalUtils.GenerateRandomString(32)
 	}
 
+	cookieSecure, err := strconv.ParseBool(os.Getenv("COOKIE_SECURE"))
+	if err != nil {
+		slog.Warn("Could not get cookie secure flag: " + err.Error())
+		cookieSecure = false
+	}
+
 	maxFileUploadSizeMb, err := strconv.Atoi(os.Getenv("MAX_FILE_UPLOAD_SIZE_MB"))
 	if err != nil {
 		slog.Warn("Could not get max file upload size: " + err.Error())
@@ -140,6 +148,7 @@ func New() *EnvVars {
 		MetricsEnabled:                   metricsEnabled,
 		SessionTimeoutSeconds:            sessionTimeoutSeconds,
 		CookieSecret:                     cookieSecret,
+		CookieSecure:                     cookieSecure,
 		MaxFileUploadSizeMb:              maxFileUploadSizeMb,
 		DirectoryShortcutsLimit:          directoryShortcutsLimit,
 		VersionCheckIntervalSeconds:      versionCheckIntervalSeconds,
@@ -180,5 +189,5 @@ func writeEnvFile(path string, envVars map[string]string) error {
 		_, _ = fmt.Fprintf(&builder, "%s=%s\n", key, value)
 	}
 
-	return os.WriteFile(path, []byte(builder.String()), 0644)
+	return os.WriteFile(path, []byte(builder.String()), 0600)
 }

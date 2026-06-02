@@ -1309,12 +1309,12 @@ function jobToForm(job: BackupJob): BackupFormState {
     status: job.status === 'running' ? 'active' : job.status,
     cron_expression: job.cron_expression || '',
     destination_directory: job.destination_directory,
-    archive_password: job.archive_password || '',
+    archive_password: '',
     source_path: job.source_path || '',
     sql_host: job.sql_host || '',
     sql_port: job.sql_port?.toString() || '1433',
     sql_username: job.sql_username || '',
-    sql_password: job.sql_password || '',
+    sql_password: '',
     sql_database_names: job.sql_database_names || '',
   };
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"encoding/binary"
 	"os"
 	"path/filepath"
 	"testing"
@@ -111,6 +112,53 @@ func TestReadClientItemFileBytesTruncated(t *testing.T) {
 
 	_, err := service.ReadClientIT1FileBytes([]byte{1, 2, 3})
 	require.Error(t, err)
+}
+
+func TestReadClientMonsterAndMapFileBytesRejectInvalidInput(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+
+	tests := []struct {
+		name string
+		read func([]byte) error
+	}{
+		{
+			name: "monster",
+			read: func(data []byte) error {
+				_, err := service.ReadClientMonsterFileBytes(data)
+				return err
+			},
+		},
+		{
+			name: "map",
+			read: func(data []byte) error {
+				_, err := service.ReadClientMapFileBytes(data)
+				return err
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name+" empty", func(t *testing.T) {
+			require.Error(t, test.read(nil))
+		})
+
+		t.Run(test.name+" short header", func(t *testing.T) {
+			require.Error(t, test.read([]byte{1, 2, 3}))
+		})
+
+		t.Run(test.name+" truncated body", func(t *testing.T) {
+			data := make([]byte, clientDataHeaderSize+1)
+			binary.LittleEndian.PutUint32(data[:clientDataHeaderSize], 1)
+			require.Error(t, test.read(data))
+		})
+
+		t.Run(test.name+" oversized count", func(t *testing.T) {
+			data := make([]byte, clientDataHeaderSize)
+			binary.LittleEndian.PutUint32(data, ^uint32(0))
+			require.Error(t, test.read(data))
+		})
+	}
 }
 
 func TestDropFileDataRoundTrip(t *testing.T) {
