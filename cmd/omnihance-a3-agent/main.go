@@ -76,6 +76,12 @@ func main() {
 		_ = backupService.Stop()
 	}()
 
+	serverViewService := services.NewServerViewService(log, internalDB, fileEditor)
+	if err := serverViewService.Start(); err != nil {
+		log.Error("Could not start server view service", logger.Field{Key: "error", Value: err})
+		os.Exit(1)
+	}
+
 	versionChecker := services.NewVersionCheckerService(cfg, log, version)
 	if err := versionChecker.Start(); err != nil {
 		log.Error("Could not start version checker service", logger.Field{Key: "error", Value: err})
@@ -97,6 +103,7 @@ func main() {
 		serverManagerService,
 		versionChecker,
 		backupService,
+		serverViewService,
 	)
 	if err := server.ListenAndServe(); err != nil {
 		log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})

@@ -38,6 +38,69 @@ func (_m *MockInternalDB) EXPECT() *MockInternalDB_Expecter {
 	return &MockInternalDB_Expecter{mock: &_m.Mock}
 }
 
+// AddServerViewSyncWarning provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) AddServerViewSyncWarning(runID int64, source string, message string) error {
+	ret := _mock.Called(runID, source, message)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddServerViewSyncWarning")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, string) error); ok {
+		r0 = returnFunc(runID, source, message)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_AddServerViewSyncWarning_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddServerViewSyncWarning'
+type MockInternalDB_AddServerViewSyncWarning_Call struct {
+	*mock.Call
+}
+
+// AddServerViewSyncWarning is a helper method to define mock.On call
+//   - runID int64
+//   - source string
+//   - message string
+func (_e *MockInternalDB_Expecter) AddServerViewSyncWarning(runID interface{}, source interface{}, message interface{}) *MockInternalDB_AddServerViewSyncWarning_Call {
+	return &MockInternalDB_AddServerViewSyncWarning_Call{Call: _e.mock.On("AddServerViewSyncWarning", runID, source, message)}
+}
+
+func (_c *MockInternalDB_AddServerViewSyncWarning_Call) Run(run func(runID int64, source string, message string)) *MockInternalDB_AddServerViewSyncWarning_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_AddServerViewSyncWarning_Call) Return(err error) *MockInternalDB_AddServerViewSyncWarning_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_AddServerViewSyncWarning_Call) RunAndReturn(run func(runID int64, source string, message string) error) *MockInternalDB_AddServerViewSyncWarning_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // BeginTx provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) BeginTx() (*goqu.TxDatabase, error) {
 	ret := _mock.Called()
@@ -814,6 +877,68 @@ func (_c *MockInternalDB_CreateServerProcess_Call) Return(serverProcess *ServerP
 }
 
 func (_c *MockInternalDB_CreateServerProcess_Call) RunAndReturn(run func(name string, path string, port *int, sequenceOrder int) (*ServerProcess, error)) *MockInternalDB_CreateServerProcess_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateServerViewSyncRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateServerViewSyncRun(userID *int64) (*ServerViewSyncRun, error) {
+	ret := _mock.Called(userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateServerViewSyncRun")
+	}
+
+	var r0 *ServerViewSyncRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(*int64) (*ServerViewSyncRun, error)); ok {
+		return returnFunc(userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(*int64) *ServerViewSyncRun); ok {
+		r0 = returnFunc(userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerViewSyncRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(*int64) error); ok {
+		r1 = returnFunc(userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateServerViewSyncRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateServerViewSyncRun'
+type MockInternalDB_CreateServerViewSyncRun_Call struct {
+	*mock.Call
+}
+
+// CreateServerViewSyncRun is a helper method to define mock.On call
+//   - userID *int64
+func (_e *MockInternalDB_Expecter) CreateServerViewSyncRun(userID interface{}) *MockInternalDB_CreateServerViewSyncRun_Call {
+	return &MockInternalDB_CreateServerViewSyncRun_Call{Call: _e.mock.On("CreateServerViewSyncRun", userID)}
+}
+
+func (_c *MockInternalDB_CreateServerViewSyncRun_Call) Run(run func(userID *int64)) *MockInternalDB_CreateServerViewSyncRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 *int64
+		if args[0] != nil {
+			arg0 = args[0].(*int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateServerViewSyncRun_Call) Return(serverViewSyncRun *ServerViewSyncRun, err error) *MockInternalDB_CreateServerViewSyncRun_Call {
+	_c.Call.Return(serverViewSyncRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateServerViewSyncRun_Call) RunAndReturn(run func(userID *int64) (*ServerViewSyncRun, error)) *MockInternalDB_CreateServerViewSyncRun_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1828,6 +1953,75 @@ func (_c *MockInternalDB_FinishBackupRun_Call) Return(err error) *MockInternalDB
 }
 
 func (_c *MockInternalDB_FinishBackupRun_Call) RunAndReturn(run func(runID int64, jobID int64, runStatus string, jobStatus string, output *string, errorDetails *string) error) *MockInternalDB_FinishBackupRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FinishServerViewSyncRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) FinishServerViewSyncRun(runID int64, status string, warningCount int, errorDetails *string) error {
+	ret := _mock.Called(runID, status, warningCount, errorDetails)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FinishServerViewSyncRun")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, string, int, *string) error); ok {
+		r0 = returnFunc(runID, status, warningCount, errorDetails)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_FinishServerViewSyncRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FinishServerViewSyncRun'
+type MockInternalDB_FinishServerViewSyncRun_Call struct {
+	*mock.Call
+}
+
+// FinishServerViewSyncRun is a helper method to define mock.On call
+//   - runID int64
+//   - status string
+//   - warningCount int
+//   - errorDetails *string
+func (_e *MockInternalDB_Expecter) FinishServerViewSyncRun(runID interface{}, status interface{}, warningCount interface{}, errorDetails interface{}) *MockInternalDB_FinishServerViewSyncRun_Call {
+	return &MockInternalDB_FinishServerViewSyncRun_Call{Call: _e.mock.On("FinishServerViewSyncRun", runID, status, warningCount, errorDetails)}
+}
+
+func (_c *MockInternalDB_FinishServerViewSyncRun_Call) Run(run func(runID int64, status string, warningCount int, errorDetails *string)) *MockInternalDB_FinishServerViewSyncRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 int
+		if args[2] != nil {
+			arg2 = args[2].(int)
+		}
+		var arg3 *string
+		if args[3] != nil {
+			arg3 = args[3].(*string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_FinishServerViewSyncRun_Call) Return(err error) *MockInternalDB_FinishServerViewSyncRun_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_FinishServerViewSyncRun_Call) RunAndReturn(run func(runID int64, status string, warningCount int, errorDetails *string) error) *MockInternalDB_FinishServerViewSyncRun_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3060,6 +3254,61 @@ func (_c *MockInternalDB_GetLatestSamples_Call) RunAndReturn(run func() ([]Lates
 	return _c
 }
 
+// GetLatestServerViewSyncRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetLatestServerViewSyncRun() (*ServerViewSyncRun, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestServerViewSyncRun")
+	}
+
+	var r0 *ServerViewSyncRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (*ServerViewSyncRun, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() *ServerViewSyncRun); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerViewSyncRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetLatestServerViewSyncRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestServerViewSyncRun'
+type MockInternalDB_GetLatestServerViewSyncRun_Call struct {
+	*mock.Call
+}
+
+// GetLatestServerViewSyncRun is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetLatestServerViewSyncRun() *MockInternalDB_GetLatestServerViewSyncRun_Call {
+	return &MockInternalDB_GetLatestServerViewSyncRun_Call{Call: _e.mock.On("GetLatestServerViewSyncRun")}
+}
+
+func (_c *MockInternalDB_GetLatestServerViewSyncRun_Call) Run(run func()) *MockInternalDB_GetLatestServerViewSyncRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetLatestServerViewSyncRun_Call) Return(serverViewSyncRun *ServerViewSyncRun, err error) *MockInternalDB_GetLatestServerViewSyncRun_Call {
+	_c.Call.Return(serverViewSyncRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetLatestServerViewSyncRun_Call) RunAndReturn(run func() (*ServerViewSyncRun, error)) *MockInternalDB_GetLatestServerViewSyncRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetMapClientDataCount provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetMapClientDataCount() (int64, error) {
 	ret := _mock.Called()
@@ -3497,6 +3746,61 @@ func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) RunAndReturn(run func(j
 	return _c
 }
 
+// GetRunningServerViewSyncRun provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetRunningServerViewSyncRun() (*ServerViewSyncRun, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRunningServerViewSyncRun")
+	}
+
+	var r0 *ServerViewSyncRun
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() (*ServerViewSyncRun, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() *ServerViewSyncRun); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ServerViewSyncRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetRunningServerViewSyncRun_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRunningServerViewSyncRun'
+type MockInternalDB_GetRunningServerViewSyncRun_Call struct {
+	*mock.Call
+}
+
+// GetRunningServerViewSyncRun is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetRunningServerViewSyncRun() *MockInternalDB_GetRunningServerViewSyncRun_Call {
+	return &MockInternalDB_GetRunningServerViewSyncRun_Call{Call: _e.mock.On("GetRunningServerViewSyncRun")}
+}
+
+func (_c *MockInternalDB_GetRunningServerViewSyncRun_Call) Run(run func()) *MockInternalDB_GetRunningServerViewSyncRun_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningServerViewSyncRun_Call) Return(serverViewSyncRun *ServerViewSyncRun, err error) *MockInternalDB_GetRunningServerViewSyncRun_Call {
+	_c.Call.Return(serverViewSyncRun, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningServerViewSyncRun_Call) RunAndReturn(run func() (*ServerViewSyncRun, error)) *MockInternalDB_GetRunningServerViewSyncRun_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSchedulableBackupJobs provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetSchedulableBackupJobs() ([]BackupJob, error) {
 	ret := _mock.Called()
@@ -3782,6 +4086,405 @@ func (_c *MockInternalDB_GetServerProcesses_Call) Return(serverProcesss []Server
 }
 
 func (_c *MockInternalDB_GetServerProcesses_Call) RunAndReturn(run func() ([]ServerProcess, error)) *MockInternalDB_GetServerProcesses_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewDropRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewDropRows() ([]ServerViewDropRow, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewDropRows")
+	}
+
+	var r0 []ServerViewDropRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerViewDropRow, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerViewDropRow); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewDropRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewDropRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewDropRows'
+type MockInternalDB_GetServerViewDropRows_Call struct {
+	*mock.Call
+}
+
+// GetServerViewDropRows is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerViewDropRows() *MockInternalDB_GetServerViewDropRows_Call {
+	return &MockInternalDB_GetServerViewDropRows_Call{Call: _e.mock.On("GetServerViewDropRows")}
+}
+
+func (_c *MockInternalDB_GetServerViewDropRows_Call) Run(run func()) *MockInternalDB_GetServerViewDropRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewDropRows_Call) Return(serverViewDropRows []ServerViewDropRow, err error) *MockInternalDB_GetServerViewDropRows_Call {
+	_c.Call.Return(serverViewDropRows, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewDropRows_Call) RunAndReturn(run func() ([]ServerViewDropRow, error)) *MockInternalDB_GetServerViewDropRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewGameMasterRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewGameMasterRows() ([]ServerViewGameMasterRow, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewGameMasterRows")
+	}
+
+	var r0 []ServerViewGameMasterRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerViewGameMasterRow, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerViewGameMasterRow); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewGameMasterRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewGameMasterRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewGameMasterRows'
+type MockInternalDB_GetServerViewGameMasterRows_Call struct {
+	*mock.Call
+}
+
+// GetServerViewGameMasterRows is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerViewGameMasterRows() *MockInternalDB_GetServerViewGameMasterRows_Call {
+	return &MockInternalDB_GetServerViewGameMasterRows_Call{Call: _e.mock.On("GetServerViewGameMasterRows")}
+}
+
+func (_c *MockInternalDB_GetServerViewGameMasterRows_Call) Run(run func()) *MockInternalDB_GetServerViewGameMasterRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewGameMasterRows_Call) Return(serverViewGameMasterRows []ServerViewGameMasterRow, err error) *MockInternalDB_GetServerViewGameMasterRows_Call {
+	_c.Call.Return(serverViewGameMasterRows, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewGameMasterRows_Call) RunAndReturn(run func() ([]ServerViewGameMasterRow, error)) *MockInternalDB_GetServerViewGameMasterRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewMapZones provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewMapZones(serverType string) ([]ServerViewMapZone, error) {
+	ret := _mock.Called(serverType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewMapZones")
+	}
+
+	var r0 []ServerViewMapZone
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]ServerViewMapZone, error)); ok {
+		return returnFunc(serverType)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []ServerViewMapZone); ok {
+		r0 = returnFunc(serverType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewMapZone)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(serverType)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewMapZones_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewMapZones'
+type MockInternalDB_GetServerViewMapZones_Call struct {
+	*mock.Call
+}
+
+// GetServerViewMapZones is a helper method to define mock.On call
+//   - serverType string
+func (_e *MockInternalDB_Expecter) GetServerViewMapZones(serverType interface{}) *MockInternalDB_GetServerViewMapZones_Call {
+	return &MockInternalDB_GetServerViewMapZones_Call{Call: _e.mock.On("GetServerViewMapZones", serverType)}
+}
+
+func (_c *MockInternalDB_GetServerViewMapZones_Call) Run(run func(serverType string)) *MockInternalDB_GetServerViewMapZones_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewMapZones_Call) Return(serverViewMapZones []ServerViewMapZone, err error) *MockInternalDB_GetServerViewMapZones_Call {
+	_c.Call.Return(serverViewMapZones, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewMapZones_Call) RunAndReturn(run func(serverType string) ([]ServerViewMapZone, error)) *MockInternalDB_GetServerViewMapZones_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewShopRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewShopRows() ([]ServerViewShopRow, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewShopRows")
+	}
+
+	var r0 []ServerViewShopRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerViewShopRow, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerViewShopRow); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewShopRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewShopRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewShopRows'
+type MockInternalDB_GetServerViewShopRows_Call struct {
+	*mock.Call
+}
+
+// GetServerViewShopRows is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerViewShopRows() *MockInternalDB_GetServerViewShopRows_Call {
+	return &MockInternalDB_GetServerViewShopRows_Call{Call: _e.mock.On("GetServerViewShopRows")}
+}
+
+func (_c *MockInternalDB_GetServerViewShopRows_Call) Run(run func()) *MockInternalDB_GetServerViewShopRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewShopRows_Call) Return(serverViewShopRows []ServerViewShopRow, err error) *MockInternalDB_GetServerViewShopRows_Call {
+	_c.Call.Return(serverViewShopRows, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewShopRows_Call) RunAndReturn(run func() ([]ServerViewShopRow, error)) *MockInternalDB_GetServerViewShopRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewSpawnRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewSpawnRows() ([]ServerViewSpawnRow, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewSpawnRows")
+	}
+
+	var r0 []ServerViewSpawnRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerViewSpawnRow, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerViewSpawnRow); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewSpawnRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewSpawnRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewSpawnRows'
+type MockInternalDB_GetServerViewSpawnRows_Call struct {
+	*mock.Call
+}
+
+// GetServerViewSpawnRows is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerViewSpawnRows() *MockInternalDB_GetServerViewSpawnRows_Call {
+	return &MockInternalDB_GetServerViewSpawnRows_Call{Call: _e.mock.On("GetServerViewSpawnRows")}
+}
+
+func (_c *MockInternalDB_GetServerViewSpawnRows_Call) Run(run func()) *MockInternalDB_GetServerViewSpawnRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSpawnRows_Call) Return(serverViewSpawnRows []ServerViewSpawnRow, err error) *MockInternalDB_GetServerViewSpawnRows_Call {
+	_c.Call.Return(serverViewSpawnRows, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSpawnRows_Call) RunAndReturn(run func() ([]ServerViewSpawnRow, error)) *MockInternalDB_GetServerViewSpawnRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewSvrInfoRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewSvrInfoRows() ([]ServerViewSvrInfoRow, error) {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewSvrInfoRows")
+	}
+
+	var r0 []ServerViewSvrInfoRow
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func() ([]ServerViewSvrInfoRow, error)); ok {
+		return returnFunc()
+	}
+	if returnFunc, ok := ret.Get(0).(func() []ServerViewSvrInfoRow); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewSvrInfoRow)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func() error); ok {
+		r1 = returnFunc()
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewSvrInfoRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewSvrInfoRows'
+type MockInternalDB_GetServerViewSvrInfoRows_Call struct {
+	*mock.Call
+}
+
+// GetServerViewSvrInfoRows is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) GetServerViewSvrInfoRows() *MockInternalDB_GetServerViewSvrInfoRows_Call {
+	return &MockInternalDB_GetServerViewSvrInfoRows_Call{Call: _e.mock.On("GetServerViewSvrInfoRows")}
+}
+
+func (_c *MockInternalDB_GetServerViewSvrInfoRows_Call) Run(run func()) *MockInternalDB_GetServerViewSvrInfoRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSvrInfoRows_Call) Return(serverViewSvrInfoRows []ServerViewSvrInfoRow, err error) *MockInternalDB_GetServerViewSvrInfoRows_Call {
+	_c.Call.Return(serverViewSvrInfoRows, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSvrInfoRows_Call) RunAndReturn(run func() ([]ServerViewSvrInfoRow, error)) *MockInternalDB_GetServerViewSvrInfoRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetServerViewSyncWarnings provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetServerViewSyncWarnings(runID int64) ([]ServerViewSyncWarning, error) {
+	ret := _mock.Called(runID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetServerViewSyncWarnings")
+	}
+
+	var r0 []ServerViewSyncWarning
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(int64) ([]ServerViewSyncWarning, error)); ok {
+		return returnFunc(runID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(int64) []ServerViewSyncWarning); ok {
+		r0 = returnFunc(runID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]ServerViewSyncWarning)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = returnFunc(runID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetServerViewSyncWarnings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetServerViewSyncWarnings'
+type MockInternalDB_GetServerViewSyncWarnings_Call struct {
+	*mock.Call
+}
+
+// GetServerViewSyncWarnings is a helper method to define mock.On call
+//   - runID int64
+func (_e *MockInternalDB_Expecter) GetServerViewSyncWarnings(runID interface{}) *MockInternalDB_GetServerViewSyncWarnings_Call {
+	return &MockInternalDB_GetServerViewSyncWarnings_Call{Call: _e.mock.On("GetServerViewSyncWarnings", runID)}
+}
+
+func (_c *MockInternalDB_GetServerViewSyncWarnings_Call) Run(run func(runID int64)) *MockInternalDB_GetServerViewSyncWarnings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSyncWarnings_Call) Return(serverViewSyncWarnings []ServerViewSyncWarning, err error) *MockInternalDB_GetServerViewSyncWarnings_Call {
+	_c.Call.Return(serverViewSyncWarnings, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetServerViewSyncWarnings_Call) RunAndReturn(run func(runID int64) ([]ServerViewSyncWarning, error)) *MockInternalDB_GetServerViewSyncWarnings_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -4593,6 +5296,50 @@ func (_c *MockInternalDB_MarkOrphanedBackupRunsFailed_Call) RunAndReturn(run fun
 	return _c
 }
 
+// MarkOrphanedServerViewSyncRunsFailed provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) MarkOrphanedServerViewSyncRunsFailed() error {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkOrphanedServerViewSyncRunsFailed")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func() error); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkOrphanedServerViewSyncRunsFailed'
+type MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call struct {
+	*mock.Call
+}
+
+// MarkOrphanedServerViewSyncRunsFailed is a helper method to define mock.On call
+func (_e *MockInternalDB_Expecter) MarkOrphanedServerViewSyncRunsFailed() *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call {
+	return &MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call{Call: _e.mock.On("MarkOrphanedServerViewSyncRunsFailed")}
+}
+
+func (_c *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call) Run(run func()) *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call) Return(err error) *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call) RunAndReturn(run func() error) *MockInternalDB_MarkOrphanedServerViewSyncRunsFailed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // MigrateDown provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) MigrateDown() error {
 	ret := _mock.Called()
@@ -4728,6 +5475,342 @@ func (_c *MockInternalDB_ReorderServerProcesses_Call) Return(err error) *MockInt
 }
 
 func (_c *MockInternalDB_ReorderServerProcesses_Call) RunAndReturn(run func(updates []ReorderUpdate) error) *MockInternalDB_ReorderServerProcesses_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewDropRowsForNPC provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewDropRowsForNPC(npcID int64, rows []ServerViewDropRow) error {
+	ret := _mock.Called(npcID, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewDropRowsForNPC")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, []ServerViewDropRow) error); ok {
+		r0 = returnFunc(npcID, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewDropRowsForNPC_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewDropRowsForNPC'
+type MockInternalDB_ReplaceServerViewDropRowsForNPC_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewDropRowsForNPC is a helper method to define mock.On call
+//   - npcID int64
+//   - rows []ServerViewDropRow
+func (_e *MockInternalDB_Expecter) ReplaceServerViewDropRowsForNPC(npcID interface{}, rows interface{}) *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call {
+	return &MockInternalDB_ReplaceServerViewDropRowsForNPC_Call{Call: _e.mock.On("ReplaceServerViewDropRowsForNPC", npcID, rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call) Run(run func(npcID int64, rows []ServerViewDropRow)) *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 []ServerViewDropRow
+		if args[1] != nil {
+			arg1 = args[1].([]ServerViewDropRow)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call) Return(err error) *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call) RunAndReturn(run func(npcID int64, rows []ServerViewDropRow) error) *MockInternalDB_ReplaceServerViewDropRowsForNPC_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewGameMasterRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewGameMasterRows(rows []ServerViewGameMasterRow) error {
+	ret := _mock.Called(rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewGameMasterRows")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func([]ServerViewGameMasterRow) error); ok {
+		r0 = returnFunc(rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewGameMasterRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewGameMasterRows'
+type MockInternalDB_ReplaceServerViewGameMasterRows_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewGameMasterRows is a helper method to define mock.On call
+//   - rows []ServerViewGameMasterRow
+func (_e *MockInternalDB_Expecter) ReplaceServerViewGameMasterRows(rows interface{}) *MockInternalDB_ReplaceServerViewGameMasterRows_Call {
+	return &MockInternalDB_ReplaceServerViewGameMasterRows_Call{Call: _e.mock.On("ReplaceServerViewGameMasterRows", rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewGameMasterRows_Call) Run(run func(rows []ServerViewGameMasterRow)) *MockInternalDB_ReplaceServerViewGameMasterRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 []ServerViewGameMasterRow
+		if args[0] != nil {
+			arg0 = args[0].([]ServerViewGameMasterRow)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewGameMasterRows_Call) Return(err error) *MockInternalDB_ReplaceServerViewGameMasterRows_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewGameMasterRows_Call) RunAndReturn(run func(rows []ServerViewGameMasterRow) error) *MockInternalDB_ReplaceServerViewGameMasterRows_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewMapZones provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewMapZones(serverType string, rows []ServerViewMapZone) error {
+	ret := _mock.Called(serverType, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewMapZones")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, []ServerViewMapZone) error); ok {
+		r0 = returnFunc(serverType, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewMapZones_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewMapZones'
+type MockInternalDB_ReplaceServerViewMapZones_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewMapZones is a helper method to define mock.On call
+//   - serverType string
+//   - rows []ServerViewMapZone
+func (_e *MockInternalDB_Expecter) ReplaceServerViewMapZones(serverType interface{}, rows interface{}) *MockInternalDB_ReplaceServerViewMapZones_Call {
+	return &MockInternalDB_ReplaceServerViewMapZones_Call{Call: _e.mock.On("ReplaceServerViewMapZones", serverType, rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewMapZones_Call) Run(run func(serverType string, rows []ServerViewMapZone)) *MockInternalDB_ReplaceServerViewMapZones_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 []ServerViewMapZone
+		if args[1] != nil {
+			arg1 = args[1].([]ServerViewMapZone)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewMapZones_Call) Return(err error) *MockInternalDB_ReplaceServerViewMapZones_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewMapZones_Call) RunAndReturn(run func(serverType string, rows []ServerViewMapZone) error) *MockInternalDB_ReplaceServerViewMapZones_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewShopRowsForNPC provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewShopRowsForNPC(npcID int64, rows []ServerViewShopRow) error {
+	ret := _mock.Called(npcID, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewShopRowsForNPC")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, []ServerViewShopRow) error); ok {
+		r0 = returnFunc(npcID, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewShopRowsForNPC_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewShopRowsForNPC'
+type MockInternalDB_ReplaceServerViewShopRowsForNPC_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewShopRowsForNPC is a helper method to define mock.On call
+//   - npcID int64
+//   - rows []ServerViewShopRow
+func (_e *MockInternalDB_Expecter) ReplaceServerViewShopRowsForNPC(npcID interface{}, rows interface{}) *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call {
+	return &MockInternalDB_ReplaceServerViewShopRowsForNPC_Call{Call: _e.mock.On("ReplaceServerViewShopRowsForNPC", npcID, rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call) Run(run func(npcID int64, rows []ServerViewShopRow)) *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 []ServerViewShopRow
+		if args[1] != nil {
+			arg1 = args[1].([]ServerViewShopRow)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call) Return(err error) *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call) RunAndReturn(run func(npcID int64, rows []ServerViewShopRow) error) *MockInternalDB_ReplaceServerViewShopRowsForNPC_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewSpawnRowsForMap provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewSpawnRowsForMap(mapID int64, rows []ServerViewSpawnRow) error {
+	ret := _mock.Called(mapID, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewSpawnRowsForMap")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(int64, []ServerViewSpawnRow) error); ok {
+		r0 = returnFunc(mapID, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewSpawnRowsForMap'
+type MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewSpawnRowsForMap is a helper method to define mock.On call
+//   - mapID int64
+//   - rows []ServerViewSpawnRow
+func (_e *MockInternalDB_Expecter) ReplaceServerViewSpawnRowsForMap(mapID interface{}, rows interface{}) *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call {
+	return &MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call{Call: _e.mock.On("ReplaceServerViewSpawnRowsForMap", mapID, rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call) Run(run func(mapID int64, rows []ServerViewSpawnRow)) *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 int64
+		if args[0] != nil {
+			arg0 = args[0].(int64)
+		}
+		var arg1 []ServerViewSpawnRow
+		if args[1] != nil {
+			arg1 = args[1].([]ServerViewSpawnRow)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call) Return(err error) *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call) RunAndReturn(run func(mapID int64, rows []ServerViewSpawnRow) error) *MockInternalDB_ReplaceServerViewSpawnRowsForMap_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReplaceServerViewSvrInfoRows provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) ReplaceServerViewSvrInfoRows(serverType string, rows []ServerViewSvrInfoRow) error {
+	ret := _mock.Called(serverType, rows)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReplaceServerViewSvrInfoRows")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, []ServerViewSvrInfoRow) error); ok {
+		r0 = returnFunc(serverType, rows)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_ReplaceServerViewSvrInfoRows_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReplaceServerViewSvrInfoRows'
+type MockInternalDB_ReplaceServerViewSvrInfoRows_Call struct {
+	*mock.Call
+}
+
+// ReplaceServerViewSvrInfoRows is a helper method to define mock.On call
+//   - serverType string
+//   - rows []ServerViewSvrInfoRow
+func (_e *MockInternalDB_Expecter) ReplaceServerViewSvrInfoRows(serverType interface{}, rows interface{}) *MockInternalDB_ReplaceServerViewSvrInfoRows_Call {
+	return &MockInternalDB_ReplaceServerViewSvrInfoRows_Call{Call: _e.mock.On("ReplaceServerViewSvrInfoRows", serverType, rows)}
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSvrInfoRows_Call) Run(run func(serverType string, rows []ServerViewSvrInfoRow)) *MockInternalDB_ReplaceServerViewSvrInfoRows_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 []ServerViewSvrInfoRow
+		if args[1] != nil {
+			arg1 = args[1].([]ServerViewSvrInfoRow)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSvrInfoRows_Call) Return(err error) *MockInternalDB_ReplaceServerViewSvrInfoRows_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_ReplaceServerViewSvrInfoRows_Call) RunAndReturn(run func(serverType string, rows []ServerViewSvrInfoRow) error) *MockInternalDB_ReplaceServerViewSvrInfoRows_Call {
 	_c.Call.Return(run)
 	return _c
 }

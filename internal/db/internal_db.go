@@ -115,6 +115,25 @@ type InternalDB interface {
 	GetBackupRunFiles(runID int64) ([]BackupRunFile, error)
 	GetBackupRunFile(id int64) (*BackupRunFile, error)
 	MarkOrphanedBackupRunsFailed() error
+	CreateServerViewSyncRun(userID *int64) (*ServerViewSyncRun, error)
+	FinishServerViewSyncRun(runID int64, status string, warningCount int, errorDetails *string) error
+	GetLatestServerViewSyncRun() (*ServerViewSyncRun, error)
+	GetRunningServerViewSyncRun() (*ServerViewSyncRun, error)
+	MarkOrphanedServerViewSyncRunsFailed() error
+	AddServerViewSyncWarning(runID int64, source string, message string) error
+	GetServerViewSyncWarnings(runID int64) ([]ServerViewSyncWarning, error)
+	ReplaceServerViewSvrInfoRows(serverType string, rows []ServerViewSvrInfoRow) error
+	GetServerViewSvrInfoRows() ([]ServerViewSvrInfoRow, error)
+	ReplaceServerViewMapZones(serverType string, rows []ServerViewMapZone) error
+	GetServerViewMapZones(serverType string) ([]ServerViewMapZone, error)
+	ReplaceServerViewSpawnRowsForMap(mapID int64, rows []ServerViewSpawnRow) error
+	GetServerViewSpawnRows() ([]ServerViewSpawnRow, error)
+	ReplaceServerViewDropRowsForNPC(npcID int64, rows []ServerViewDropRow) error
+	GetServerViewDropRows() ([]ServerViewDropRow, error)
+	ReplaceServerViewShopRowsForNPC(npcID int64, rows []ServerViewShopRow) error
+	GetServerViewShopRows() ([]ServerViewShopRow, error)
+	ReplaceServerViewGameMasterRows(rows []ServerViewGameMasterRow) error
+	GetServerViewGameMasterRows() ([]ServerViewGameMasterRow, error)
 }
 
 type sqliteInternalDB struct {
@@ -259,10 +278,18 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate013ServerViewTables(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback013ServerViewTables(); err != nil {
+		return err
+	}
+
 	if err := s.rollback012BackupJobsTables(); err != nil {
 		return err
 	}
@@ -1702,6 +1729,225 @@ func (s *sqliteInternalDB) rollback012BackupJobsTables() error {
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit backup jobs rollback: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate013ServerViewTables() error {
+	const migName = "013_server_view_tables"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS server_view_svr_info_rows (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_type TEXT NOT NULL,
+		section TEXT NOT NULL,
+		key TEXT NOT NULL,
+		value TEXT NOT NULL,
+		value_index INTEGER NOT NULL DEFAULT 0,
+		row_order INTEGER NOT NULL DEFAULT 0,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(server_type, section, key, value_index)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_svr_info_server_type ON server_view_svr_info_rows (server_type);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_svr_info_row_order ON server_view_svr_info_rows (server_type, row_order);
+
+	CREATE TABLE IF NOT EXISTS server_view_map_zones (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_type TEXT NOT NULL,
+		map_id INTEGER NOT NULL,
+		zone_id INTEGER NOT NULL,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(server_type, map_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_map_zones_server_type ON server_view_map_zones (server_type);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_map_zones_map_id ON server_view_map_zones (map_id);
+
+	CREATE TABLE IF NOT EXISTS server_view_spawn_rows (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		map_id INTEGER NOT NULL,
+		row_index INTEGER NOT NULL,
+		npc_id INTEGER NOT NULL,
+		x INTEGER NOT NULL,
+		y INTEGER NOT NULL,
+		unknown1 INTEGER NOT NULL,
+		orientation INTEGER NOT NULL,
+		spawn_step INTEGER NOT NULL,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(map_id, row_index)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_spawn_rows_map_id ON server_view_spawn_rows (map_id);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_spawn_rows_npc_id ON server_view_spawn_rows (npc_id);
+
+	CREATE TABLE IF NOT EXISTS server_view_drop_rows (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		npc_id INTEGER NOT NULL,
+		row_index INTEGER NOT NULL,
+		item_id INTEGER NOT NULL,
+		drop_rate INTEGER NOT NULL,
+		group_code INTEGER NOT NULL,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(npc_id, row_index)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_drop_rows_npc_id ON server_view_drop_rows (npc_id);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_drop_rows_item_id ON server_view_drop_rows (item_id);
+
+	CREATE TABLE IF NOT EXISTS server_view_shop_rows (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		npc_id INTEGER NOT NULL,
+		line_number INTEGER NOT NULL,
+		item_id INTEGER NOT NULL,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(npc_id, line_number)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_shop_rows_npc_id ON server_view_shop_rows (npc_id);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_shop_rows_item_id ON server_view_shop_rows (item_id);
+
+	CREATE TABLE IF NOT EXISTS server_view_game_master_rows (
+		gm_index INTEGER PRIMARY KEY,
+		name TEXT NOT NULL,
+		level INTEGER,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_game_master_rows_name ON server_view_game_master_rows (name);
+
+	CREATE TABLE IF NOT EXISTS server_view_sync_runs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		status TEXT NOT NULL,
+		started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		finished_at TIMESTAMP,
+		warning_count INTEGER NOT NULL DEFAULT 0,
+		error_details TEXT,
+		created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_sync_runs_status ON server_view_sync_runs (status);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_sync_runs_started_at ON server_view_sync_runs (started_at);
+
+	CREATE TABLE IF NOT EXISTS server_view_sync_warnings (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		run_id INTEGER NOT NULL REFERENCES server_view_sync_runs(id) ON DELETE CASCADE,
+		source TEXT NOT NULL,
+		message TEXT NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_server_view_sync_warnings_run_id ON server_view_sync_warnings (run_id);
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin server view migration: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create server view tables: %w", err)
+	}
+
+	if _, err := tx.Exec("INSERT INTO migrations (name) VALUES (?)", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit server view migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback013ServerViewTables() error {
+	const migName = "013_server_view_tables"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	rollbackSQL := `
+	DROP TABLE IF EXISTS server_view_sync_warnings;
+	DROP TABLE IF EXISTS server_view_sync_runs;
+	DROP TABLE IF EXISTS server_view_game_master_rows;
+	DROP TABLE IF EXISTS server_view_shop_rows;
+	DROP TABLE IF EXISTS server_view_drop_rows;
+	DROP TABLE IF EXISTS server_view_spawn_rows;
+	DROP TABLE IF EXISTS server_view_map_zones;
+	DROP TABLE IF EXISTS server_view_svr_info_rows;
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin server view rollback: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(rollbackSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback server view tables: %w", err)
+	}
+
+	if _, err := tx.Exec("DELETE FROM migrations WHERE name = ?", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit server view rollback: %w", err)
 	}
 
 	return nil

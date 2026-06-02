@@ -22,6 +22,7 @@ import usersRoute from './routes/users';
 import manageServerRoute from './routes/manage-server';
 import sqlServerODBCRoute from './routes/sql-server-odbc';
 import backupsRoute from './routes/backups';
+import serverViewRoutes from './routes/server-view';
 import reportWebVitals from './reportWebVitals.ts';
 
 const TanStackRouterDevtools = import.meta.env.DEV
@@ -64,6 +65,7 @@ const routeTree = rootRoute.addChildren([
   clientDataRoute(rootRoute),
   usersRoute(rootRoute),
   manageServerRoute(rootRoute),
+  ...serverViewRoutes(rootRoute),
   sqlServerODBCRoute(rootRoute),
   backupsRoute(rootRoute),
 ]);

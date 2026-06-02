@@ -24,6 +24,7 @@ type Server struct {
 	serverManagerService services.ServerManagerService
 	versionChecker       services.VersionCheckerService
 	backupService        services.BackupService
+	serverViewService    services.ServerViewService
 }
 
 func NewServer(
@@ -38,6 +39,7 @@ func NewServer(
 	serverManagerService services.ServerManagerService,
 	versionChecker services.VersionCheckerService,
 	backupService services.BackupService,
+	serverViewService services.ServerViewService,
 ) *http.Server {
 	newServer := &Server{
 		cfg:                  cfg,
@@ -51,6 +53,7 @@ func NewServer(
 		serverManagerService: serverManagerService,
 		versionChecker:       versionChecker,
 		backupService:        backupService,
+		serverViewService:    serverViewService,
 	}
 
 	server := &http.Server{

@@ -20,6 +20,7 @@ require (
 	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 	golang.org/x/crypto v0.50.0
 	golang.org/x/sys v0.43.0
+	gopkg.in/ini.v1 v1.67.2
 	modernc.org/sqlite v1.40.1
 )
 
