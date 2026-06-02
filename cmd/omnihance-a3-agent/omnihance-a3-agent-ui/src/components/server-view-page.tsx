@@ -37,6 +37,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { queryKeys } from '@/constants';
 import {
   APIError,
+  APIValidationError,
   getServerView,
   getServerViewMainMaps,
   getServerViewZoneDropDetails,
@@ -62,7 +63,13 @@ export function ServerViewPage() {
   const { hasPermission } = usePermissions();
   const canSync = hasPermission('manage_server');
 
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch: refetchOverview,
+  } = useQuery({
     queryKey: queryKeys.serverView,
     queryFn: getServerView,
     refetchInterval: (query) => {
@@ -161,7 +168,26 @@ export function ServerViewPage() {
         </Alert>
       )}
 
-      {isLoading ? (
+      {isError ? (
+        <Alert className="border-destructive/50 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Server view unavailable</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <div>{serverViewErrorMessage(error)}</div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void refetchOverview();
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Retry</span>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -188,7 +214,11 @@ export function ServerViewZoneSpawnsPage() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneSpawns('', ''),
     queryFn: () =>
       getServerViewZoneSpawns({
@@ -216,6 +246,7 @@ export function ServerViewZoneSpawnsPage() {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No spawn data synced"
         rowCount={mapRows.length}
       >
@@ -258,11 +289,15 @@ export function ServerViewZoneSpawnDetailsPage({ mapId }: { mapId: number }) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
 
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneSpawnDetails(mapId, debouncedQuery),
     queryFn: () =>
       getServerViewZoneSpawns({
-        mapQuery: '',
+        mapQuery: String(mapId),
         npcQuery: debouncedQuery,
       }),
   });
@@ -290,6 +325,7 @@ export function ServerViewZoneSpawnDetailsPage({ mapId }: { mapId: number }) {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No spawn rows found"
         rowCount={rows.length}
       >
@@ -319,7 +355,11 @@ export function ServerViewZoneSpawnDetailsPage({ mapId }: { mapId: number }) {
 export function ServerViewZoneDropsPage() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneDrops(debouncedQuery),
     queryFn: () => getServerViewZoneDrops(debouncedQuery),
   });
@@ -338,6 +378,7 @@ export function ServerViewZoneDropsPage() {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No drop data synced"
         rowCount={data.length}
       >
@@ -385,7 +426,11 @@ export function ServerViewZoneDropsPage() {
 export function ServerViewZoneDropDetailsPage({ npcId }: { npcId: number }) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneDropDetails(npcId, debouncedQuery),
     queryFn: () => getServerViewZoneDropDetails(npcId, debouncedQuery),
   });
@@ -404,6 +449,7 @@ export function ServerViewZoneDropDetailsPage({ npcId }: { npcId: number }) {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No drop rows found"
         rowCount={data.length}
       >
@@ -437,7 +483,11 @@ export function ServerViewZoneDropDetailsPage({ npcId }: { npcId: number }) {
 export function ServerViewZoneShopsPage() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneShops(debouncedQuery),
     queryFn: () => getServerViewZoneShops(debouncedQuery),
   });
@@ -456,6 +506,7 @@ export function ServerViewZoneShopsPage() {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No shop data synced"
         rowCount={data.length}
       >
@@ -501,7 +552,11 @@ export function ServerViewZoneShopsPage() {
 export function ServerViewZoneShopDetailsPage({ npcId }: { npcId: number }) {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, 250);
-  const { data = [], isLoading } = useQuery({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: queryKeys.serverViewZoneShopDetails(npcId, debouncedQuery),
     queryFn: () => getServerViewZoneShopDetails(npcId, debouncedQuery),
   });
@@ -520,6 +575,7 @@ export function ServerViewZoneShopDetailsPage({ npcId }: { npcId: number }) {
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No shop rows found"
         rowCount={data.length}
       >
@@ -566,7 +622,7 @@ function ServerViewMapsPage({
       ? () => getServerViewMainMaps(debouncedQuery)
       : () => getServerViewZoneMaps(debouncedQuery);
 
-  const { data = [], isLoading } = useQuery({ queryKey, queryFn });
+  const { data = [], isLoading, error } = useQuery({ queryKey, queryFn });
 
   return (
     <ServerViewTablePage
@@ -582,6 +638,7 @@ function ServerViewMapsPage({
       />
       <DataTable
         loading={isLoading}
+        error={error}
         emptyLabel="No map data synced"
         rowCount={data.length}
       >
@@ -691,17 +748,25 @@ function ServerInfoCard({ server }: { server: ServerViewServerInfo }) {
       <CardContent className="space-y-4">
         {server.available_actions.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {server.available_actions.map((action) => (
-              <Button
-                key={action.href}
-                asChild
-                variant="outline"
-                size="sm"
-                disabled={!server.configured}
-              >
-                <Link to={action.href}>{action.label}</Link>
-              </Button>
-            ))}
+            {server.available_actions.map((action) =>
+              server.configured ? (
+                <Button key={action.href} asChild variant="outline" size="sm">
+                  <Link to={action.href}>{action.label}</Link>
+                </Button>
+              ) : (
+                <Button
+                  key={action.href}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  aria-disabled="true"
+                  tabIndex={-1}
+                >
+                  {action.label}
+                </Button>
+              ),
+            )}
           </div>
         )}
         {sections.length === 0 ? (
@@ -777,11 +842,13 @@ function ServerViewTablePage({
 
 function DataTable({
   loading,
+  error,
   emptyLabel,
   rowCount,
   children,
 }: {
   loading: boolean;
+  error?: unknown;
   emptyLabel: string;
   rowCount: number;
   children: React.ReactElement;
@@ -791,6 +858,16 @@ function DataTable({
       <div className="flex justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert className="border-destructive/50 text-destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Unable to load data</AlertTitle>
+        <AlertDescription>{serverViewErrorMessage(error)}</AlertDescription>
+      </Alert>
     );
   }
 
@@ -847,6 +924,22 @@ function ServerTypeIcon({ serverType }: { serverType: string }) {
 
 function sectionLabel(section: ServerViewInfoSection, rowIndex: number) {
   return rowIndex === 0 ? section.name : '';
+}
+
+function serverViewErrorMessage(error: unknown): string {
+  if (error instanceof APIError) {
+    return error.getErrorMessage();
+  }
+
+  if (error instanceof APIValidationError) {
+    return error.getValidationErrors().join('; ');
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Failed to load server view data';
 }
 
 type ServerViewSpawnMapRow = {

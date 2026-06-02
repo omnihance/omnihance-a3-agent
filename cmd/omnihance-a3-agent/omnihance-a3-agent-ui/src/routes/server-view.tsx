@@ -3,12 +3,17 @@ import type { AnyRootRoute } from '@tanstack/react-router';
 import type React from 'react';
 import { lazyNamed, LazySuspense } from '@/lib/lazy';
 import { DashboardLayout } from '@/components/dashboard-layout';
-import { getSession } from '@/lib/api';
+import { getSession, type GetSessionResponse } from '@/lib/api';
 import { APP_NAME } from '@/constants';
+
+const serverViewSessionCacheMs = 30_000;
 
 const rolePermissions: Record<string, string[]> = {
   view_game_data: ['super_admin', 'admin', 'viewer'],
 };
+
+let serverViewSessionPromise: Promise<GetSessionResponse> | null = null;
+let serverViewSessionFetchedAt = 0;
 
 function normalizeRole(role: string): string {
   return role.trim().toLowerCase();
@@ -108,10 +113,14 @@ function ZoneSpawnDetailsRouteComponent() {
   const { mapId } = useParams({
     from: '/server-view/zone/spawns/$mapId',
   });
+  const parsedMapId = parseServerViewIDParam(mapId);
+  if (parsedMapId === null) {
+    return null;
+  }
 
   return (
     <PageLayout>
-      <ServerViewZoneSpawnDetailsPage mapId={Number(mapId)} />
+      <ServerViewZoneSpawnDetailsPage mapId={parsedMapId} />
     </PageLayout>
   );
 }
@@ -128,10 +137,14 @@ function ZoneDropDetailsRouteComponent() {
   const { npcId } = useParams({
     from: '/server-view/zone/drops/$npcId',
   });
+  const parsedNPCId = parseServerViewIDParam(npcId);
+  if (parsedNPCId === null) {
+    return null;
+  }
 
   return (
     <PageLayout>
-      <ServerViewZoneDropDetailsPage npcId={Number(npcId)} />
+      <ServerViewZoneDropDetailsPage npcId={parsedNPCId} />
     </PageLayout>
   );
 }
@@ -148,10 +161,14 @@ function ZoneShopDetailsRouteComponent() {
   const { npcId } = useParams({
     from: '/server-view/zone/shops/$npcId',
   });
+  const parsedNPCId = parseServerViewIDParam(npcId);
+  if (parsedNPCId === null) {
+    return null;
+  }
 
   return (
     <PageLayout>
-      <ServerViewZoneShopDetailsPage npcId={Number(npcId)} />
+      <ServerViewZoneShopDetailsPage npcId={parsedNPCId} />
     </PageLayout>
   );
 }
@@ -162,7 +179,7 @@ async function beforeLoadServerView({
   location: { href: string };
 }) {
   try {
-    const session = await getSession();
+    const session = await getCachedServerViewSession();
     if (!isAllowed('view_game_data', session.roles)) {
       throw redirect({
         to: '/dashboard',
@@ -180,6 +197,83 @@ async function beforeLoadServerView({
       },
     });
   }
+}
+
+async function beforeLoadServerViewMapDetails({
+  location,
+  params,
+}: {
+  location: { href: string };
+  params: { mapId: string };
+}) {
+  await beforeLoadServerView({ location });
+  if (parseServerViewIDParam(params.mapId) === null) {
+    throw redirect({
+      to: '/server-view/zone/spawns',
+    });
+  }
+}
+
+async function beforeLoadServerViewDropDetails({
+  location,
+  params,
+}: {
+  location: { href: string };
+  params: { npcId: string };
+}) {
+  await beforeLoadServerView({ location });
+  if (parseServerViewIDParam(params.npcId) === null) {
+    throw redirect({
+      to: '/server-view/zone/drops',
+    });
+  }
+}
+
+async function beforeLoadServerViewShopDetails({
+  location,
+  params,
+}: {
+  location: { href: string };
+  params: { npcId: string };
+}) {
+  await beforeLoadServerView({ location });
+  if (parseServerViewIDParam(params.npcId) === null) {
+    throw redirect({
+      to: '/server-view/zone/shops',
+    });
+  }
+}
+
+function parseServerViewIDParam(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+async function getCachedServerViewSession(): Promise<GetSessionResponse> {
+  const now = Date.now();
+  if (
+    serverViewSessionPromise &&
+    now - serverViewSessionFetchedAt < serverViewSessionCacheMs
+  ) {
+    return serverViewSessionPromise;
+  }
+
+  serverViewSessionFetchedAt = now;
+  serverViewSessionPromise = getSession().catch((error: unknown) => {
+    serverViewSessionPromise = null;
+    serverViewSessionFetchedAt = 0;
+    throw error;
+  });
+
+  return serverViewSessionPromise;
 }
 
 export default (parentRoute: AnyRootRoute) => [
@@ -225,7 +319,7 @@ export default (parentRoute: AnyRootRoute) => [
     head: () => ({
       meta: [{ title: `Monster Spawn Details - ${APP_NAME}` }],
     }),
-    beforeLoad: beforeLoadServerView,
+    beforeLoad: beforeLoadServerViewMapDetails,
     component: ZoneSpawnDetailsRouteComponent,
   }),
   createRoute({
@@ -243,7 +337,7 @@ export default (parentRoute: AnyRootRoute) => [
     head: () => ({
       meta: [{ title: `Monster Drop Details - ${APP_NAME}` }],
     }),
-    beforeLoad: beforeLoadServerView,
+    beforeLoad: beforeLoadServerViewDropDetails,
     component: ZoneDropDetailsRouteComponent,
   }),
   createRoute({
@@ -261,7 +355,7 @@ export default (parentRoute: AnyRootRoute) => [
     head: () => ({
       meta: [{ title: `Shop Details - ${APP_NAME}` }],
     }),
-    beforeLoad: beforeLoadServerView,
+    beforeLoad: beforeLoadServerViewShopDetails,
     component: ZoneShopDetailsRouteComponent,
   }),
 ];

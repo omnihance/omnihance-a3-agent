@@ -1,12 +1,15 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 )
+
+var ErrServerViewSyncAlreadyRunning = errors.New("server view sync is already running")
 
 const (
 	ServerViewSyncStatusRunning   = "running"
@@ -110,6 +113,10 @@ func (s *sqliteInternalDB) CreateServerViewSyncRun(userID *int64) (*ServerViewSy
 		Executor().
 		Exec()
 	if err != nil {
+		if isSQLiteConstraintError(err) {
+			return nil, ErrServerViewSyncAlreadyRunning
+		}
+
 		s.logger.Error("failed to create server view sync run", logger.Field{Key: "error", Value: err})
 		return nil, fmt.Errorf("failed to create server view sync run: %w", err)
 	}
@@ -246,7 +253,7 @@ func (s *sqliteInternalDB) GetServerViewSyncWarnings(runID int64) ([]ServerViewS
 }
 
 func (s *sqliteInternalDB) ReplaceServerViewSvrInfoRows(serverType string, rows []ServerViewSvrInfoRow) error {
-	return s.replaceRows("server_view_svr_info_rows", goqu.Ex{"server_type": serverType}, serverViewSvrInfoRecords(rows))
+	return s.replaceRows("server_view_svr_info_rows", goqu.Ex{"server_type": serverType}, serverViewSvrInfoRecords(serverType, rows))
 }
 
 func (s *sqliteInternalDB) GetServerViewSvrInfoRows() ([]ServerViewSvrInfoRow, error) {
@@ -264,7 +271,7 @@ func (s *sqliteInternalDB) GetServerViewSvrInfoRows() ([]ServerViewSvrInfoRow, e
 }
 
 func (s *sqliteInternalDB) ReplaceServerViewMapZones(serverType string, rows []ServerViewMapZone) error {
-	return s.replaceRows("server_view_map_zones", goqu.Ex{"server_type": serverType}, serverViewMapZoneRecords(rows))
+	return s.replaceRows("server_view_map_zones", goqu.Ex{"server_type": serverType}, serverViewMapZoneRecords(serverType, rows))
 }
 
 func (s *sqliteInternalDB) GetServerViewMapZones(serverType string) ([]ServerViewMapZone, error) {
@@ -283,7 +290,7 @@ func (s *sqliteInternalDB) GetServerViewMapZones(serverType string) ([]ServerVie
 }
 
 func (s *sqliteInternalDB) ReplaceServerViewSpawnRowsForMap(mapID int64, rows []ServerViewSpawnRow) error {
-	return s.replaceRows("server_view_spawn_rows", goqu.Ex{"map_id": mapID}, serverViewSpawnRecords(rows))
+	return s.replaceRows("server_view_spawn_rows", goqu.Ex{"map_id": mapID}, serverViewSpawnRecords(mapID, rows))
 }
 
 func (s *sqliteInternalDB) GetServerViewSpawnRows() ([]ServerViewSpawnRow, error) {
@@ -301,7 +308,7 @@ func (s *sqliteInternalDB) GetServerViewSpawnRows() ([]ServerViewSpawnRow, error
 }
 
 func (s *sqliteInternalDB) ReplaceServerViewDropRowsForNPC(npcID int64, rows []ServerViewDropRow) error {
-	return s.replaceRows("server_view_drop_rows", goqu.Ex{"npc_id": npcID}, serverViewDropRecords(rows))
+	return s.replaceRows("server_view_drop_rows", goqu.Ex{"npc_id": npcID}, serverViewDropRecords(npcID, rows))
 }
 
 func (s *sqliteInternalDB) GetServerViewDropRows() ([]ServerViewDropRow, error) {
@@ -319,7 +326,7 @@ func (s *sqliteInternalDB) GetServerViewDropRows() ([]ServerViewDropRow, error) 
 }
 
 func (s *sqliteInternalDB) ReplaceServerViewShopRowsForNPC(npcID int64, rows []ServerViewShopRow) error {
-	return s.replaceRows("server_view_shop_rows", goqu.Ex{"npc_id": npcID}, serverViewShopRecords(rows))
+	return s.replaceRows("server_view_shop_rows", goqu.Ex{"npc_id": npcID}, serverViewShopRecords(npcID, rows))
 }
 
 func (s *sqliteInternalDB) GetServerViewShopRows() ([]ServerViewShopRow, error) {
@@ -405,11 +412,11 @@ func (s *sqliteInternalDB) replaceRows(table string, where goqu.Ex, records []go
 	return nil
 }
 
-func serverViewSvrInfoRecords(rows []ServerViewSvrInfoRow) []goqu.Record {
+func serverViewSvrInfoRecords(serverType string, rows []ServerViewSvrInfoRow) []goqu.Record {
 	records := make([]goqu.Record, 0, len(rows))
 	for _, row := range rows {
 		records = append(records, goqu.Record{
-			"server_type": row.ServerType,
+			"server_type": serverType,
 			"section":     row.Section,
 			"key":         row.Key,
 			"value":       row.Value,
@@ -421,11 +428,11 @@ func serverViewSvrInfoRecords(rows []ServerViewSvrInfoRow) []goqu.Record {
 	return records
 }
 
-func serverViewMapZoneRecords(rows []ServerViewMapZone) []goqu.Record {
+func serverViewMapZoneRecords(serverType string, rows []ServerViewMapZone) []goqu.Record {
 	records := make([]goqu.Record, 0, len(rows))
 	for _, row := range rows {
 		records = append(records, goqu.Record{
-			"server_type": row.ServerType,
+			"server_type": serverType,
 			"map_id":      row.MapID,
 			"zone_id":     row.ZoneID,
 		})
@@ -434,11 +441,11 @@ func serverViewMapZoneRecords(rows []ServerViewMapZone) []goqu.Record {
 	return records
 }
 
-func serverViewSpawnRecords(rows []ServerViewSpawnRow) []goqu.Record {
+func serverViewSpawnRecords(mapID int64, rows []ServerViewSpawnRow) []goqu.Record {
 	records := make([]goqu.Record, 0, len(rows))
 	for _, row := range rows {
 		records = append(records, goqu.Record{
-			"map_id":      row.MapID,
+			"map_id":      mapID,
 			"row_index":   row.RowIndex,
 			"npc_id":      row.NPCID,
 			"x":           row.X,
@@ -452,11 +459,11 @@ func serverViewSpawnRecords(rows []ServerViewSpawnRow) []goqu.Record {
 	return records
 }
 
-func serverViewDropRecords(rows []ServerViewDropRow) []goqu.Record {
+func serverViewDropRecords(npcID int64, rows []ServerViewDropRow) []goqu.Record {
 	records := make([]goqu.Record, 0, len(rows))
 	for _, row := range rows {
 		records = append(records, goqu.Record{
-			"npc_id":     row.NPCID,
+			"npc_id":     npcID,
 			"row_index":  row.RowIndex,
 			"item_id":    row.ItemID,
 			"drop_rate":  row.DropRate,
@@ -467,11 +474,11 @@ func serverViewDropRecords(rows []ServerViewDropRow) []goqu.Record {
 	return records
 }
 
-func serverViewShopRecords(rows []ServerViewShopRow) []goqu.Record {
+func serverViewShopRecords(npcID int64, rows []ServerViewShopRow) []goqu.Record {
 	records := make([]goqu.Record, 0, len(rows))
 	for _, row := range rows {
 		records = append(records, goqu.Record{
-			"npc_id":      row.NPCID,
+			"npc_id":      npcID,
 			"line_number": row.LineNumber,
 			"item_id":     row.ItemID,
 		})

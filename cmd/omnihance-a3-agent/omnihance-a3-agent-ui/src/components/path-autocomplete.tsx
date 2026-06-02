@@ -8,7 +8,6 @@ import { searchBackupPaths } from '@/lib/api';
 import { useDebouncedValue } from '@/lib/util';
 
 const pathSearchDebounceMs = 250;
-const pathSearchBlurDelayMs = 150;
 
 export function PathAutocomplete({
   id,
@@ -40,26 +39,42 @@ export function PathAutocomplete({
     open &&
     !disabled &&
     (showLoading || results.length > 0 || value.trim() !== '');
+  const suggestionsID = `${id}-suggestions`;
 
   return (
-    <div className="relative space-y-2">
+    <div
+      className="relative space-y-2"
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) {
+          return;
+        }
+
+        setOpen(false);
+      }}
+    >
       <Label htmlFor={id}>{label}</Label>
       <Input
         id={id}
         value={value}
-        onFocus={() => setOpen(true)}
-        onBlur={() => {
-          window.setTimeout(() => setOpen(false), pathSearchBlurDelayMs);
-        }}
         onChange={(event) => {
           setOpen(true);
           onChange(event.target.value);
         }}
         autoComplete="off"
         disabled={disabled}
+        aria-autocomplete="list"
+        aria-controls={showDropdown ? suggestionsID : undefined}
+        aria-expanded={showDropdown}
+        aria-haspopup="listbox"
       />
       {showDropdown && (
-        <div className="absolute z-[70] max-h-56 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
+        <div
+          id={suggestionsID}
+          role="listbox"
+          aria-label={`${label} path suggestions`}
+          className="absolute z-[70] max-h-56 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md"
+        >
           {showLoading && results.length === 0 && (
             <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -75,8 +90,9 @@ export function PathAutocomplete({
             <button
               key={result.path}
               type="button"
+              role="option"
+              aria-selected={value === result.path}
               className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent"
-              onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 onChange(result.path);
                 setOpen(false);

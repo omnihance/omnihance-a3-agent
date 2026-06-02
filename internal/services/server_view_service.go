@@ -245,6 +245,9 @@ func (s *serverViewService) GetSyncStatus(ctx context.Context) (*ServerViewSyncS
 	if err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
+	instanceRunning := s.running
+	s.mu.Unlock()
 
 	warnings := make([]db.ServerViewSyncWarning, 0)
 	if latestRun != nil {
@@ -255,7 +258,7 @@ func (s *serverViewService) GetSyncStatus(ctx context.Context) (*ServerViewSyncS
 	}
 
 	return &ServerViewSyncStatus{
-		Running:    runningRun != nil || s.running,
+		Running:    runningRun != nil || instanceRunning,
 		LatestRun:  latestRun,
 		Warnings:   warnings,
 		Missing:    paths.Missing,
@@ -279,7 +282,6 @@ func (s *serverViewService) StartSync(ctx context.Context, userID *int64) (*db.S
 	}
 
 	if runningRun != nil {
-		s.running = true
 		s.mu.Unlock()
 		return nil, ErrServerViewSyncRunning
 	}
@@ -287,6 +289,10 @@ func (s *serverViewService) StartSync(ctx context.Context, userID *int64) (*db.S
 	run, err := s.internalDB.CreateServerViewSyncRun(userID)
 	if err != nil {
 		s.mu.Unlock()
+		if errors.Is(err, db.ErrServerViewSyncAlreadyRunning) {
+			return nil, ErrServerViewSyncRunning
+		}
+
 		return nil, err
 	}
 
@@ -559,7 +565,8 @@ func (s *serverViewService) executeSync(runID int64) {
 	paths, err := s.serverPaths()
 	if err != nil {
 		warn("settings", err)
-		_ = s.internalDB.FinishServerViewSyncRun(runID, db.ServerViewSyncStatusSucceeded, warningCount, nil)
+		errorDetails := err.Error()
+		_ = s.internalDB.FinishServerViewSyncRun(runID, db.ServerViewSyncStatusFailed, warningCount, &errorDetails)
 		return
 	}
 

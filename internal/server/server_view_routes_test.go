@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,10 +25,19 @@ func TestServerViewOverviewRequiresViewGameData(t *testing.T) {
 }
 
 func TestServerViewOverviewBeforeFirstSyncReturnsParseableShape(t *testing.T) {
-	internalDB := newTestInternalDB(t)
-	server := &Server{
-		serverViewService: services.NewServerViewService(nil, internalDB, nil),
-	}
+	server := &Server{serverViewService: &serverViewServiceStub{
+		overview: &services.ServerViewOverview{
+			Servers: []services.ServerViewServerInfo{
+				{ServerType: db.ServerViewServerTypeMain, Sections: []services.ServerViewInfoSection{}},
+				{ServerType: db.ServerViewServerTypeAccount, Sections: []services.ServerViewInfoSection{}},
+				{ServerType: db.ServerViewServerTypeZone, Sections: []services.ServerViewInfoSection{}},
+				{ServerType: db.ServerViewServerTypeBattle, Sections: []services.ServerViewInfoSection{}},
+			},
+			Sync: services.ServerViewSyncStatus{
+				Warnings: []db.ServerViewSyncWarning{},
+			},
+		},
+	}}
 	req := settingsRequest(http.MethodGet, "/api/server-view", nil, "viewer")
 	rr := httptest.NewRecorder()
 
@@ -48,6 +58,20 @@ func TestServerViewOverviewBeforeFirstSyncReturnsParseableShape(t *testing.T) {
 	require.True(t, ok)
 	require.Nil(t, syncObject["latest_run"])
 	require.IsType(t, []interface{}{}, syncObject["warnings"])
+}
+
+func TestServerViewInternalErrorDoesNotLeakDetails(t *testing.T) {
+	server := &Server{serverViewService: &serverViewServiceStub{
+		overviewErr: errors.New("database password leaked"),
+	}}
+	req := settingsRequest(http.MethodGet, "/api/server-view", nil, "viewer")
+	rr := httptest.NewRecorder()
+
+	server.handleServerViewOverview(rr, req)
+
+	require.Equal(t, http.StatusInternalServerError, rr.Code)
+	require.Contains(t, rr.Body.String(), "Internal server error")
+	require.NotContains(t, rr.Body.String(), "database password leaked")
 }
 
 func TestServerViewStartSyncRequiresManageServer(t *testing.T) {
@@ -102,6 +126,8 @@ func TestServerViewDropDetailsRejectsInvalidNPCID(t *testing.T) {
 type serverViewServiceStub struct {
 	startSyncErr error
 	mainMaps     []services.ServerViewMapRow
+	overview     *services.ServerViewOverview
+	overviewErr  error
 }
 
 func (stub *serverViewServiceStub) Start() error {
@@ -110,6 +136,13 @@ func (stub *serverViewServiceStub) Start() error {
 
 func (stub *serverViewServiceStub) GetOverview(ctx context.Context) (*services.ServerViewOverview, error) {
 	_ = ctx
+	if stub.overviewErr != nil {
+		return nil, stub.overviewErr
+	}
+	if stub.overview != nil {
+		return stub.overview, nil
+	}
+
 	return &services.ServerViewOverview{}, nil
 }
 

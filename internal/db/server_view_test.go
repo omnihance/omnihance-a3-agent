@@ -33,6 +33,28 @@ func TestServerViewReplaceRowsReplacesOnlyMatchingSource(t *testing.T) {
 	}, stripServerViewMapZoneAuditFields(zoneRows))
 }
 
+func TestServerViewReplaceRowsStampsScopedSource(t *testing.T) {
+	internalDB := newItemClientDataTestDB(t)
+
+	require.NoError(t, internalDB.ReplaceServerViewMapZones(ServerViewServerTypeMain, []ServerViewMapZone{
+		{ServerType: ServerViewServerTypeZone, MapID: 1, ZoneID: 10},
+	}))
+	require.NoError(t, internalDB.ReplaceServerViewSpawnRowsForMap(7, []ServerViewSpawnRow{
+		{MapID: 99, RowIndex: 1, NPCID: 100},
+	}))
+
+	mapRows, err := internalDB.GetServerViewMapZones(ServerViewServerTypeMain)
+	require.NoError(t, err)
+	require.Equal(t, []ServerViewMapZone{
+		{ServerType: ServerViewServerTypeMain, MapID: 1, ZoneID: 10},
+	}, stripServerViewMapZoneAuditFields(mapRows))
+
+	spawnRows, err := internalDB.GetServerViewSpawnRows()
+	require.NoError(t, err)
+	require.Len(t, spawnRows, 1)
+	require.Equal(t, int64(7), spawnRows[0].MapID)
+}
+
 func TestServerViewSyncRunStatusAndWarnings(t *testing.T) {
 	internalDB := newItemClientDataTestDB(t)
 
@@ -56,6 +78,15 @@ func TestServerViewSyncRunStatusAndWarnings(t *testing.T) {
 	require.Len(t, warnings, 1)
 	require.Equal(t, "MapInfo.ini", warnings[0].Source)
 	require.Equal(t, "invalid map row", warnings[0].Message)
+}
+
+func TestCreateServerViewSyncRunAllowsOnlyOneRunningRun(t *testing.T) {
+	internalDB := newItemClientDataTestDB(t)
+
+	_, err := internalDB.CreateServerViewSyncRun(nil)
+	require.NoError(t, err)
+	_, err = internalDB.CreateServerViewSyncRun(nil)
+	require.ErrorIs(t, err, ErrServerViewSyncAlreadyRunning)
 }
 
 func TestServerViewMarkOrphanedSyncRunsFailed(t *testing.T) {

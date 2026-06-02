@@ -416,6 +416,15 @@ func isSQLiteBusyOrLockedError(err error) bool {
 	}
 }
 
+func isSQLiteConstraintError(err error) bool {
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
+	}
+
+	return sqliteErr.Code()&sqlitePrimaryResultCodeMask == sqlite3.SQLITE_CONSTRAINT
+}
+
 func (s *sqliteInternalDB) migrate001UsersTable() error {
 	const migName = "001_users_table"
 
@@ -1851,6 +1860,8 @@ func (s *sqliteInternalDB) migrate013ServerViewTables() error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_server_view_sync_runs_status ON server_view_sync_runs (status);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_server_view_sync_runs_one_running ON server_view_sync_runs (status) WHERE status = 'running';
 
 	CREATE INDEX IF NOT EXISTS idx_server_view_sync_runs_started_at ON server_view_sync_runs (started_at);
 

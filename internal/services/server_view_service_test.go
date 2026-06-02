@@ -8,11 +8,14 @@ import (
 	"io/fs"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/ini.v1"
 )
@@ -215,6 +218,26 @@ func TestServerViewSyncDropsLeavesExistingRowsWhenFileFails(t *testing.T) {
 	require.Contains(t, warnings[0], "parse failed")
 }
 
+func TestServerViewExecuteSyncMarksSettingsErrorFailed(t *testing.T) {
+	internalDB := db.NewMockInternalDB(t)
+	settingsErr := errors.New("settings failed")
+	internalDB.EXPECT().GetSetting(constants.SettingKeyMainServerPath).Return(nil, settingsErr)
+	internalDB.EXPECT().AddServerViewSyncWarning(int64(77), "settings", settingsErr.Error()).Return(nil)
+	internalDB.EXPECT().
+		FinishServerViewSyncRun(
+			int64(77),
+			db.ServerViewSyncStatusFailed,
+			1,
+			mock.MatchedBy(func(value *string) bool {
+				return value != nil && *value == settingsErr.Error()
+			}),
+		).
+		Return(nil)
+	service := &serverViewService{internalDB: internalDB}
+
+	service.executeSync(77)
+}
+
 func loadServerViewTestINI(t *testing.T, content string) *ini.File {
 	t.Helper()
 
@@ -279,7 +302,8 @@ func stripDropAuditFields(rows []db.ServerViewDropRow) []db.ServerViewDropRow {
 }
 
 type serverViewTestDirEntry struct {
-	name string
+	name  string
+	isDir bool
 }
 
 func (entry serverViewTestDirEntry) Name() string {
@@ -287,13 +311,50 @@ func (entry serverViewTestDirEntry) Name() string {
 }
 
 func (entry serverViewTestDirEntry) IsDir() bool {
-	return false
+	return entry.isDir
 }
 
 func (entry serverViewTestDirEntry) Type() fs.FileMode {
+	if entry.isDir {
+		return fs.ModeDir
+	}
+
 	return 0
 }
 
 func (entry serverViewTestDirEntry) Info() (fs.FileInfo, error) {
-	return nil, nil
+	return serverViewTestFileInfo(entry), nil
+}
+
+type serverViewTestFileInfo struct {
+	name  string
+	isDir bool
+}
+
+func (info serverViewTestFileInfo) Name() string {
+	return info.name
+}
+
+func (info serverViewTestFileInfo) Size() int64 {
+	return 0
+}
+
+func (info serverViewTestFileInfo) Mode() fs.FileMode {
+	if info.isDir {
+		return fs.ModeDir
+	}
+
+	return 0
+}
+
+func (info serverViewTestFileInfo) ModTime() time.Time {
+	return time.Time{}
+}
+
+func (info serverViewTestFileInfo) IsDir() bool {
+	return info.isDir
+}
+
+func (info serverViewTestFileInfo) Sys() interface{} {
+	return nil
 }

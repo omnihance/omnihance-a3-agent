@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
+	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/omnihance/omnihance-a3-agent/internal/mw"
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
@@ -38,7 +39,7 @@ func (s *Server) handleServerViewOverview(w http.ResponseWriter, r *http.Request
 
 	overview, err := s.serverViewService.GetOverview(r.Context())
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -52,7 +53,7 @@ func (s *Server) handleServerViewSyncStatus(w http.ResponseWriter, r *http.Reque
 
 	status, err := s.serverViewService.GetSyncStatus(r.Context())
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -66,7 +67,7 @@ func (s *Server) handleServerViewStartSync(w http.ResponseWriter, r *http.Reques
 
 	run, err := s.serverViewService.StartSync(r.Context(), serverViewUserID(r))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -80,7 +81,7 @@ func (s *Server) handleServerViewMainMaps(w http.ResponseWriter, r *http.Request
 
 	rows, err := s.serverViewService.GetMainMaps(r.Context(), r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -94,7 +95,7 @@ func (s *Server) handleServerViewZoneMaps(w http.ResponseWriter, r *http.Request
 
 	rows, err := s.serverViewService.GetZoneMaps(r.Context(), r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (s *Server) handleServerViewZoneSpawns(w http.ResponseWriter, r *http.Reque
 
 	rows, err := s.serverViewService.GetZoneSpawns(r.Context(), r.URL.Query().Get("map_q"), r.URL.Query().Get("npc_q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -122,7 +123,7 @@ func (s *Server) handleServerViewZoneDrops(w http.ResponseWriter, r *http.Reques
 
 	rows, err := s.serverViewService.GetZoneDrops(r.Context(), r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -141,7 +142,7 @@ func (s *Server) handleServerViewZoneDropDetails(w http.ResponseWriter, r *http.
 
 	rows, err := s.serverViewService.GetZoneDropDetails(r.Context(), npcID, r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -155,7 +156,7 @@ func (s *Server) handleServerViewZoneShops(w http.ResponseWriter, r *http.Reques
 
 	rows, err := s.serverViewService.GetZoneShops(r.Context(), r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
@@ -174,19 +175,23 @@ func (s *Server) handleServerViewZoneShopDetails(w http.ResponseWriter, r *http.
 
 	rows, err := s.serverViewService.GetZoneShopDetails(r.Context(), npcID, r.URL.Query().Get("q"))
 	if err != nil {
-		writeServerViewServiceError(w, err)
+		s.writeServerViewServiceError(w, err)
 		return
 	}
 
 	_ = utils.WriteJSONResponse(w, map[string]interface{}{"items": rows})
 }
 
-func writeServerViewServiceError(w http.ResponseWriter, err error) {
+func (s *Server) writeServerViewServiceError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, services.ErrServerViewSyncRunning):
 		writeServerViewError(w, http.StatusConflict, constants.ErrorCodeBadRequest, err.Error())
 	default:
-		writeServerViewError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, err.Error())
+		if s.log != nil {
+			s.log.Error("server view request failed", logger.Field{Key: "error", Value: err})
+		}
+
+		writeServerViewError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, "Internal server error")
 	}
 }
 
