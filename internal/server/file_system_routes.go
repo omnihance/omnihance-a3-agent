@@ -740,7 +740,7 @@ func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateCo
 	defer func() {
 		if err != nil {
 			if fileWriteAttempted {
-				s.restoreFileAfterFailedWrite(ctx.cleanPath, previousData)
+				s.restoreFileAfterFailedWrite(ctx.cleanPath, previousData, ctx.info.Mode())
 			}
 
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
@@ -858,8 +858,8 @@ func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateCo
 	return revisionID, true
 }
 
-func (s *Server) restoreFileAfterFailedWrite(path string, previousData []byte) {
-	if restoreErr := s.fileEditor.WriteFile(path, previousData, 0644); restoreErr != nil {
+func (s *Server) restoreFileAfterFailedWrite(path string, previousData []byte, previousMode os.FileMode) {
+	if restoreErr := s.fileEditor.WriteFile(path, previousData, previousMode); restoreErr != nil {
 		s.log.Error("Failed to restore file after failed revision update", logger.Field{Key: "error", Value: restoreErr})
 	}
 }
@@ -1918,6 +1918,16 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentInfo, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read current file metadata: " + err.Error()},
+		})
+		return
+	}
+
 	tx, err := s.internalDB.BeginTx()
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -1932,7 +1942,7 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err != nil {
 			if fileWriteAttempted {
-				s.restoreFileAfterFailedWrite(cleanPath, currentData)
+				s.restoreFileAfterFailedWrite(cleanPath, currentData, currentInfo.Mode())
 			}
 
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
@@ -1942,7 +1952,7 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	fileWriteAttempted = true
-	if err = s.fileEditor.WriteFile(cleanPath, revisionData, 0644); err != nil {
+	if err = s.fileEditor.WriteFile(cleanPath, revisionData, currentInfo.Mode()); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
