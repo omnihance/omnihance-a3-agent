@@ -3,7 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"io"
 	"io/fs"
 	"mime"
 	"os"
@@ -450,13 +450,13 @@ func (fes *fileEditorService) ReadClientMapFileBytes(data []byte) ([]MapClientDa
 
 func readClientDataEntryCount(data []byte, entrySize uint64) (uint32, error) {
 	if len(data) < clientDataHeaderSize {
-		return 0, errors.New("data is too small")
+		return 0, io.ErrUnexpectedEOF
 	}
 
 	entryCount := binary.LittleEndian.Uint32(data[:clientDataHeaderSize])
 	requiredSize := uint64(clientDataHeaderSize) + uint64(entryCount)*entrySize
 	if requiredSize > uint64(len(data)) {
-		return 0, errors.New("data is too small")
+		return 0, io.ErrUnexpectedEOF
 	}
 
 	return entryCount, nil

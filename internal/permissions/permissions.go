@@ -16,6 +16,7 @@ const (
 	ActionManageUsers    PermissionAction = "manage_users"
 	ActionViewMetrics    PermissionAction = "view_metrics"
 	ActionViewGameData   PermissionAction = "view_game_data"
+	ActionViewServer     PermissionAction = "view_server"
 	ActionManageServer   PermissionAction = "manage_server"
 )
 
@@ -27,6 +28,7 @@ var rolePermissions = map[PermissionAction][]string{
 	ActionManageUsers:    {constants.RoleSuperAdmin},
 	ActionViewMetrics:    {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
 	ActionViewGameData:   {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
+	ActionViewServer:     {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
 	ActionManageServer:   {constants.RoleSuperAdmin, constants.RoleAdmin},
 }
 

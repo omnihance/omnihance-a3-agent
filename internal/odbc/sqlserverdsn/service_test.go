@@ -183,6 +183,45 @@ func TestServiceUpdatePreservesExistingPasswordWhenBlank(t *testing.T) {
 	}
 }
 
+func TestServiceUpdateOverwritesExistingPasswordWhenProvided(t *testing.T) {
+	originalResolveDriverPath := resolveDriverPath
+	resolveDriverPath = func() (string, error) {
+		return `C:\WINDOWS\system32\SQLSRV32.dll`, nil
+	}
+	defer func() {
+		resolveDriverPath = originalResolveDriverPath
+	}()
+
+	manager := newFakeManager()
+	manager.items["A3"] = userdsn.Config{
+		Name:   "A3",
+		Driver: DriverName,
+		Attrs: map[string]string{
+			"Server":   "old",
+			"Database": "old",
+			"LastUser": "sa",
+			"PWD":      "existing-password",
+		},
+	}
+
+	service := NewService(manager)
+	err := service.Update(DSN{
+		Name:     "A3",
+		Server:   "new",
+		Database: "newdb",
+		LoginID:  "sa",
+		Password: "new-password",
+	})
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+
+	updated := manager.items["A3"]
+	if updated.Attrs["PWD"] != "new-password" {
+		t.Fatalf("password was not updated: %+v", updated.Attrs)
+	}
+}
+
 func TestServiceCRUD(t *testing.T) {
 	manager := newFakeManager()
 	service := NewService(manager)

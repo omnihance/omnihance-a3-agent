@@ -193,6 +193,18 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+		}
+	}()
+
 	for _, update := range updates {
 		result, err := tx.Update("server_processes").
 			Prepared(true).
@@ -204,12 +216,6 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 			Executor().
 			Exec()
 		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				s.logger.Error(
-					"failed to rollback transaction",
-					logger.Field{Key: "error", Value: rollbackErr},
-				)
-			}
 			s.logger.Error(
 				"failed to reorder server process",
 				logger.Field{Key: "id", Value: update.ID},
@@ -220,22 +226,10 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 
 		rowsAffected, err := result.RowsAffected()
 		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				s.logger.Error(
-					"failed to rollback transaction",
-					logger.Field{Key: "error", Value: rollbackErr},
-				)
-			}
 			return fmt.Errorf("failed to get rows affected for server process %d: %w", update.ID, err)
 		}
 
 		if rowsAffected == 0 {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				s.logger.Error(
-					"failed to rollback transaction",
-					logger.Field{Key: "error", Value: rollbackErr},
-				)
-			}
 			return fmt.Errorf("server process %d not found", update.ID)
 		}
 	}
@@ -243,6 +237,8 @@ func (s *sqliteInternalDB) ReorderServerProcesses(updates []ReorderUpdate) error
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
+
+	committed = true
 
 	return nil
 }

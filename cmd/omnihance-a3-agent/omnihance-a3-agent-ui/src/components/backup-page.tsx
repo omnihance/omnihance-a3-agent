@@ -1337,7 +1337,7 @@ function formToPayload(form: BackupFormState): BackupJobRequest {
   payload.sql_host = emptyToNull(form.sql_host);
   payload.sql_port = form.sql_port.trim() ? Number(form.sql_port) : null;
   payload.sql_username = emptyToNull(form.sql_username);
-  payload.sql_password = form.sql_password;
+  payload.sql_password = emptyToNull(form.sql_password);
   payload.sql_database_names = emptyToNull(form.sql_database_names);
   return payload;
 }

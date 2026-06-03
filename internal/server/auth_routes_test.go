@@ -10,12 +10,17 @@ import (
 	"testing"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
+	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentFirstSignupsCreateOnlyOneSuperAdmin(t *testing.T) {
 	internalDB := newTestInternalDB(t)
-	server := &Server{internalDB: internalDB}
+	server := &Server{
+		internalDB: internalDB,
+		log:        logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled),
+	}
 
 	emails := []string{"first@example.com", "second@example.com"}
 	var wg sync.WaitGroup

@@ -736,8 +736,13 @@ func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateCo
 		return 0, false
 	}
 
+	fileWriteAttempted := false
 	defer func() {
 		if err != nil {
+			if fileWriteAttempted {
+				s.restoreFileAfterFailedWrite(ctx.cleanPath, previousData)
+			}
+
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				s.log.Error("Failed to rollback transaction", logger.Field{Key: "error", Value: rollbackErr})
 			}
@@ -798,6 +803,7 @@ func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateCo
 		return 0, false
 	}
 
+	fileWriteAttempted = true
 	if err = writeFile(); err != nil {
 		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
 			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
@@ -850,6 +856,12 @@ func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateCo
 	}
 
 	return revisionID, true
+}
+
+func (s *Server) restoreFileAfterFailedWrite(path string, previousData []byte) {
+	if restoreErr := s.fileEditor.WriteFile(path, previousData, 0644); restoreErr != nil {
+		s.log.Error("Failed to restore file after failed revision update", logger.Field{Key: "error", Value: restoreErr})
+	}
 }
 
 func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
@@ -1896,11 +1908,12 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = s.fileEditor.WriteFile(cleanPath, revisionData, 0644); err != nil {
+	currentData, err := s.fileEditor.ReadFile(cleanPath)
+	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
+			"errorCode": constants.ErrorCodeFileReadError,
 			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
+			"errors":    []string{"Failed to read current file: " + err.Error()},
 		})
 		return
 	}
@@ -1915,13 +1928,28 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fileWriteAttempted := false
 	defer func() {
 		if err != nil {
+			if fileWriteAttempted {
+				s.restoreFileAfterFailedWrite(cleanPath, currentData)
+			}
+
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				s.log.Error("Failed to rollback transaction", logger.Field{Key: "error", Value: rollbackErr})
 			}
 		}
 	}()
+
+	fileWriteAttempted = true
+	if err = s.fileEditor.WriteFile(cleanPath, revisionData, 0644); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return
+	}
 
 	if err = s.internalDB.UpdateFileRevisionStatus(tx, revision.ID, "reverted", userID); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{

@@ -34,7 +34,7 @@ func (s *Server) InitializeServerRoutes(r *chi.Mux) {
 }
 
 func (s *Server) handleGetServerProcesses(w http.ResponseWriter, r *http.Request) {
-	if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
 		return
 	}
 
@@ -107,7 +107,7 @@ func (s *Server) handleCreateServerProcess(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleGetServerProcess(w http.ResponseWriter, r *http.Request) {
-	if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
 		return
 	}
 
@@ -395,7 +395,7 @@ func (s *Server) handleStopProcess(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetProcessStatus(w http.ResponseWriter, r *http.Request) {
-	if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
 		return
 	}
 

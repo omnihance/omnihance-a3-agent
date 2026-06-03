@@ -64,6 +64,8 @@ import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';
 
+const unknownProcessStatus: ProcessStatus = { running: false };
+
 function formatUptime(seconds: number): string {
   if (seconds < 60) {
     return `${seconds}s`;
@@ -114,6 +116,9 @@ export function ManageServerPage() {
   const [processStatuses, setProcessStatuses] = useState<
     Map<number, ProcessStatus>
   >(new Map());
+  const [statusFailures, setStatusFailures] = useState<Set<number>>(
+    () => new Set(),
+  );
   const [isStatusLoading, setIsStatusLoading] = useState(false);
 
   useEffect(() => {
@@ -132,24 +137,24 @@ export function ManageServerPage() {
         processes.map(async (proc) => {
           try {
             const status = await getProcessStatus(proc.id);
-            return [proc.id, status] as const;
+            return [proc.id, status, false] as const;
           } catch (error) {
             console.error(
               `Failed to fetch status for process ${proc.id}:`,
               error,
             );
-            return null;
+            return [proc.id, unknownProcessStatus, true] as const;
           }
         }),
       );
 
       const statusMap = new Map<number, ProcessStatus>();
+      const failedStatusIDs = new Set<number>();
       for (const status of statuses) {
-        if (!status) {
-          continue;
-        }
-
         statusMap.set(status[0], status[1]);
+        if (status[2]) {
+          failedStatusIDs.add(status[0]);
+        }
       }
 
       if (cancelled) {
@@ -157,6 +162,7 @@ export function ManageServerPage() {
       }
 
       setProcessStatuses(statusMap);
+      setStatusFailures(failedStatusIDs);
       setIsStatusLoading(false);
     };
 
@@ -578,7 +584,8 @@ export function ManageServerPage() {
                   {processes.map((process, index) => {
                     const status = processStatuses.get(process.id);
                     const statusKnown = status !== undefined;
-                    const isRunning = status?.running === true;
+                    const statusFailed = statusFailures.has(process.id);
+                    const isRunning = !statusFailed && status?.running === true;
                     const currentUptime =
                       status?.current_uptime_seconds !== undefined
                         ? status.current_uptime_seconds
@@ -635,6 +642,8 @@ export function ManageServerPage() {
                         <TableCell>
                           {!statusKnown ? (
                             <Badge variant="outline">Checking</Badge>
+                          ) : statusFailed ? (
+                            <Badge variant="outline">Unknown</Badge>
                           ) : isRunning ? (
                             <Badge className="bg-green-600">Running</Badge>
                           ) : (

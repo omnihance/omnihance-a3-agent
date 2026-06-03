@@ -140,6 +140,30 @@ func TestIsAllowed(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "super_admin can view server",
+			action:   ActionViewServer,
+			roles:    []string{constants.RoleSuperAdmin},
+			expected: true,
+		},
+		{
+			name:     "admin can view server",
+			action:   ActionViewServer,
+			roles:    []string{constants.RoleAdmin},
+			expected: true,
+		},
+		{
+			name:     "viewer can view server",
+			action:   ActionViewServer,
+			roles:    []string{constants.RoleUser},
+			expected: true,
+		},
+		{
+			name:     "viewer cannot manage server",
+			action:   ActionManageServer,
+			roles:    []string{constants.RoleUser},
+			expected: false,
+		},
+		{
 			name:     "multiple roles with one allowed grants access",
 			action:   ActionEditFiles,
 			roles:    []string{constants.RoleUser, constants.RoleAdmin},

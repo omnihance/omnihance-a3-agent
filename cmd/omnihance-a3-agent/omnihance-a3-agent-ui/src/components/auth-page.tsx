@@ -26,6 +26,9 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+const DEFAULT_AUTH_REDIRECT = '/dashboard';
+const SAFE_REDIRECT_BASE = 'http://omnihance.local';
+
 const signUpSchema = z
   .object({
     email: z.email('Please enter a valid email'),
@@ -318,8 +321,34 @@ export function AuthPage() {
 }
 
 function getSafeRedirectPath(redirect?: string) {
-  if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) {
-    return '/dashboard';
+  if (!redirect || redirect !== redirect.trim()) {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  let decodedRedirect: string;
+  try {
+    decodedRedirect = decodeURIComponent(redirect);
+  } catch {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  if (
+    !redirect.startsWith('/') ||
+    redirect.startsWith('//') ||
+    decodedRedirect.startsWith('//') ||
+    /[\s\\:]/.test(redirect) ||
+    /[\s\\:]/.test(decodedRedirect)
+  ) {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  try {
+    const parsedRedirect = new URL(decodedRedirect, SAFE_REDIRECT_BASE);
+    if (parsedRedirect.origin !== SAFE_REDIRECT_BASE) {
+      return DEFAULT_AUTH_REDIRECT;
+    }
+  } catch {
+    return DEFAULT_AUTH_REDIRECT;
   }
 
   return redirect;
