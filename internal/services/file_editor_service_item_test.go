@@ -2,6 +2,8 @@ package services
 
 import (
 	"bytes"
+	"encoding/binary"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -111,6 +113,71 @@ func TestReadClientItemFileBytesTruncated(t *testing.T) {
 
 	_, err := service.ReadClientIT1FileBytes([]byte{1, 2, 3})
 	require.Error(t, err)
+}
+
+func TestReadClientMonsterAndMapFileBytesRejectInvalidInput(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+
+	tests := []struct {
+		name string
+		read func([]byte) error
+	}{
+		{
+			name: "monster",
+			read: func(data []byte) error {
+				_, err := service.ReadClientMonsterFileBytes(data)
+				return err
+			},
+		},
+		{
+			name: "map",
+			read: func(data []byte) error {
+				_, err := service.ReadClientMapFileBytes(data)
+				return err
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name+" empty", func(t *testing.T) {
+			require.ErrorIs(t, test.read(nil), io.ErrUnexpectedEOF)
+		})
+
+		t.Run(test.name+" short header", func(t *testing.T) {
+			require.ErrorIs(t, test.read([]byte{1, 2, 3}), io.ErrUnexpectedEOF)
+		})
+
+		t.Run(test.name+" truncated body", func(t *testing.T) {
+			data := make([]byte, clientDataHeaderSize+1)
+			binary.LittleEndian.PutUint32(data[:clientDataHeaderSize], 1)
+			require.ErrorIs(t, test.read(data), io.ErrUnexpectedEOF)
+		})
+
+		t.Run(test.name+" oversized count", func(t *testing.T) {
+			data := make([]byte, clientDataHeaderSize)
+			binary.LittleEndian.PutUint32(data, ^uint32(0))
+			require.ErrorIs(t, test.read(data), io.ErrUnexpectedEOF)
+		})
+	}
+
+	t.Run("monster valid", func(t *testing.T) {
+		data := make([]byte, clientDataHeaderSize+96)
+		binary.LittleEndian.PutUint32(data[:clientDataHeaderSize], 1)
+
+		monsters, err := service.ReadClientMonsterFileBytes(data)
+		require.NoError(t, err)
+		require.Len(t, monsters, 1)
+	})
+
+	t.Run("map valid", func(t *testing.T) {
+		data := make([]byte, clientDataHeaderSize+56)
+		binary.LittleEndian.PutUint32(data[:clientDataHeaderSize], 1)
+
+		maps, err := service.ReadClientMapFileBytes(data)
+		require.NoError(t, err)
+		require.Len(t, maps, 1)
+	})
 }
 
 func TestDropFileDataRoundTrip(t *testing.T) {

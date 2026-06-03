@@ -141,7 +141,6 @@ export function SettingsPage() {
 
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [deleteShortcutId, setDeleteShortcutId] = useState<number | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
@@ -280,20 +279,19 @@ export function SettingsPage() {
     },
   });
 
-  const onPasswordChange = async (data: ChangePasswordFormData) => {
-    setPasswordError(null);
-    setPasswordSuccess(false);
-    try {
-      setIsUpdatingPassword(true);
-      await updatePassword({
-        current_password: data.currentPassword,
-        new_password: data.newPassword,
-      });
-
+  const passwordMutation = useMutation({
+    mutationFn: updatePassword,
+    onMutate: () => {
+      setPasswordError(null);
+      setPasswordSuccess(false);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.session });
       setPasswordSuccess(true);
       passwordForm.reset();
       setTimeout(() => setPasswordSuccess(false), 5000);
-    } catch (err) {
+    },
+    onError: (err: unknown) => {
       if (err instanceof APIError) {
         setPasswordError(err.getErrorMessage());
       } else {
@@ -301,9 +299,14 @@ export function SettingsPage() {
           err instanceof Error ? err.message : 'Failed to update password',
         );
       }
-    } finally {
-      setIsUpdatingPassword(false);
-    }
+    },
+  });
+
+  const onPasswordChange = (data: ChangePasswordFormData) => {
+    passwordMutation.mutate({
+      current_password: data.currentPassword,
+      new_password: data.newPassword,
+    });
   };
 
   const openCreateDialog = () => {
@@ -479,7 +482,7 @@ export function SettingsPage() {
                   id="current-password"
                   type="password"
                   {...passwordForm.register('currentPassword')}
-                  disabled={isUpdatingPassword}
+                  disabled={passwordMutation.isPending}
                 />
                 {passwordForm.formState.errors.currentPassword && (
                   <p className="text-sm text-destructive">
@@ -494,7 +497,7 @@ export function SettingsPage() {
                     id="new-password"
                     type="password"
                     {...passwordForm.register('newPassword')}
-                    disabled={isUpdatingPassword}
+                    disabled={passwordMutation.isPending}
                   />
                   {passwordForm.formState.errors.newPassword && (
                     <p className="text-sm text-destructive">
@@ -508,7 +511,7 @@ export function SettingsPage() {
                     id="confirm-password"
                     type="password"
                     {...passwordForm.register('confirmPassword')}
-                    disabled={isUpdatingPassword}
+                    disabled={passwordMutation.isPending}
                   />
                   {passwordForm.formState.errors.confirmPassword && (
                     <p className="text-sm text-destructive">
@@ -517,8 +520,8 @@ export function SettingsPage() {
                   )}
                 </div>
               </div>
-              <Button type="submit" disabled={isUpdatingPassword}>
-                {isUpdatingPassword && (
+              <Button type="submit" disabled={passwordMutation.isPending}>
+                {passwordMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Update Password

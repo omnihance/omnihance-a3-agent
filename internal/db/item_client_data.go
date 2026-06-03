@@ -36,7 +36,24 @@ type ItemClientDataCounts struct {
 }
 
 func (s *sqliteInternalDB) BulkReplaceItemClientData(itemType ItemClientDataType, data []ItemClientData) error {
-	_, err := s.goqu.Delete("item_client_data").
+	tx, err := s.BeginTx()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback item client data transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+		}
+	}()
+
+	_, err = tx.Delete("item_client_data").
 		Where(goqu.C("item_type").Eq(string(itemType))).
 		Prepared(true).
 		Executor().
@@ -50,6 +67,11 @@ func (s *sqliteInternalDB) BulkReplaceItemClientData(itemType ItemClientDataType
 	}
 
 	if len(data) == 0 {
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit item client data replacement: %w", err)
+		}
+
+		committed = true
 		return nil
 	}
 
@@ -76,7 +98,7 @@ func (s *sqliteInternalDB) BulkReplaceItemClientData(itemType ItemClientDataType
 		records = append(records, record)
 	}
 
-	_, err = s.goqu.Insert("item_client_data").
+	_, err = tx.Insert("item_client_data").
 		Prepared(true).
 		Rows(records).
 		Executor().
@@ -89,6 +111,12 @@ func (s *sqliteInternalDB) BulkReplaceItemClientData(itemType ItemClientDataType
 		)
 		return fmt.Errorf("failed to bulk insert item client data: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit item client data replacement: %w", err)
+	}
+
+	committed = true
 
 	return nil
 }

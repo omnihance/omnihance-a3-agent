@@ -19,16 +19,9 @@ func RequireLocalIP(next http.Handler) http.Handler {
 }
 
 func getClientIP(r *http.Request) string {
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
-	}
-
-	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		if idx := strings.Index(ip, ","); idx != -1 {
-			ip = strings.TrimSpace(ip[:idx])
-		}
-
-		return ip
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
 	}
 
 	return r.RemoteAddr
@@ -40,8 +33,8 @@ func isLocalIP(ipStr string) bool {
 		return false
 	}
 
-	if strings.Contains(ipStr, ":") {
-		ipStr, _, _ = strings.Cut(ipStr, ":")
+	if host, _, err := net.SplitHostPort(ipStr); err == nil {
+		ipStr = host
 	}
 
 	ip := net.ParseIP(ipStr)

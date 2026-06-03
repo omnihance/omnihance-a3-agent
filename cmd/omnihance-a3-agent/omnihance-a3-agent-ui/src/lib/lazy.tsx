@@ -30,14 +30,17 @@ export function LazySuspense({
     <Suspense
       fallback={
         fallback ?? (
-          <div
+          <output
             className="flex h-96 items-center justify-center"
-            role="status"
             aria-live="polite"
             aria-label="Loading content"
           >
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+            <Loader2
+              className="h-8 w-8 animate-spin text-muted-foreground"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Loading content</span>
+          </output>
         )
       }
     >

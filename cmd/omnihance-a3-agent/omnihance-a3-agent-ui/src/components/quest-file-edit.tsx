@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Controller, type FieldPath, useForm } from 'react-hook-form';
+import { useMemo } from 'react';
+import { Controller, type FieldPath, useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouter } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -51,6 +51,11 @@ const UNUSED_UINT16 = 65535;
 const MAX_UINT16_FORM = 65535;
 const MAX_UINT32_FORM = 4_294_967_295;
 const MAX_OBJECTIVE_NAME_LENGTH = 255;
+const QUEST_OBJECTIVE_SLOT_COUNT = 7;
+const objectiveSlotKeys = Array.from(
+  { length: QUEST_OBJECTIVE_SLOT_COUNT },
+  (_, index) => `objective-${index + 1}`,
+);
 
 const questObjectiveTypes = [
   { value: QUEST_OBJECTIVE_TYPE.KILL, label: 'KILL' },
@@ -133,7 +138,7 @@ const questFileSchema = z
     exp_reward: z.number().int().min(0).max(MAX_UINT32_FORM),
     woonz_reward: z.number().int().min(0).max(MAX_UINT32_FORM),
     lore_reward: z.number().int().min(0).max(MAX_UINT32_FORM),
-    objectives: z.array(objectiveSchema).length(7),
+    objectives: z.array(objectiveSchema).length(QUEST_OBJECTIVE_SLOT_COUNT),
     continuations: z
       .array(z.number().int().min(0).max(MAX_UINT32_FORM).nullable())
       .length(3),
@@ -168,19 +173,13 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
     defaultValues: toQuestFormData(defaultData),
   });
 
-  useEffect(() => {
-    if (defaultData) {
-      form.reset(toQuestFormData(defaultData));
-    }
-  }, [defaultData, form]);
-
-  const { control, setValue, watch } = form;
-  const objectives = watch('objectives');
-  const rewardItems = watch('reward_items');
-  const rewardCounts = watch('reward_counts');
-  const continuations = watch('continuations');
-  const giverNPC = watch('giver_npc');
-  const targetNPC = watch('target_npc');
+  const { control, setValue } = form;
+  const objectives = useWatch({ control, name: 'objectives' });
+  const rewardItems = useWatch({ control, name: 'reward_items' });
+  const rewardCounts = useWatch({ control, name: 'reward_counts' });
+  const continuations = useWatch({ control, name: 'continuations' });
+  const giverNPC = useWatch({ control, name: 'giver_npc' });
+  const targetNPC = useWatch({ control, name: 'target_npc' });
 
   const { data: maps } = useQuery({
     queryKey: queryKeys.maps,
@@ -699,7 +698,10 @@ export function QuestFileEdit({ filePath, defaultData }: QuestFileEditProps) {
               const supportsName = namedObjectiveTypes.includes(objectiveType);
 
               return (
-                <Card key={index} className="border-l-4">
+                <Card
+                  key={objectiveSlotKeys[index]}
+                  className="border-primary/30"
+                >
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <CardTitle className="text-base">

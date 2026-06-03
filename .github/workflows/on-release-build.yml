@@ -30,7 +30,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
       - name: Build UI
         working-directory: ./cmd/omnihance-a3-agent/omnihance-a3-agent-ui
         run: |

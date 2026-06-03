@@ -34,6 +34,10 @@ func (s *Server) InitializeServerRoutes(r *chi.Mux) {
 }
 
 func (s *Server) handleGetServerProcesses(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
+		return
+	}
+
 	processes, err := s.internalDB.GetServerProcesses()
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -103,6 +107,10 @@ func (s *Server) handleCreateServerProcess(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *Server) handleGetServerProcess(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
+		return
+	}
+
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -387,6 +395,10 @@ func (s *Server) handleStopProcess(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetProcessStatus(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewServer) {
+		return
+	}
+
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {

@@ -64,6 +64,8 @@ import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';
 
+const unknownProcessStatus: ProcessStatus = { running: false };
+
 function formatUptime(seconds: number): string {
   if (seconds < 60) {
     return `${seconds}s`;
@@ -114,40 +116,73 @@ export function ManageServerPage() {
   const [processStatuses, setProcessStatuses] = useState<
     Map<number, ProcessStatus>
   >(new Map());
+  const [statusFailures, setStatusFailures] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [isStatusLoading, setIsStatusLoading] = useState(false);
 
   useEffect(() => {
     if (!processes) {
       return;
     }
 
-    const fetchStatuses = async () => {
+    let cancelled = false;
+
+    const fetchStatuses = async (showLoading = false) => {
+      if (showLoading) {
+        setIsStatusLoading(true);
+      }
+
+      const statuses = await Promise.all(
+        processes.map(async (proc) => {
+          try {
+            const status = await getProcessStatus(proc.id);
+            return [proc.id, status, false] as const;
+          } catch (error) {
+            console.error(
+              `Failed to fetch status for process ${proc.id}:`,
+              error,
+            );
+            return [proc.id, unknownProcessStatus, true] as const;
+          }
+        }),
+      );
+
       const statusMap = new Map<number, ProcessStatus>();
-      for (const proc of processes) {
-        try {
-          const status = await getProcessStatus(proc.id);
-          statusMap.set(proc.id, status);
-        } catch (error) {
-          console.error(
-            `Failed to fetch status for process ${proc.id}:`,
-            error,
-          );
+      const failedStatusIDs = new Set<number>();
+      for (const status of statuses) {
+        statusMap.set(status[0], status[1]);
+        if (status[2]) {
+          failedStatusIDs.add(status[0]);
         }
       }
+
+      if (cancelled) {
+        return;
+      }
+
       setProcessStatuses(statusMap);
+      setStatusFailures(failedStatusIDs);
+      setIsStatusLoading(false);
     };
 
-    fetchStatuses();
+    fetchStatuses(true);
 
     const hasRunningProcesses = processes.some((p) => p.start_time !== null);
     if (!hasRunningProcesses) {
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     const interval = setInterval(() => {
       fetchStatuses();
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [processes]);
 
   useEffect(() => {
@@ -396,15 +431,23 @@ export function ManageServerPage() {
     setDeleteDialogOpen(true);
   };
 
-  const anyRunning = processes?.some((p) => {
-    const status = processStatuses.get(p.id);
-    return status?.running === true;
-  });
+  const statusesReady = Boolean(
+    processes && processes.every((process) => processStatuses.has(process.id)),
+  );
+  const statusControlsDisabled = isStatusLoading || !statusesReady;
+  const anyRunning =
+    statusesReady &&
+    processes?.some((p) => {
+      const status = processStatuses.get(p.id);
+      return status?.running === true;
+    });
 
-  const allStopped = !processes?.some((p) => {
-    const status = processStatuses.get(p.id);
-    return status?.running === true;
-  });
+  const allStopped = statusesReady
+    ? !processes?.some((p) => {
+        const status = processStatuses.get(p.id);
+        return status?.running === true;
+      })
+    : false;
 
   const isEmpty = !processes || processes.length === 0;
 
@@ -423,7 +466,12 @@ export function ManageServerPage() {
           <div className="flex items-center gap-2">
             <Button
               onClick={() => startFullMutation.mutate()}
-              disabled={startFullMutation.isPending || anyRunning || isEmpty}
+              disabled={
+                startFullMutation.isPending ||
+                statusControlsDisabled ||
+                anyRunning ||
+                isEmpty
+              }
               variant="default"
             >
               {startFullMutation.isPending ? (
@@ -440,7 +488,12 @@ export function ManageServerPage() {
             </Button>
             <Button
               onClick={() => stopFullMutation.mutate()}
-              disabled={stopFullMutation.isPending || allStopped || isEmpty}
+              disabled={
+                stopFullMutation.isPending ||
+                statusControlsDisabled ||
+                allStopped ||
+                isEmpty
+              }
               variant="destructive"
             >
               {stopFullMutation.isPending ? (
@@ -530,7 +583,9 @@ export function ManageServerPage() {
                 <TableBody>
                   {processes.map((process, index) => {
                     const status = processStatuses.get(process.id);
-                    const isRunning = status?.running === true;
+                    const statusKnown = status !== undefined;
+                    const statusFailed = statusFailures.has(process.id);
+                    const isRunning = !statusFailed && status?.running === true;
                     const currentUptime =
                       status?.current_uptime_seconds !== undefined
                         ? status.current_uptime_seconds
@@ -585,7 +640,11 @@ export function ManageServerPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {isRunning ? (
+                          {!statusKnown ? (
+                            <Badge variant="outline">Checking</Badge>
+                          ) : statusFailed ? (
+                            <Badge variant="outline">Unknown</Badge>
+                          ) : isRunning ? (
                             <Badge className="bg-green-600">Running</Badge>
                           ) : (
                             <Badge variant="destructive">Stopped</Badge>
@@ -623,7 +682,10 @@ export function ManageServerPage() {
                                   onClick={() =>
                                     stopProcessMutation.mutate(process.id)
                                   }
-                                  disabled={stopProcessMutation.isPending}
+                                  disabled={
+                                    stopProcessMutation.isPending ||
+                                    statusControlsDisabled
+                                  }
                                 >
                                   <Square className="h-4 w-4" />
                                 </Button>
@@ -634,7 +696,10 @@ export function ManageServerPage() {
                                   onClick={() =>
                                     startProcessMutation.mutate(process.id)
                                   }
-                                  disabled={startProcessMutation.isPending}
+                                  disabled={
+                                    startProcessMutation.isPending ||
+                                    statusControlsDisabled
+                                  }
                                 >
                                   <Play className="h-4 w-4" />
                                 </Button>

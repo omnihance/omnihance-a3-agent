@@ -19,7 +19,24 @@ type MapClientData struct {
 }
 
 func (s *sqliteInternalDB) BulkReplaceMapClientData(data []MapClientData) error {
-	_, err := s.goqu.Delete("map_client_data").
+	tx, err := s.BeginTx()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback map client data transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+		}
+	}()
+
+	_, err = tx.Delete("map_client_data").
 		Prepared(true).
 		Executor().
 		Exec()
@@ -32,6 +49,11 @@ func (s *sqliteInternalDB) BulkReplaceMapClientData(data []MapClientData) error 
 	}
 
 	if len(data) == 0 {
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit map client data replacement: %w", err)
+		}
+
+		committed = true
 		return nil
 	}
 
@@ -57,7 +79,7 @@ func (s *sqliteInternalDB) BulkReplaceMapClientData(data []MapClientData) error 
 		records = append(records, record)
 	}
 
-	_, err = s.goqu.Insert("map_client_data").
+	_, err = tx.Insert("map_client_data").
 		Prepared(true).
 		Rows(records).
 		Executor().
@@ -70,6 +92,12 @@ func (s *sqliteInternalDB) BulkReplaceMapClientData(data []MapClientData) error 
 		)
 		return fmt.Errorf("failed to bulk insert map client data: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit map client data replacement: %w", err)
+	}
+
+	committed = true
 
 	return nil
 }

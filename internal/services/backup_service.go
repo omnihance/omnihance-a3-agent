@@ -226,6 +226,14 @@ func (s *backupService) UpdateJob(ctx context.Context, id int64, payload db.Back
 		return nil, ErrBackupJobRunning
 	}
 
+	if payload.ArchivePassword == nil {
+		payload.ArchivePassword = job.ArchivePassword
+	}
+
+	if payload.SQLPassword == nil {
+		payload.SQLPassword = job.SQLPassword
+	}
+
 	normalizedPayload, err := s.validateJobPayload(ctx, payload)
 	if err != nil {
 		return nil, err

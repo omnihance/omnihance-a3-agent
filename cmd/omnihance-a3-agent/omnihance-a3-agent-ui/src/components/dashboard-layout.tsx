@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = router.state.location.pathname;
 
   const { data: session } = useQuery({
@@ -35,7 +36,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const signOutMutation = useMutation({
     mutationFn: signOut,
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.session });
       router.navigate({ to: '/' });
     },
     onError: (err: unknown) => {

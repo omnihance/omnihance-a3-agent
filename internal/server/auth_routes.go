@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,8 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var signUpMu sync.Mutex
 
 func (s *Server) InitializeAuthRoutes(r *chi.Mux) {
 	r.Route("/api/auth", func(r chi.Router) {
@@ -117,6 +120,7 @@ func (s *Server) signInHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     constants.CookiePath,
 		Expires:  expiresAt,
 		HttpOnly: true,
+		Secure:   s.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(w, cookie)
@@ -161,7 +165,24 @@ func (s *Server) signUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := s.internalDB.GetUserByEmail(req.Email)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		s.log.Error(
+			"failed to hash password",
+			logger.Field{Key: "error", Value: err},
+		)
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "user-creation",
+			"errors":    []string{"Failed to create account"},
+		})
+		return
+	}
+
+	signUpMu.Lock()
+	defer signUpMu.Unlock()
+
+	_, err = s.internalDB.GetUserByEmail(req.Email)
 	if err == nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
 			"errorCode": constants.ErrorCodeBadRequest,
@@ -175,20 +196,6 @@ func (s *Server) signUpHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.log.Error(
 			"failed to get admin user count",
-			logger.Field{Key: "error", Value: err},
-		)
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "user-creation",
-			"errors":    []string{"Failed to create account"},
-		})
-		return
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		s.log.Error(
-			"failed to hash password",
 			logger.Field{Key: "error", Value: err},
 		)
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{

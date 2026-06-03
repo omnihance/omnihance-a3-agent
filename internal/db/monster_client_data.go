@@ -19,7 +19,24 @@ type MonsterClientData struct {
 }
 
 func (s *sqliteInternalDB) BulkReplaceMonsterClientData(data []MonsterClientData) error {
-	_, err := s.goqu.Delete("monster_client_data").
+	tx, err := s.BeginTx()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				s.logger.Error(
+					"failed to rollback monster client data transaction",
+					logger.Field{Key: "error", Value: rollbackErr},
+				)
+			}
+		}
+	}()
+
+	_, err = tx.Delete("monster_client_data").
 		Prepared(true).
 		Executor().
 		Exec()
@@ -32,6 +49,11 @@ func (s *sqliteInternalDB) BulkReplaceMonsterClientData(data []MonsterClientData
 	}
 
 	if len(data) == 0 {
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("failed to commit monster client data replacement: %w", err)
+		}
+
+		committed = true
 		return nil
 	}
 
@@ -57,7 +79,7 @@ func (s *sqliteInternalDB) BulkReplaceMonsterClientData(data []MonsterClientData
 		records = append(records, record)
 	}
 
-	_, err = s.goqu.Insert("monster_client_data").
+	_, err = tx.Insert("monster_client_data").
 		Prepared(true).
 		Rows(records).
 		Executor().
@@ -70,6 +92,12 @@ func (s *sqliteInternalDB) BulkReplaceMonsterClientData(data []MonsterClientData
 		)
 		return fmt.Errorf("failed to bulk insert monster client data: %w", err)
 	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit monster client data replacement: %w", err)
+	}
+
+	committed = true
 
 	return nil
 }

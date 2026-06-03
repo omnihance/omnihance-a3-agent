@@ -687,19 +687,7 @@ func (s *Server) validateFileUpdateRequest(w http.ResponseWriter, r *http.Reques
 	}, true
 }
 
-func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContext, previousData []byte, currentData []byte) (int64, bool) {
-	previousHash := utils.CalculateFileHash(previousData)
-	currentHash := utils.CalculateFileHash(currentData)
-
-	if previousHash == currentHash {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "file-system",
-			"errors":    []string{"No changes detected. The file content is identical to the existing content."},
-		})
-		return 0, false
-	}
-
+func (s *Server) updateFileWithRevision(w http.ResponseWriter, ctx *fileUpdateContext, buildUpdate func() ([]byte, func() error, bool)) (int64, bool) {
 	lockPath, err := s.acquireFileLock(ctx.fileID)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusConflict, map[string]interface{}{
@@ -712,6 +700,32 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 
 	defer s.releaseFileLock(lockPath)
 
+	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read file: " + err.Error()},
+		})
+		return 0, false
+	}
+
+	currentData, writeFile, ok := buildUpdate()
+	if !ok {
+		return 0, false
+	}
+
+	previousHash := utils.CalculateFileHash(previousData)
+	currentHash := utils.CalculateFileHash(currentData)
+	if previousHash == currentHash {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"No changes detected. The file content is identical to the existing content."},
+		})
+		return 0, false
+	}
+
 	tx, err := s.internalDB.BeginTx()
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -722,8 +736,13 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 		return 0, false
 	}
 
+	fileWriteAttempted := false
 	defer func() {
 		if err != nil {
+			if fileWriteAttempted {
+				s.restoreFileAfterFailedWrite(ctx.cleanPath, previousData, ctx.info.Mode())
+			}
+
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				s.log.Error("Failed to rollback transaction", logger.Field{Key: "error", Value: rollbackErr})
 			}
@@ -784,6 +803,24 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 		return 0, false
 	}
 
+	fileWriteAttempted = true
+	if err = writeFile(); err != nil {
+		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
+			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
+		}
+
+		if removeErr := s.fileEditor.RemoveAll(revisionDir); removeErr != nil {
+			s.log.Error("Failed to remove revision directory during cleanup", logger.Field{Key: "error", Value: removeErr})
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return 0, false
+	}
+
 	if err = s.internalDB.UpdateFileRevisionStatus(tx, revisionID, "completed", ctx.userID); err != nil {
 		if removeErr := s.fileEditor.Remove(revisionPath); removeErr != nil {
 			s.log.Error("Failed to remove revision file during cleanup", logger.Field{Key: "error", Value: removeErr})
@@ -821,6 +858,12 @@ func (s *Server) createFileRevision(w http.ResponseWriter, ctx *fileUpdateContex
 	return revisionID, true
 }
 
+func (s *Server) restoreFileAfterFailedWrite(path string, previousData []byte, previousMode os.FileMode) {
+	if restoreErr := s.fileEditor.WriteFile(path, previousData, previousMode); restoreErr != nil {
+		s.log.Error("Failed to restore file after failed revision update", logger.Field{Key: "error", Value: restoreErr})
+	}
+}
+
 func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
 	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
 		return
@@ -852,16 +895,6 @@ func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
 			"errorCode": constants.ErrorCodeBadRequest,
 			"context":   "file-system",
 			"errors":    errors,
-		})
-		return
-	}
-
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
 		})
 		return
 	}
@@ -907,17 +940,12 @@ func (s *Server) handleUpdateNPCFile(w http.ResponseWriter, r *http.Request) {
 
 	currentData := currentDataBuffer.Bytes()
 
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		return currentData, func() error {
+			return s.fileEditor.WriteNPCFileData(ctx.cleanPath, npcData)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteNPCFileData(ctx.cleanPath, npcData); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -961,29 +989,14 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
-
 	currentData := []byte(req.Content)
 
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		return currentData, func() error {
+			return s.fileEditor.WriteTextFileData(ctx.cleanPath, req.Content)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteTextFileData(ctx.cleanPath, req.Content); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -1028,16 +1041,6 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
-
 	spawnData := make([]services.NPCSpawnData, len(req.Spawns))
 	for i, spawn := range req.Spawns {
 		spawnData[i] = services.NPCSpawnData{
@@ -1062,17 +1065,12 @@ func (s *Server) handleUpdateSpawnFile(w http.ResponseWriter, r *http.Request) {
 
 	currentData := currentDataBuffer.Bytes()
 
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		return currentData, func() error {
+			return s.fileEditor.WriteSpawnFileData(ctx.cleanPath, spawnData)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteSpawnFileData(ctx.cleanPath, spawnData); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -1146,16 +1144,6 @@ func (s *Server) handleUpdateDropFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
-
 	dropData := dropFileFromAPIData(req)
 
 	var currentDataBuffer bytes.Buffer
@@ -1178,17 +1166,12 @@ func (s *Server) handleUpdateDropFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		return currentData, func() error {
+			return s.fileEditor.WriteDropFileData(ctx.cleanPath, dropData)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteDropFileData(ctx.cleanPath, dropData); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -1323,59 +1306,44 @@ func (s *Server) handleUpdateItemCombinationDataFile(w http.ResponseWriter, r *h
 		return
 	}
 
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		existingData, err := s.fileEditor.ReadItemCombinationData(ctx.cleanPath)
+		if err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeFileReadError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to read item combination data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	existingData, err := s.fileEditor.ReadItemCombinationData(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read item combination data: " + err.Error()},
-		})
-		return
-	}
+		itemCombinationData := itemCombinationDataFromAPIData(req, existingData)
 
-	itemCombinationData := itemCombinationDataFromAPIData(req, existingData)
+		var currentDataBuffer bytes.Buffer
+		if err := itemcombinationdata.Write(&currentDataBuffer, itemCombinationData); err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeInternalServerError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to serialize item combination data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	var currentDataBuffer bytes.Buffer
-	if err := itemcombinationdata.Write(&currentDataBuffer, itemCombinationData); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to serialize item combination data: " + err.Error()},
-		})
-		return
-	}
+		currentData := currentDataBuffer.Bytes()
+		if _, err := itemcombinationdata.Read(bytes.NewReader(currentData)); err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeInternalServerError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to validate item combination data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	currentData := currentDataBuffer.Bytes()
-	if _, err := itemcombinationdata.Read(bytes.NewReader(currentData)); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to validate item combination data: " + err.Error()},
-		})
-		return
-	}
-
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+		return currentData, func() error {
+			return s.fileEditor.WriteItemCombinationData(ctx.cleanPath, itemCombinationData)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteItemCombinationData(ctx.cleanPath, itemCombinationData); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -1729,59 +1697,44 @@ func (s *Server) handleUpdateQuestFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previousData, err := s.fileEditor.ReadFile(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		qf, err := s.fileEditor.ReadQuestFileData(ctx.cleanPath)
+		if err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeFileReadError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to read quest file data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	qf, err := s.fileEditor.ReadQuestFileData(ctx.cleanPath)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeFileReadError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to read quest file data: " + err.Error()},
-		})
-		return
-	}
+		applyQuestFileAPIData(&qf, req)
 
-	applyQuestFileAPIData(&qf, req)
+		var currentDataBuffer bytes.Buffer
+		if err := questfile.Write(&currentDataBuffer, qf); err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeInternalServerError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to serialize quest data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	var currentDataBuffer bytes.Buffer
-	if err := questfile.Write(&currentDataBuffer, qf); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to serialize quest data: " + err.Error()},
-		})
-		return
-	}
+		currentData := currentDataBuffer.Bytes()
+		if _, err := questfile.Read(bytes.NewReader(currentData)); err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeInternalServerError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to validate quest data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
 
-	currentData := currentDataBuffer.Bytes()
-	if _, err := questfile.Read(bytes.NewReader(currentData)); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to validate quest data: " + err.Error()},
-		})
-		return
-	}
-
-	revisionID, ok := s.createFileRevision(w, ctx, previousData, currentData)
+		return currentData, func() error {
+			return s.fileEditor.WriteQuestFileData(ctx.cleanPath, qf)
+		}, true
+	})
 	if !ok {
-		return
-	}
-
-	if err = s.fileEditor.WriteQuestFileData(ctx.cleanPath, qf); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
-		})
 		return
 	}
 
@@ -1955,6 +1908,26 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentData, err := s.fileEditor.ReadFile(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read current file: " + err.Error()},
+		})
+		return
+	}
+
+	currentInfo, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read current file metadata: " + err.Error()},
+		})
+		return
+	}
+
 	tx, err := s.internalDB.BeginTx()
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -1965,13 +1938,28 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fileWriteAttempted := false
 	defer func() {
 		if err != nil {
+			if fileWriteAttempted {
+				s.restoreFileAfterFailedWrite(cleanPath, currentData, currentInfo.Mode())
+			}
+
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				s.log.Error("Failed to rollback transaction", logger.Field{Key: "error", Value: rollbackErr})
 			}
 		}
 	}()
+
+	fileWriteAttempted = true
+	if err = s.fileEditor.WriteFile(cleanPath, revisionData, currentInfo.Mode()); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to write file: " + err.Error()},
+		})
+		return
+	}
 
 	if err = s.internalDB.UpdateFileRevisionStatus(tx, revision.ID, "reverted", userID); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
@@ -1987,17 +1975,6 @@ func (s *Server) handleRevertFile(w http.ResponseWriter, r *http.Request) {
 			"errorCode": constants.ErrorCodeInternalServerError,
 			"context":   "file-system",
 			"errors":    []string{"Failed to commit transaction: " + err.Error()},
-		})
-		return
-	}
-
-	err = nil
-
-	if err = s.fileEditor.WriteFile(cleanPath, revisionData, 0644); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "file-system",
-			"errors":    []string{"Failed to write file: " + err.Error()},
 		})
 		return
 	}

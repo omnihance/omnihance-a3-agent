@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useRouter } from '@tanstack/react-router';
-import { useMutation } from '@tanstack/react-query';
+import { Link, useRouter, useSearch } from '@tanstack/react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Server, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { signIn, signUp, APIError } from '@/lib/api';
-import { APP_NAME } from '@/constants';
+import { APP_NAME, queryKeys } from '@/constants';
 import { useStatus } from '@/hooks/use-status';
 
 const loginSchema = z.object({
   email: z.email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
+
+const DEFAULT_AUTH_REDIRECT = '/dashboard';
+const SAFE_REDIRECT_BASE = 'http://omnihance.local';
 
 const signUpSchema = z
   .object({
@@ -47,6 +50,8 @@ export function AuthPage() {
   >(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { redirect } = useSearch({ from: '/' });
 
   const isSignUp = useMemo(() => {
     if (manualSignUpOverride !== null) {
@@ -85,8 +90,9 @@ export function AuthPage() {
 
   const signInMutation = useMutation({
     mutationFn: signIn,
-    onSuccess: () => {
-      router.navigate({ to: '/dashboard' });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.session });
+      router.navigate({ to: getSafeRedirectPath(redirect) as '/dashboard' });
     },
     onError: (err: unknown) => {
       if (err instanceof APIError) {
@@ -99,7 +105,8 @@ export function AuthPage() {
 
   const signUpMutation = useMutation({
     mutationFn: signUp,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.status });
       toast.success(data.message);
       signUpForm.reset();
       setManualSignUpOverride(false);
@@ -311,4 +318,38 @@ export function AuthPage() {
       </main>
     </div>
   );
+}
+
+function getSafeRedirectPath(redirect?: string) {
+  if (!redirect || redirect !== redirect.trim()) {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  let decodedRedirect: string;
+  try {
+    decodedRedirect = decodeURIComponent(redirect);
+  } catch {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  if (
+    !redirect.startsWith('/') ||
+    redirect.startsWith('//') ||
+    decodedRedirect.startsWith('//') ||
+    /[\s\\:]/.test(redirect) ||
+    /[\s\\:]/.test(decodedRedirect)
+  ) {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  try {
+    const parsedRedirect = new URL(decodedRedirect, SAFE_REDIRECT_BASE);
+    if (parsedRedirect.origin !== SAFE_REDIRECT_BASE) {
+      return DEFAULT_AUTH_REDIRECT;
+    }
+  } catch {
+    return DEFAULT_AUTH_REDIRECT;
+  }
+
+  return redirect;
 }
