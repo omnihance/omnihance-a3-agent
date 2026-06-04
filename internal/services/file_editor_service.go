@@ -22,6 +22,11 @@ type FileType string
 const (
 	FileTypeNPC                 FileType = "a3_npc_file"
 	FileTypeDrop                FileType = "a3_drop_file"
+	FileTypeIT0Item             FileType = "a3_it0_item_file"
+	FileTypeIT0ExItem           FileType = "a3_it0ex_item_file"
+	FileTypeIT1Item             FileType = "a3_it1_item_file"
+	FileTypeIT2Item             FileType = "a3_it2_item_file"
+	FileTypeIT3Item             FileType = "a3_it3_item_file"
 	FileTypeItemCombinationData FileType = "a3_item_combination_data_file"
 	FileTypeMap                 FileType = "a3_map_file"
 	FileTypeUnknown             FileType = "a3_unknown_file"
@@ -38,6 +43,11 @@ const clientDataHeaderSize = 4
 
 const (
 	DropFileExtension           = ".itm"
+	IT0ItemFileName             = "0"
+	IT0ExItemFileName           = "0ex"
+	IT1ItemFileName             = "1"
+	IT2ItemFileName             = "2"
+	IT3ItemFileName             = "3"
 	ItemCombinationDataFileName = "ItemCombinationData"
 	MapFileExtension            = ".map"
 	SpawnFileExtension          = ".n_ndt"
@@ -56,6 +66,16 @@ type FileEditorService interface {
 	WriteSpawnFileData(path string, data []NPCSpawnData) error
 	ReadDropFileData(path string) (dropfile.DropFile, error)
 	WriteDropFileData(path string, data dropfile.DropFile) error
+	ReadIT0ItemFileData(path string) (itemfile.IT0File, error)
+	WriteIT0ItemFileData(path string, data itemfile.IT0File) error
+	ReadIT0ExItemFileData(path string) (itemfile.IT0ExFile, error)
+	WriteIT0ExItemFileData(path string, data itemfile.IT0ExFile) error
+	ReadIT1ItemFileData(path string) (itemfile.IT1File, error)
+	WriteIT1ItemFileData(path string, data itemfile.IT1File) error
+	ReadIT2ItemFileData(path string) (itemfile.IT2File, error)
+	WriteIT2ItemFileData(path string, data itemfile.IT2File) error
+	ReadIT3ItemFileData(path string) (itemfile.IT3File, error)
+	WriteIT3ItemFileData(path string, data itemfile.IT3File) error
 	ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error)
 	WriteItemCombinationData(path string, data itemcombinationdata.ItemCombinationData) error
 	Stat(name string) (fs.FileInfo, error)
@@ -101,6 +121,16 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeDrop:
 		return true
+	case FileTypeIT0Item:
+		return true
+	case FileTypeIT0ExItem:
+		return fes.hasSiblingIT0ItemFile(path)
+	case FileTypeIT1Item:
+		return true
+	case FileTypeIT2Item:
+		return true
+	case FileTypeIT3Item:
+		return true
 	case FileTypeItemCombinationData:
 		return true
 	default:
@@ -109,6 +139,19 @@ func (fes *fileEditorService) IsFileEditable(path string, fileInfo fs.FileInfo) 
 }
 
 func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) FileType {
+	switch strings.ToLower(filepath.Base(path)) {
+	case IT0ItemFileName:
+		return FileTypeIT0Item
+	case IT0ExItemFileName:
+		return FileTypeIT0ExItem
+	case IT1ItemFileName:
+		return FileTypeIT1Item
+	case IT2ItemFileName:
+		return FileTypeIT2Item
+	case IT3ItemFileName:
+		return FileTypeIT3Item
+	}
+
 	if strings.EqualFold(filepath.Base(path), ItemCombinationDataFileName) {
 		return FileTypeItemCombinationData
 	}
@@ -149,6 +192,16 @@ func (fes *fileEditorService) IsFileViewable(path string, fileInfo fs.FileInfo) 
 		return true
 	case FileTypeDrop:
 		return true
+	case FileTypeIT0Item:
+		return true
+	case FileTypeIT0ExItem:
+		return fes.hasSiblingIT0ItemFile(path)
+	case FileTypeIT1Item:
+		return true
+	case FileTypeIT2Item:
+		return true
+	case FileTypeIT3Item:
+		return true
 	case FileTypeItemCombinationData:
 		return true
 	default:
@@ -168,11 +221,18 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 		return "/file-tree/quest-file"
 	case FileTypeDrop:
 		return "/file-tree/drop-file"
+	case FileTypeIT0Item, FileTypeIT0ExItem, FileTypeIT1Item, FileTypeIT2Item, FileTypeIT3Item:
+		return "/file-tree/item-file"
 	case FileTypeItemCombinationData:
 		return "/file-tree/item-combination-data"
 	default:
 		return ""
 	}
+}
+
+func (fes *fileEditorService) hasSiblingIT0ItemFile(path string) bool {
+	_, err := os.Stat(filepath.Join(filepath.Dir(path), IT0ItemFileName))
+	return err == nil
 }
 
 func (fes *fileEditorService) ReadNPCFileData(path string) (*NPCFileData, error) {
@@ -305,6 +365,146 @@ func (fes *fileEditorService) WriteDropFileData(path string, data dropfile.DropF
 
 	_, err = file.Write(buf.Bytes())
 	return err
+}
+
+func (fes *fileEditorService) ReadIT0ItemFileData(path string) (itemfile.IT0File, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemfile.ReadIT0(file)
+}
+
+func (fes *fileEditorService) WriteIT0ItemFileData(path string, data itemfile.IT0File) error {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT0(&buf, data); err != nil {
+		return err
+	}
+
+	if _, err := itemfile.ReadIT0(bytes.NewReader(buf.Bytes())); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+func (fes *fileEditorService) ReadIT0ExItemFileData(path string) (itemfile.IT0ExFile, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemfile.ReadIT0Ex(file)
+}
+
+func (fes *fileEditorService) WriteIT0ExItemFileData(path string, data itemfile.IT0ExFile) error {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT0Ex(&buf, data); err != nil {
+		return err
+	}
+
+	if _, err := itemfile.ReadIT0Ex(bytes.NewReader(buf.Bytes())); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+func (fes *fileEditorService) ReadIT1ItemFileData(path string) (itemfile.IT1File, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemfile.ReadIT1(file)
+}
+
+func (fes *fileEditorService) WriteIT1ItemFileData(path string, data itemfile.IT1File) error {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT1(&buf, data); err != nil {
+		return err
+	}
+
+	if _, err := itemfile.ReadIT1(bytes.NewReader(buf.Bytes())); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+func (fes *fileEditorService) ReadIT2ItemFileData(path string) (itemfile.IT2File, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemfile.ReadIT2(file)
+}
+
+func (fes *fileEditorService) WriteIT2ItemFileData(path string, data itemfile.IT2File) error {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT2(&buf, data); err != nil {
+		return err
+	}
+
+	if _, err := itemfile.ReadIT2(bytes.NewReader(buf.Bytes())); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+func (fes *fileEditorService) ReadIT3ItemFileData(path string) (itemfile.IT3File, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			fes.logger.Error("Failed to close file", logger.Field{Key: "error", Value: closeErr})
+		}
+	}()
+
+	return itemfile.ReadIT3(file)
+}
+
+func (fes *fileEditorService) WriteIT3ItemFileData(path string, data itemfile.IT3File) error {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT3(&buf, data); err != nil {
+		return err
+	}
+
+	if _, err := itemfile.ReadIT3(bytes.NewReader(buf.Bytes())); err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), 0644)
 }
 
 func (fes *fileEditorService) ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error) {

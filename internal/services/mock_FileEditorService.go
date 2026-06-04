@@ -1238,6 +1238,316 @@ func (_c *MockFileEditorService_ReadFile_Call) RunAndReturn(run func(name string
 	return _c
 }
 
+// ReadIT0ExItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadIT0ExItemFileData(path string) (itemfile.IT0ExFile, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadIT0ExItemFileData")
+	}
+
+	var r0 itemfile.IT0ExFile
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemfile.IT0ExFile, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemfile.IT0ExFile); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemfile.IT0ExFile)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadIT0ExItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadIT0ExItemFileData'
+type MockFileEditorService_ReadIT0ExItemFileData_Call struct {
+	*mock.Call
+}
+
+// ReadIT0ExItemFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadIT0ExItemFileData(path interface{}) *MockFileEditorService_ReadIT0ExItemFileData_Call {
+	return &MockFileEditorService_ReadIT0ExItemFileData_Call{Call: _e.mock.On("ReadIT0ExItemFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadIT0ExItemFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadIT0ExItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT0ExItemFileData_Call) Return(iT0ExFile itemfile.IT0ExFile, err error) *MockFileEditorService_ReadIT0ExItemFileData_Call {
+	_c.Call.Return(iT0ExFile, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT0ExItemFileData_Call) RunAndReturn(run func(path string) (itemfile.IT0ExFile, error)) *MockFileEditorService_ReadIT0ExItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadIT0ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadIT0ItemFileData(path string) (itemfile.IT0File, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadIT0ItemFileData")
+	}
+
+	var r0 itemfile.IT0File
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemfile.IT0File, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemfile.IT0File); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemfile.IT0File)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadIT0ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadIT0ItemFileData'
+type MockFileEditorService_ReadIT0ItemFileData_Call struct {
+	*mock.Call
+}
+
+// ReadIT0ItemFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadIT0ItemFileData(path interface{}) *MockFileEditorService_ReadIT0ItemFileData_Call {
+	return &MockFileEditorService_ReadIT0ItemFileData_Call{Call: _e.mock.On("ReadIT0ItemFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadIT0ItemFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadIT0ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT0ItemFileData_Call) Return(iT0File itemfile.IT0File, err error) *MockFileEditorService_ReadIT0ItemFileData_Call {
+	_c.Call.Return(iT0File, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT0ItemFileData_Call) RunAndReturn(run func(path string) (itemfile.IT0File, error)) *MockFileEditorService_ReadIT0ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadIT1ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadIT1ItemFileData(path string) (itemfile.IT1File, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadIT1ItemFileData")
+	}
+
+	var r0 itemfile.IT1File
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemfile.IT1File, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemfile.IT1File); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemfile.IT1File)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadIT1ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadIT1ItemFileData'
+type MockFileEditorService_ReadIT1ItemFileData_Call struct {
+	*mock.Call
+}
+
+// ReadIT1ItemFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadIT1ItemFileData(path interface{}) *MockFileEditorService_ReadIT1ItemFileData_Call {
+	return &MockFileEditorService_ReadIT1ItemFileData_Call{Call: _e.mock.On("ReadIT1ItemFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadIT1ItemFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadIT1ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT1ItemFileData_Call) Return(iT1File itemfile.IT1File, err error) *MockFileEditorService_ReadIT1ItemFileData_Call {
+	_c.Call.Return(iT1File, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT1ItemFileData_Call) RunAndReturn(run func(path string) (itemfile.IT1File, error)) *MockFileEditorService_ReadIT1ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadIT2ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadIT2ItemFileData(path string) (itemfile.IT2File, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadIT2ItemFileData")
+	}
+
+	var r0 itemfile.IT2File
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemfile.IT2File, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemfile.IT2File); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemfile.IT2File)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadIT2ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadIT2ItemFileData'
+type MockFileEditorService_ReadIT2ItemFileData_Call struct {
+	*mock.Call
+}
+
+// ReadIT2ItemFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadIT2ItemFileData(path interface{}) *MockFileEditorService_ReadIT2ItemFileData_Call {
+	return &MockFileEditorService_ReadIT2ItemFileData_Call{Call: _e.mock.On("ReadIT2ItemFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadIT2ItemFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadIT2ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT2ItemFileData_Call) Return(iT2File itemfile.IT2File, err error) *MockFileEditorService_ReadIT2ItemFileData_Call {
+	_c.Call.Return(iT2File, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT2ItemFileData_Call) RunAndReturn(run func(path string) (itemfile.IT2File, error)) *MockFileEditorService_ReadIT2ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReadIT3ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) ReadIT3ItemFileData(path string) (itemfile.IT3File, error) {
+	ret := _mock.Called(path)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReadIT3ItemFileData")
+	}
+
+	var r0 itemfile.IT3File
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (itemfile.IT3File, error)); ok {
+		return returnFunc(path)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) itemfile.IT3File); ok {
+		r0 = returnFunc(path)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(itemfile.IT3File)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(path)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockFileEditorService_ReadIT3ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadIT3ItemFileData'
+type MockFileEditorService_ReadIT3ItemFileData_Call struct {
+	*mock.Call
+}
+
+// ReadIT3ItemFileData is a helper method to define mock.On call
+//   - path string
+func (_e *MockFileEditorService_Expecter) ReadIT3ItemFileData(path interface{}) *MockFileEditorService_ReadIT3ItemFileData_Call {
+	return &MockFileEditorService_ReadIT3ItemFileData_Call{Call: _e.mock.On("ReadIT3ItemFileData", path)}
+}
+
+func (_c *MockFileEditorService_ReadIT3ItemFileData_Call) Run(run func(path string)) *MockFileEditorService_ReadIT3ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT3ItemFileData_Call) Return(iT3File itemfile.IT3File, err error) *MockFileEditorService_ReadIT3ItemFileData_Call {
+	_c.Call.Return(iT3File, err)
+	return _c
+}
+
+func (_c *MockFileEditorService_ReadIT3ItemFileData_Call) RunAndReturn(run func(path string) (itemfile.IT3File, error)) *MockFileEditorService_ReadIT3ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadItemCombinationData provides a mock function for the type MockFileEditorService
 func (_mock *MockFileEditorService) ReadItemCombinationData(path string) (itemcombinationdata.ItemCombinationData, error) {
 	ret := _mock.Called(path)
@@ -1764,6 +2074,291 @@ func (_c *MockFileEditorService_WriteFile_Call) Return(err error) *MockFileEdito
 }
 
 func (_c *MockFileEditorService_WriteFile_Call) RunAndReturn(run func(name string, data []byte, perm fs.FileMode) error) *MockFileEditorService_WriteFile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteIT0ExItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteIT0ExItemFileData(path string, data itemfile.IT0ExFile) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteIT0ExItemFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemfile.IT0ExFile) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteIT0ExItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteIT0ExItemFileData'
+type MockFileEditorService_WriteIT0ExItemFileData_Call struct {
+	*mock.Call
+}
+
+// WriteIT0ExItemFileData is a helper method to define mock.On call
+//   - path string
+//   - data itemfile.IT0ExFile
+func (_e *MockFileEditorService_Expecter) WriteIT0ExItemFileData(path interface{}, data interface{}) *MockFileEditorService_WriteIT0ExItemFileData_Call {
+	return &MockFileEditorService_WriteIT0ExItemFileData_Call{Call: _e.mock.On("WriteIT0ExItemFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteIT0ExItemFileData_Call) Run(run func(path string, data itemfile.IT0ExFile)) *MockFileEditorService_WriteIT0ExItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemfile.IT0ExFile
+		if args[1] != nil {
+			arg1 = args[1].(itemfile.IT0ExFile)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT0ExItemFileData_Call) Return(err error) *MockFileEditorService_WriteIT0ExItemFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT0ExItemFileData_Call) RunAndReturn(run func(path string, data itemfile.IT0ExFile) error) *MockFileEditorService_WriteIT0ExItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteIT0ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteIT0ItemFileData(path string, data itemfile.IT0File) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteIT0ItemFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemfile.IT0File) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteIT0ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteIT0ItemFileData'
+type MockFileEditorService_WriteIT0ItemFileData_Call struct {
+	*mock.Call
+}
+
+// WriteIT0ItemFileData is a helper method to define mock.On call
+//   - path string
+//   - data itemfile.IT0File
+func (_e *MockFileEditorService_Expecter) WriteIT0ItemFileData(path interface{}, data interface{}) *MockFileEditorService_WriteIT0ItemFileData_Call {
+	return &MockFileEditorService_WriteIT0ItemFileData_Call{Call: _e.mock.On("WriteIT0ItemFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteIT0ItemFileData_Call) Run(run func(path string, data itemfile.IT0File)) *MockFileEditorService_WriteIT0ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemfile.IT0File
+		if args[1] != nil {
+			arg1 = args[1].(itemfile.IT0File)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT0ItemFileData_Call) Return(err error) *MockFileEditorService_WriteIT0ItemFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT0ItemFileData_Call) RunAndReturn(run func(path string, data itemfile.IT0File) error) *MockFileEditorService_WriteIT0ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteIT1ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteIT1ItemFileData(path string, data itemfile.IT1File) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteIT1ItemFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemfile.IT1File) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteIT1ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteIT1ItemFileData'
+type MockFileEditorService_WriteIT1ItemFileData_Call struct {
+	*mock.Call
+}
+
+// WriteIT1ItemFileData is a helper method to define mock.On call
+//   - path string
+//   - data itemfile.IT1File
+func (_e *MockFileEditorService_Expecter) WriteIT1ItemFileData(path interface{}, data interface{}) *MockFileEditorService_WriteIT1ItemFileData_Call {
+	return &MockFileEditorService_WriteIT1ItemFileData_Call{Call: _e.mock.On("WriteIT1ItemFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteIT1ItemFileData_Call) Run(run func(path string, data itemfile.IT1File)) *MockFileEditorService_WriteIT1ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemfile.IT1File
+		if args[1] != nil {
+			arg1 = args[1].(itemfile.IT1File)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT1ItemFileData_Call) Return(err error) *MockFileEditorService_WriteIT1ItemFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT1ItemFileData_Call) RunAndReturn(run func(path string, data itemfile.IT1File) error) *MockFileEditorService_WriteIT1ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteIT2ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteIT2ItemFileData(path string, data itemfile.IT2File) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteIT2ItemFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemfile.IT2File) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteIT2ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteIT2ItemFileData'
+type MockFileEditorService_WriteIT2ItemFileData_Call struct {
+	*mock.Call
+}
+
+// WriteIT2ItemFileData is a helper method to define mock.On call
+//   - path string
+//   - data itemfile.IT2File
+func (_e *MockFileEditorService_Expecter) WriteIT2ItemFileData(path interface{}, data interface{}) *MockFileEditorService_WriteIT2ItemFileData_Call {
+	return &MockFileEditorService_WriteIT2ItemFileData_Call{Call: _e.mock.On("WriteIT2ItemFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteIT2ItemFileData_Call) Run(run func(path string, data itemfile.IT2File)) *MockFileEditorService_WriteIT2ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemfile.IT2File
+		if args[1] != nil {
+			arg1 = args[1].(itemfile.IT2File)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT2ItemFileData_Call) Return(err error) *MockFileEditorService_WriteIT2ItemFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT2ItemFileData_Call) RunAndReturn(run func(path string, data itemfile.IT2File) error) *MockFileEditorService_WriteIT2ItemFileData_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WriteIT3ItemFileData provides a mock function for the type MockFileEditorService
+func (_mock *MockFileEditorService) WriteIT3ItemFileData(path string, data itemfile.IT3File) error {
+	ret := _mock.Called(path, data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteIT3ItemFileData")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(string, itemfile.IT3File) error); ok {
+		r0 = returnFunc(path, data)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFileEditorService_WriteIT3ItemFileData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WriteIT3ItemFileData'
+type MockFileEditorService_WriteIT3ItemFileData_Call struct {
+	*mock.Call
+}
+
+// WriteIT3ItemFileData is a helper method to define mock.On call
+//   - path string
+//   - data itemfile.IT3File
+func (_e *MockFileEditorService_Expecter) WriteIT3ItemFileData(path interface{}, data interface{}) *MockFileEditorService_WriteIT3ItemFileData_Call {
+	return &MockFileEditorService_WriteIT3ItemFileData_Call{Call: _e.mock.On("WriteIT3ItemFileData", path, data)}
+}
+
+func (_c *MockFileEditorService_WriteIT3ItemFileData_Call) Run(run func(path string, data itemfile.IT3File)) *MockFileEditorService_WriteIT3ItemFileData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 itemfile.IT3File
+		if args[1] != nil {
+			arg1 = args[1].(itemfile.IT3File)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT3ItemFileData_Call) Return(err error) *MockFileEditorService_WriteIT3ItemFileData_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFileEditorService_WriteIT3ItemFileData_Call) RunAndReturn(run func(path string, data itemfile.IT3File) error) *MockFileEditorService_WriteIT3ItemFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }

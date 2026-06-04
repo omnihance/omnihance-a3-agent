@@ -31,6 +31,7 @@ export const queryKeys = {
   npcFile: (path: string) => ['npc-file', path] as const,
   spawnFile: (path: string) => ['spawn-file', path] as const,
   dropFile: (path: string) => ['drop-file', path] as const,
+  itemFile: (path: string) => ['item-file', path] as const,
   itemCombinationDataFile: (path: string) =>
     ['item-combination-data-file', path] as const,
   questFile: (path: string) => ['quest-file', path] as const,

@@ -27,6 +27,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
+	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -42,6 +43,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Put("/spawn-file", s.handleUpdateSpawnFile)
 		r.Get("/drop-file", s.handleDropFileData)
 		r.Put("/drop-file", s.handleUpdateDropFile)
+		r.Get("/item-file", s.handleItemFileData)
+		r.Put("/item-file", s.handleUpdateItemFile)
 		r.Get("/item-combination-data", s.handleItemCombinationDataFileData)
 		r.Put("/item-combination-data", s.handleUpdateItemCombinationDataFile)
 		r.Get("/quest-file", s.handleQuestFileData)
@@ -1182,6 +1185,1031 @@ func (s *Server) handleUpdateDropFile(w http.ResponseWriter, r *http.Request) {
 }
 
 const (
+	itemFileTypeIT0   = "it0"
+	itemFileTypeIT0Ex = "it0ex"
+	itemFileTypeIT1   = "it1"
+	itemFileTypeIT2   = "it2"
+	itemFileTypeIT3   = "it3"
+	itemFileNameSize  = 32
+)
+
+func (s *Server) handleItemFileData(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Path parameter is required"},
+		})
+		return
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return
+	}
+
+	if info.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return
+	}
+
+	fileType := s.fileEditor.GetFileType(cleanPath, info)
+	if !isItemFileType(fileType) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"File is not an item file"},
+		})
+		return
+	}
+
+	if !s.fileEditor.IsFileViewable(cleanPath, info) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"IT0Ex item file requires sibling 0 file"},
+		})
+		return
+	}
+
+	apiData, err := s.readItemFileAPIData(cleanPath, fileType)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to read item file data: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, apiData)
+}
+
+func (s *Server) handleUpdateItemFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	ctx, fileType, ok := s.validateItemFileUpdateRequest(w, r)
+	if !ok {
+		return
+	}
+
+	var req ItemFileAPIData
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if expectedType := itemFileAPIType(fileType); req.ItemFileType != expectedType {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"item_file_type must be " + expectedType},
+		})
+		return
+	}
+
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		currentData, writeFile, validationErrs, err := s.buildItemFileUpdate(ctx.cleanPath, fileType, req)
+		if err != nil {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+				"errorCode": constants.ErrorCodeFileReadError,
+				"context":   "file-system",
+				"errors":    []string{"Failed to read item file data: " + err.Error()},
+			})
+			return nil, nil, false
+		}
+
+		if len(validationErrs) > 0 {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+				"errorCode": constants.ErrorCodeBadRequest,
+				"context":   "file-system",
+				"errors":    validationErrs,
+			})
+			return nil, nil, false
+		}
+
+		return currentData, writeFile, true
+	})
+	if !ok {
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":     "File updated successfully",
+		"revision_id": revisionID,
+	})
+}
+
+func (s *Server) validateItemFileUpdateRequest(w http.ResponseWriter, r *http.Request) (*fileUpdateContext, services.FileType, bool) {
+	userID, ok := utils.GetUserIdFromContext(r.Context())
+	if !ok {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
+			"errorCode": constants.ErrorCodeUnauthorized,
+			"context":   "file-system",
+			"errors":    []string{"User ID not found in context"},
+		})
+		return nil, "", false
+	}
+
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Path parameter is required"},
+		})
+		return nil, "", false
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+				"errorCode": constants.ErrorCodeNotFound,
+				"context":   "file-system",
+				"errors":    []string{"Path not found"},
+			})
+			return nil, "", false
+		}
+
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Cannot read file: " + err.Error()},
+		})
+		return nil, "", false
+	}
+
+	if info.IsDir() {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodePathIsDirectory,
+			"context":   "file-system",
+			"errors":    []string{"Path is a directory, not a file"},
+		})
+		return nil, "", false
+	}
+
+	fileType := s.fileEditor.GetFileType(cleanPath, info)
+	if !isItemFileType(fileType) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileNotViewable,
+			"context":   "file-system",
+			"errors":    []string{"File is not an item file"},
+		})
+		return nil, "", false
+	}
+
+	if !s.fileEditor.IsFileEditable(cleanPath, info) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"File is not editable"},
+		})
+		return nil, "", false
+	}
+
+	return &fileUpdateContext{
+		userID:    userID,
+		cleanPath: cleanPath,
+		info:      info,
+		fileID:    utils.GenerateMD5Hash(cleanPath),
+	}, fileType, true
+}
+
+func (s *Server) readItemFileAPIData(path string, fileType services.FileType) (ItemFileAPIData, error) {
+	switch fileType {
+	case services.FileTypeIT0Item:
+		data, err := s.fileEditor.ReadIT0ItemFileData(path)
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		return it0ItemFileToAPIData(data), nil
+	case services.FileTypeIT0ExItem:
+		data, err := s.fileEditor.ReadIT0ExItemFileData(path)
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		baseData, err := s.fileEditor.ReadIT0ItemFileData(siblingIT0ItemFilePath(path))
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		return it0ExItemFileToAPIData(data, baseData)
+	case services.FileTypeIT1Item:
+		data, err := s.fileEditor.ReadIT1ItemFileData(path)
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		return it1ItemFileToAPIData(data), nil
+	case services.FileTypeIT2Item:
+		data, err := s.fileEditor.ReadIT2ItemFileData(path)
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		return it2ItemFileToAPIData(data), nil
+	case services.FileTypeIT3Item:
+		data, err := s.fileEditor.ReadIT3ItemFileData(path)
+		if err != nil {
+			return ItemFileAPIData{}, err
+		}
+
+		return it3ItemFileToAPIData(data), nil
+	default:
+		return ItemFileAPIData{}, fmt.Errorf("unsupported item file type %s", fileType)
+	}
+}
+
+func (s *Server) buildItemFileUpdate(path string, fileType services.FileType, req ItemFileAPIData) ([]byte, func() error, []string, error) {
+	switch fileType {
+	case services.FileTypeIT0Item:
+		existing, err := s.fileEditor.ReadIT0ItemFileData(path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		next, validationErrs := it0ItemFileFromAPIData(req, existing)
+		if len(validationErrs) > 0 {
+			return nil, nil, validationErrs, nil
+		}
+
+		currentData, err := serializeIT0ItemFile(next)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return currentData, func() error {
+			return s.fileEditor.WriteIT0ItemFileData(path, next)
+		}, nil, nil
+	case services.FileTypeIT0ExItem:
+		existingBase, err := s.fileEditor.ReadIT0ItemFileData(siblingIT0ItemFilePath(path))
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		next, validationErrs := it0ExItemFileFromAPIData(req, existingBase)
+		if len(validationErrs) > 0 {
+			return nil, nil, validationErrs, nil
+		}
+
+		currentData, err := serializeIT0ExItemFile(next)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return currentData, func() error {
+			return s.fileEditor.WriteIT0ExItemFileData(path, next)
+		}, nil, nil
+	case services.FileTypeIT1Item:
+		existing, err := s.fileEditor.ReadIT1ItemFileData(path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		next, validationErrs := it1ItemFileFromAPIData(req, existing)
+		if len(validationErrs) > 0 {
+			return nil, nil, validationErrs, nil
+		}
+
+		currentData, err := serializeIT1ItemFile(next)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return currentData, func() error {
+			return s.fileEditor.WriteIT1ItemFileData(path, next)
+		}, nil, nil
+	case services.FileTypeIT2Item:
+		existing, err := s.fileEditor.ReadIT2ItemFileData(path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		next, validationErrs := it2ItemFileFromAPIData(req, existing)
+		if len(validationErrs) > 0 {
+			return nil, nil, validationErrs, nil
+		}
+
+		currentData, err := serializeIT2ItemFile(next)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return currentData, func() error {
+			return s.fileEditor.WriteIT2ItemFileData(path, next)
+		}, nil, nil
+	case services.FileTypeIT3Item:
+		existing, err := s.fileEditor.ReadIT3ItemFileData(path)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		next, validationErrs := it3ItemFileFromAPIData(req, existing)
+		if len(validationErrs) > 0 {
+			return nil, nil, validationErrs, nil
+		}
+
+		currentData, err := serializeIT3ItemFile(next)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		return currentData, func() error {
+			return s.fileEditor.WriteIT3ItemFileData(path, next)
+		}, nil, nil
+	default:
+		return nil, nil, nil, fmt.Errorf("unsupported item file type %s", fileType)
+	}
+}
+
+func it0ItemFileToAPIData(data itemfile.IT0File) ItemFileAPIData {
+	items := make([]ItemFileItemAPIData, len(data))
+	for i, raw := range data {
+		items[i] = ItemFileItemAPIData{
+			ItemCodeBase: uint16Ptr(raw.ItemCodeBase),
+			Row:          uint16Ptr(raw.Row),
+			Slot:         uint16Ptr(raw.Slot),
+			Type:         uint16Ptr(raw.Type),
+			ItemCode:     uint32Ptr((uint32(raw.ItemCodeBase) << 10) + uint32(raw.Row)),
+			Name:         raw.GetName(),
+			NPCPrice:     uint32Ptr(raw.NPCPrice),
+			Levels:       itemFileLevelsToAPIData(raw.Levels[:], 1),
+		}
+	}
+
+	return ItemFileAPIData{ItemFileType: itemFileTypeIT0, Items: items}
+}
+
+func it0ExItemFileToAPIData(data itemfile.IT0ExFile, baseData itemfile.IT0File) (ItemFileAPIData, error) {
+	baseByRow := make(map[uint16]itemfile.IT0Raw, len(baseData))
+	for _, raw := range baseData {
+		baseByRow[raw.Row] = raw
+	}
+
+	items := make([]ItemFileItemAPIData, len(data))
+	for i, raw := range data {
+		baseRaw, ok := baseByRow[raw.Row]
+		if !ok {
+			return ItemFileAPIData{}, fmt.Errorf("IT0Ex row %d references missing IT0 base item", raw.Row)
+		}
+
+		items[i] = ItemFileItemAPIData{
+			ItemCodeBase: uint16Ptr(baseRaw.ItemCodeBase),
+			Row:          uint16Ptr(raw.Row),
+			Slot:         uint16Ptr(baseRaw.Slot),
+			Type:         uint16Ptr(baseRaw.Type),
+			ItemCode:     uint32Ptr((uint32(baseRaw.ItemCodeBase) << 10) + uint32(baseRaw.Row)),
+			Name:         baseRaw.GetName(),
+			Levels:       itemFileLevelsToAPIData(raw.Levels[:], 11),
+		}
+	}
+
+	return ItemFileAPIData{
+		ItemFileType: itemFileTypeIT0Ex,
+		Items:        items,
+		BaseItems:    it0BaseItemsToAPIData(baseData),
+	}, nil
+}
+
+func it1ItemFileToAPIData(data itemfile.IT1File) ItemFileAPIData {
+	items := make([]ItemFileItemAPIData, len(data))
+	for i, raw := range data {
+		items[i] = ItemFileItemAPIData{
+			Row:           uint16Ptr(raw.Row),
+			Type:          uint16Ptr(raw.Type),
+			ItemCode:      uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
+			Name:          raw.GetName(),
+			NPCPrice:      uint32Ptr(raw.NPCPrice),
+			RequiredLevel: uint16Ptr(raw.RequiredLevel),
+			Attribute:     uint16Ptr(raw.Attribute),
+			BlueOption:    uint16Ptr(raw.BlueOption),
+			RedOption:     uint16Ptr(raw.RedOption),
+			GreyOption:    uint16Ptr(raw.GreyOption),
+		}
+	}
+
+	return ItemFileAPIData{ItemFileType: itemFileTypeIT1, Items: items}
+}
+
+func it2ItemFileToAPIData(data itemfile.IT2File) ItemFileAPIData {
+	items := make([]ItemFileItemAPIData, len(data))
+	for i, raw := range data {
+		items[i] = ItemFileItemAPIData{
+			Row:           uint16Ptr(raw.Row),
+			Type:          uint16Ptr(raw.Type),
+			ItemCode:      uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
+			Name:          raw.GetName(),
+			NPCPrice:      uint32Ptr(raw.NPCPrice),
+			Class:         uint16Ptr(raw.Class),
+			RequiredLevel: uint16Ptr(raw.RequiredLevel),
+			SkillLevel:    uint16Ptr(raw.SkillLevel),
+		}
+	}
+
+	return ItemFileAPIData{ItemFileType: itemFileTypeIT2, Items: items}
+}
+
+func it3ItemFileToAPIData(data itemfile.IT3File) ItemFileAPIData {
+	items := make([]ItemFileItemAPIData, len(data))
+	for i, raw := range data {
+		items[i] = ItemFileItemAPIData{
+			Row:      uint16Ptr(raw.Row),
+			Type:     uint16Ptr(raw.Type),
+			ItemCode: uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
+			Name:     raw.GetName(),
+			NPCPrice: uint32Ptr(raw.NPCPrice),
+		}
+	}
+
+	return ItemFileAPIData{ItemFileType: itemFileTypeIT3, Items: items}
+}
+
+func it0BaseItemsToAPIData(data itemfile.IT0File) []ItemFileBaseItemAPIData {
+	baseItems := make([]ItemFileBaseItemAPIData, len(data))
+	for i, raw := range data {
+		baseItems[i] = ItemFileBaseItemAPIData{
+			Row:      uint16Ptr(raw.Row),
+			ItemCode: uint32Ptr((uint32(raw.ItemCodeBase) << 10) + uint32(raw.Row)),
+			Name:     raw.GetName(),
+		}
+	}
+
+	return baseItems
+}
+
+func it0ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT0File) (itemfile.IT0File, []string) {
+	errs := validateFixedItemRows(req.Items, len(existing), "IT0")
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	data := append(itemfile.IT0File(nil), existing...)
+	rowToIndex, rowErrs := it0RowIndexMap(existing, "IT0")
+	errs = append(errs, rowErrs...)
+	seenRows := map[uint16]bool{}
+	for i, apiItem := range req.Items {
+		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("items[%d].row must reference an existing IT0 row", i))
+			continue
+		}
+
+		raw := data[rowToIndex[row]]
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		} else {
+			raw.Name = name
+		}
+
+		if apiItem.NPCPrice == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].npc_price is required", i))
+		} else {
+			raw.NPCPrice = *apiItem.NPCPrice
+		}
+
+		if apiItem.Slot == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].slot is required", i))
+		} else {
+			raw.Slot = *apiItem.Slot
+		}
+
+		if len(apiItem.Levels) != len(raw.Levels) {
+			errs = append(errs, fmt.Sprintf("items[%d].levels must contain %d levels", i, len(raw.Levels)))
+		} else {
+			for j := range raw.Levels {
+				raw.Levels[j] = itemFileLevelFromAPIData(apiItem.Levels[j], fmt.Sprintf("items[%d].levels[%d]", i, j), &errs)
+			}
+		}
+
+		data[rowToIndex[row]] = raw
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return data, nil
+}
+
+func it0ExItemFileFromAPIData(req ItemFileAPIData, baseData itemfile.IT0File) (itemfile.IT0ExFile, []string) {
+	baseRows := make(map[uint16]bool, len(baseData))
+	for _, raw := range baseData {
+		baseRows[raw.Row] = true
+	}
+
+	errs := []string{}
+	data := make(itemfile.IT0ExFile, len(req.Items))
+	seenRows := map[uint16]bool{}
+	for i, apiItem := range req.Items {
+		if apiItem.Row == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].row is required", i))
+			continue
+		}
+
+		row := *apiItem.Row
+		if seenRows[row] {
+			errs = append(errs, fmt.Sprintf("items[%d].row duplicates IT0Ex row %d", i, row))
+			continue
+		}
+
+		seenRows[row] = true
+		if !baseRows[row] {
+			errs = append(errs, fmt.Sprintf("items[%d].row must reference an existing IT0 row", i))
+			continue
+		}
+
+		raw := itemfile.IT0ExRaw{Row: row}
+		if len(apiItem.Levels) != len(raw.Levels) {
+			errs = append(errs, fmt.Sprintf("items[%d].levels must contain %d levels", i, len(raw.Levels)))
+		} else {
+			for j := range raw.Levels {
+				raw.Levels[j] = itemFileLevelFromAPIData(apiItem.Levels[j], fmt.Sprintf("items[%d].levels[%d]", i, j), &errs)
+			}
+		}
+
+		data[i] = raw
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return data, nil
+}
+
+func it1ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT1File) (itemfile.IT1File, []string) {
+	errs := validateFixedItemRows(req.Items, len(existing), "IT1")
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	data := append(itemfile.IT1File(nil), existing...)
+	rowToIndex, rowErrs := it1RowIndexMap(existing, "IT1")
+	errs = append(errs, rowErrs...)
+	seenRows := map[uint16]bool{}
+	for i, apiItem := range req.Items {
+		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("items[%d].row must reference an existing IT1 row", i))
+			continue
+		}
+
+		raw := data[rowToIndex[row]]
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		} else {
+			raw.Name = name
+		}
+
+		if apiItem.NPCPrice == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].npc_price is required", i))
+		} else {
+			raw.NPCPrice = *apiItem.NPCPrice
+		}
+
+		if apiItem.RequiredLevel == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].required_level is required", i))
+		} else {
+			raw.RequiredLevel = *apiItem.RequiredLevel
+		}
+
+		if apiItem.Attribute == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].attribute is required", i))
+		} else {
+			raw.Attribute = *apiItem.Attribute
+		}
+
+		if apiItem.BlueOption == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].blue_option is required", i))
+		} else {
+			raw.BlueOption = *apiItem.BlueOption
+		}
+
+		if apiItem.RedOption == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].red_option is required", i))
+		} else {
+			raw.RedOption = *apiItem.RedOption
+		}
+
+		if apiItem.GreyOption == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].grey_option is required", i))
+		} else {
+			raw.GreyOption = *apiItem.GreyOption
+		}
+
+		data[rowToIndex[row]] = raw
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return data, nil
+}
+
+func it2ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT2File) (itemfile.IT2File, []string) {
+	errs := validateFixedItemRows(req.Items, len(existing), "IT2")
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	data := append(itemfile.IT2File(nil), existing...)
+	rowToIndex, rowErrs := it2RowIndexMap(existing, "IT2")
+	errs = append(errs, rowErrs...)
+	seenRows := map[uint16]bool{}
+	for i, apiItem := range req.Items {
+		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("items[%d].row must reference an existing IT2 row", i))
+			continue
+		}
+
+		raw := data[rowToIndex[row]]
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		} else {
+			raw.Name = name
+		}
+
+		if apiItem.NPCPrice == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].npc_price is required", i))
+		} else {
+			raw.NPCPrice = *apiItem.NPCPrice
+		}
+
+		if apiItem.Class == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].class is required", i))
+		} else {
+			raw.Class = *apiItem.Class
+		}
+
+		if apiItem.RequiredLevel == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].required_level is required", i))
+		} else {
+			raw.RequiredLevel = *apiItem.RequiredLevel
+		}
+
+		if apiItem.SkillLevel == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].skill_level is required", i))
+		} else {
+			raw.SkillLevel = *apiItem.SkillLevel
+		}
+
+		data[rowToIndex[row]] = raw
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return data, nil
+}
+
+func it3ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT3File) (itemfile.IT3File, []string) {
+	errs := validateFixedItemRows(req.Items, len(existing), "IT3")
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	data := append(itemfile.IT3File(nil), existing...)
+	rowToIndex, rowErrs := it3RowIndexMap(existing, "IT3")
+	errs = append(errs, rowErrs...)
+	seenRows := map[uint16]bool{}
+	for i, apiItem := range req.Items {
+		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
+		if !ok {
+			errs = append(errs, fmt.Sprintf("items[%d].row must reference an existing IT3 row", i))
+			continue
+		}
+
+		raw := data[rowToIndex[row]]
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		} else {
+			raw.Name = name
+		}
+
+		if apiItem.NPCPrice == nil {
+			errs = append(errs, fmt.Sprintf("items[%d].npc_price is required", i))
+		} else {
+			raw.NPCPrice = *apiItem.NPCPrice
+		}
+
+		data[rowToIndex[row]] = raw
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return data, nil
+}
+
+func validateFixedItemRows(items []ItemFileItemAPIData, existingCount int, label string) []string {
+	if len(items) != existingCount {
+		return []string{fmt.Sprintf("%s item file must contain exactly %d items", label, existingCount)}
+	}
+
+	return nil
+}
+
+func validateExistingItemRow(rowValue *uint16, rowToIndex map[uint16]int, seenRows map[uint16]bool) (uint16, bool) {
+	if rowValue == nil {
+		return 0, false
+	}
+
+	row := *rowValue
+	if _, ok := rowToIndex[row]; !ok {
+		return row, false
+	}
+
+	if seenRows[row] {
+		return row, false
+	}
+
+	seenRows[row] = true
+	return row, true
+}
+
+func itemFileLevelsToAPIData(levels []itemfile.IT0RawLevelProperties, firstLevel uint8) []ItemFileLevelAPIData {
+	apiLevels := make([]ItemFileLevelAPIData, len(levels))
+	for i, level := range levels {
+		apiLevels[i] = ItemFileLevelAPIData{
+			Level:               uint8Ptr(firstLevel + uint8(i)),
+			AdditionalAttribute: uint16Ptr(level.AdditionalAttribute),
+			Strength:            uint16Ptr(level.Strength),
+			Dexterity:           uint16Ptr(level.Dexterity),
+			Intelligence:        uint16Ptr(level.Intelligence),
+			Attribute:           uint16Ptr(level.Attribute),
+			AttributeRange:      uint16Ptr(level.Range),
+			BlueOption:          uint16Ptr(level.BlueOption),
+			RedOption:           uint16Ptr(level.RedOption),
+			GreyOption:          uint16Ptr(level.GreyOption),
+		}
+	}
+
+	return apiLevels
+}
+
+func itemFileLevelFromAPIData(apiLevel ItemFileLevelAPIData, fieldPath string, errs *[]string) itemfile.IT0RawLevelProperties {
+	level := itemfile.IT0RawLevelProperties{}
+	if apiLevel.AdditionalAttribute == nil {
+		*errs = append(*errs, fieldPath+".additional_attribute is required")
+	} else {
+		level.AdditionalAttribute = *apiLevel.AdditionalAttribute
+	}
+
+	if apiLevel.Strength == nil {
+		*errs = append(*errs, fieldPath+".strength is required")
+	} else {
+		level.Strength = *apiLevel.Strength
+	}
+
+	if apiLevel.Dexterity == nil {
+		*errs = append(*errs, fieldPath+".dexterity is required")
+	} else {
+		level.Dexterity = *apiLevel.Dexterity
+	}
+
+	if apiLevel.Intelligence == nil {
+		*errs = append(*errs, fieldPath+".intelligence is required")
+	} else {
+		level.Intelligence = *apiLevel.Intelligence
+	}
+
+	if apiLevel.Attribute == nil {
+		*errs = append(*errs, fieldPath+".attribute is required")
+	} else {
+		level.Attribute = *apiLevel.Attribute
+	}
+
+	if apiLevel.AttributeRange == nil {
+		*errs = append(*errs, fieldPath+".attribute_range is required")
+	} else {
+		level.Range = *apiLevel.AttributeRange
+	}
+
+	if apiLevel.BlueOption == nil {
+		*errs = append(*errs, fieldPath+".blue_option is required")
+	} else {
+		level.BlueOption = *apiLevel.BlueOption
+	}
+
+	if apiLevel.RedOption == nil {
+		*errs = append(*errs, fieldPath+".red_option is required")
+	} else {
+		level.RedOption = *apiLevel.RedOption
+	}
+
+	if apiLevel.GreyOption == nil {
+		*errs = append(*errs, fieldPath+".grey_option is required")
+	} else {
+		level.GreyOption = *apiLevel.GreyOption
+	}
+
+	return level
+}
+
+func itemFileNameFromAPIData(existingName [itemFileNameSize]byte, nextName string) ([itemFileNameSize]byte, error) {
+	if nextName == externalUtils.ReadStringFromBytes(existingName[:]) {
+		return existingName, nil
+	}
+
+	if len([]byte(nextName)) > itemFileNameSize {
+		return [itemFileNameSize]byte{}, fmt.Errorf("item name too long")
+	}
+
+	var name [itemFileNameSize]byte
+	copy(name[:], []byte(nextName))
+	return name, nil
+}
+
+func it0RowIndexMap(data itemfile.IT0File, label string) (map[uint16]int, []string) {
+	rowToIndex := make(map[uint16]int, len(data))
+	errs := []string{}
+	for i, raw := range data {
+		if _, exists := rowToIndex[raw.Row]; exists {
+			errs = append(errs, fmt.Sprintf("%s row %d is duplicated in the existing file", label, raw.Row))
+			continue
+		}
+
+		rowToIndex[raw.Row] = i
+	}
+
+	return rowToIndex, errs
+}
+
+func it1RowIndexMap(data itemfile.IT1File, label string) (map[uint16]int, []string) {
+	rowToIndex := make(map[uint16]int, len(data))
+	errs := []string{}
+	for i, raw := range data {
+		if _, exists := rowToIndex[raw.Row]; exists {
+			errs = append(errs, fmt.Sprintf("%s row %d is duplicated in the existing file", label, raw.Row))
+			continue
+		}
+
+		rowToIndex[raw.Row] = i
+	}
+
+	return rowToIndex, errs
+}
+
+func it2RowIndexMap(data itemfile.IT2File, label string) (map[uint16]int, []string) {
+	rowToIndex := make(map[uint16]int, len(data))
+	errs := []string{}
+	for i, raw := range data {
+		if _, exists := rowToIndex[raw.Row]; exists {
+			errs = append(errs, fmt.Sprintf("%s row %d is duplicated in the existing file", label, raw.Row))
+			continue
+		}
+
+		rowToIndex[raw.Row] = i
+	}
+
+	return rowToIndex, errs
+}
+
+func it3RowIndexMap(data itemfile.IT3File, label string) (map[uint16]int, []string) {
+	rowToIndex := make(map[uint16]int, len(data))
+	errs := []string{}
+	for i, raw := range data {
+		if _, exists := rowToIndex[raw.Row]; exists {
+			errs = append(errs, fmt.Sprintf("%s row %d is duplicated in the existing file", label, raw.Row))
+			continue
+		}
+
+		rowToIndex[raw.Row] = i
+	}
+
+	return rowToIndex, errs
+}
+
+func serializeIT0ItemFile(data itemfile.IT0File) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT0(&buf, data); err != nil {
+		return nil, err
+	}
+
+	if _, err := itemfile.ReadIT0(bytes.NewReader(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func serializeIT0ExItemFile(data itemfile.IT0ExFile) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT0Ex(&buf, data); err != nil {
+		return nil, err
+	}
+
+	if _, err := itemfile.ReadIT0Ex(bytes.NewReader(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func serializeIT1ItemFile(data itemfile.IT1File) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT1(&buf, data); err != nil {
+		return nil, err
+	}
+
+	if _, err := itemfile.ReadIT1(bytes.NewReader(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func serializeIT2ItemFile(data itemfile.IT2File) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT2(&buf, data); err != nil {
+		return nil, err
+	}
+
+	if _, err := itemfile.ReadIT2(bytes.NewReader(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func serializeIT3ItemFile(data itemfile.IT3File) ([]byte, error) {
+	var buf bytes.Buffer
+	if err := itemfile.WriteIT3(&buf, data); err != nil {
+		return nil, err
+	}
+
+	if _, err := itemfile.ReadIT3(bytes.NewReader(buf.Bytes())); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func itemFileAPIType(fileType services.FileType) string {
+	switch fileType {
+	case services.FileTypeIT0Item:
+		return itemFileTypeIT0
+	case services.FileTypeIT0ExItem:
+		return itemFileTypeIT0Ex
+	case services.FileTypeIT1Item:
+		return itemFileTypeIT1
+	case services.FileTypeIT2Item:
+		return itemFileTypeIT2
+	case services.FileTypeIT3Item:
+		return itemFileTypeIT3
+	default:
+		return ""
+	}
+}
+
+func isItemFileType(fileType services.FileType) bool {
+	switch fileType {
+	case services.FileTypeIT0Item, services.FileTypeIT0ExItem, services.FileTypeIT1Item, services.FileTypeIT2Item, services.FileTypeIT3Item:
+		return true
+	default:
+		return false
+	}
+}
+
+func siblingIT0ItemFilePath(path string) string {
+	return filepath.Join(filepath.Dir(path), services.IT0ItemFileName)
+}
+
+const (
 	itemCombinationIngredientCount = 10
 	maxItemCombinationSuccessRate  = 120
 )
@@ -2261,6 +3289,14 @@ func uint16Ptr(value uint16) *uint16 {
 	return &value
 }
 
+func uint8Ptr(value uint8) *uint8 {
+	return &value
+}
+
+func uint32Ptr(value uint32) *uint32 {
+	return &value
+}
+
 type FileNode struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
@@ -2330,6 +3366,49 @@ type DropAPIData struct {
 	ItemCode  *uint16 `json:"item_code" validate:"required"`
 	DropRate  *uint16 `json:"drop_rate" validate:"required"`
 	DropGroup *uint16 `json:"drop_group" validate:"required"`
+}
+
+type ItemFileAPIData struct {
+	ItemFileType string                    `json:"item_file_type"`
+	Items        []ItemFileItemAPIData     `json:"items"`
+	BaseItems    []ItemFileBaseItemAPIData `json:"base_items,omitempty"`
+}
+
+type ItemFileItemAPIData struct {
+	ItemCodeBase  *uint16                `json:"item_code_base,omitempty"`
+	Row           *uint16                `json:"row,omitempty"`
+	Slot          *uint16                `json:"slot,omitempty"`
+	Type          *uint16                `json:"type,omitempty"`
+	ItemCode      *uint32                `json:"item_code,omitempty"`
+	Name          string                 `json:"name"`
+	NPCPrice      *uint32                `json:"npc_price,omitempty"`
+	RequiredLevel *uint16                `json:"required_level,omitempty"`
+	Attribute     *uint16                `json:"attribute,omitempty"`
+	BlueOption    *uint16                `json:"blue_option,omitempty"`
+	RedOption     *uint16                `json:"red_option,omitempty"`
+	GreyOption    *uint16                `json:"grey_option,omitempty"`
+	Class         *uint16                `json:"class,omitempty"`
+	SkillLevel    *uint16                `json:"skill_level,omitempty"`
+	Levels        []ItemFileLevelAPIData `json:"levels,omitempty"`
+}
+
+type ItemFileLevelAPIData struct {
+	Level               *uint8  `json:"level,omitempty"`
+	AdditionalAttribute *uint16 `json:"additional_attribute,omitempty"`
+	Strength            *uint16 `json:"strength,omitempty"`
+	Dexterity           *uint16 `json:"dexterity,omitempty"`
+	Intelligence        *uint16 `json:"intelligence,omitempty"`
+	Attribute           *uint16 `json:"attribute,omitempty"`
+	AttributeRange      *uint16 `json:"attribute_range,omitempty"`
+	BlueOption          *uint16 `json:"blue_option,omitempty"`
+	RedOption           *uint16 `json:"red_option,omitempty"`
+	GreyOption          *uint16 `json:"grey_option,omitempty"`
+}
+
+type ItemFileBaseItemAPIData struct {
+	Row      *uint16 `json:"row,omitempty"`
+	ItemCode *uint32 `json:"item_code,omitempty"`
+	Name     string  `json:"name"`
 }
 
 type ItemCombinationDataFileAPIData struct {

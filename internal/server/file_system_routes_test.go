@@ -8,6 +8,7 @@ import (
 
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
+	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
 )
 
@@ -301,6 +302,210 @@ func TestItemCombinationAPIDataDefaultsNewRowUnknownsToZero(t *testing.T) {
 
 	if next[1].Unknown1 != 0 || next[1].Unknown2 != 0 || next[1].Unknown3 != 0 || next[1].Unknown4 != 0 {
 		t.Fatal("new row unknown fields should default to zero")
+	}
+}
+
+func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
+	t.Run("it0", func(t *testing.T) {
+		original := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
+		copy(original[0].Name[:], "Sword")
+		original[0].Name[10] = 0x55
+		original[0].Unknown2[0] = 0x1111
+		original[0].Levels[0] = itemfile.IT0RawLevelProperties{
+			AdditionalAttribute: 1,
+			Strength:            2,
+			Dexterity:           3,
+			Intelligence:        4,
+			Attribute:           5,
+			Range:               6,
+			BlueOption:          7,
+			RedOption:           8,
+			GreyOption:          9,
+		}
+
+		raw, err := serializeIT0ItemFile(original)
+		if err != nil {
+			t.Fatalf("serializeIT0ItemFile() error = %v", err)
+		}
+
+		apiData := it0ItemFileToAPIData(original)
+		next, errs := it0ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it0ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		nextRaw, err := serializeIT0ItemFile(next)
+		if err != nil {
+			t.Fatalf("serializeIT0ItemFile(next) error = %v", err)
+		}
+
+		if !bytes.Equal(raw, nextRaw) {
+			t.Fatal("IT0 round-trip changed bytes")
+		}
+	})
+
+	t.Run("it1", func(t *testing.T) {
+		original := itemfile.IT1File{{Type: 4, Row: 0, NPCPrice: 200, Unknown1: 0x1111, RequiredLevel: 10, Attribute: 20, BlueOption: 30, RedOption: 40, GreyOption: 50}}
+		copy(original[0].Name[:], "Potion")
+		original[0].Name[10] = 0x55
+
+		raw, err := serializeIT1ItemFile(original)
+		if err != nil {
+			t.Fatalf("serializeIT1ItemFile() error = %v", err)
+		}
+
+		apiData := it1ItemFileToAPIData(original)
+		next, errs := it1ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it1ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		nextRaw, err := serializeIT1ItemFile(next)
+		if err != nil {
+			t.Fatalf("serializeIT1ItemFile(next) error = %v", err)
+		}
+
+		if !bytes.Equal(raw, nextRaw) {
+			t.Fatal("IT1 round-trip changed bytes")
+		}
+	})
+
+	t.Run("it2", func(t *testing.T) {
+		original := itemfile.IT2File{{Type: 5, Row: 0, NPCPrice: 300, Class: 1, RequiredLevel: 20, Unknown1: 0x1111, SkillLevel: 5}}
+		copy(original[0].Name[:], "Skill")
+		original[0].Name[10] = 0x55
+
+		raw, err := serializeIT2ItemFile(original)
+		if err != nil {
+			t.Fatalf("serializeIT2ItemFile() error = %v", err)
+		}
+
+		apiData := it2ItemFileToAPIData(original)
+		next, errs := it2ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it2ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		nextRaw, err := serializeIT2ItemFile(next)
+		if err != nil {
+			t.Fatalf("serializeIT2ItemFile(next) error = %v", err)
+		}
+
+		if !bytes.Equal(raw, nextRaw) {
+			t.Fatal("IT2 round-trip changed bytes")
+		}
+	})
+
+	t.Run("it3", func(t *testing.T) {
+		original := itemfile.IT3File{{Type: 6, Row: 0, NPCPrice: 400, Unknown1: 0x1111, Unknown2: 0x2222, Unknown3: 0x3333, Unknown4: 0x4444}}
+		copy(original[0].Name[:], "Quest Item")
+		original[0].Name[15] = 0x55
+
+		raw, err := serializeIT3ItemFile(original)
+		if err != nil {
+			t.Fatalf("serializeIT3ItemFile() error = %v", err)
+		}
+
+		apiData := it3ItemFileToAPIData(original)
+		next, errs := it3ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it3ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		nextRaw, err := serializeIT3ItemFile(next)
+		if err != nil {
+			t.Fatalf("serializeIT3ItemFile(next) error = %v", err)
+		}
+
+		if !bytes.Equal(raw, nextRaw) {
+			t.Fatal("IT3 round-trip changed bytes")
+		}
+	})
+}
+
+func TestIT0ItemFileAPIDataUpdatesVisibleFieldsOnly(t *testing.T) {
+	original := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
+	copy(original[0].Name[:], "Sword")
+	original[0].Unknown2[0] = 0x1111
+
+	apiData := it0ItemFileToAPIData(original)
+	apiData.Items[0].Name = "Blade"
+	*apiData.Items[0].NPCPrice = 150
+	*apiData.Items[0].Slot = 4
+	*apiData.Items[0].Levels[0].Strength = 99
+
+	next, errs := it0ItemFileFromAPIData(apiData, original)
+	if len(errs) > 0 {
+		t.Fatalf("it0ItemFileFromAPIData() errors = %v", errs)
+	}
+
+	if next[0].GetName() != "Blade" || next[0].NPCPrice != 150 || next[0].Slot != 4 || next[0].Levels[0].Strength != 99 {
+		t.Fatal("visible IT0 fields were not updated")
+	}
+
+	if next[0].ItemCodeBase != original[0].ItemCodeBase || next[0].Row != original[0].Row || next[0].Type != original[0].Type || next[0].Unknown2 != original[0].Unknown2 {
+		t.Fatal("read-only or unknown IT0 fields changed")
+	}
+}
+
+func TestIT0ExItemFileAPIDataValidatesRows(t *testing.T) {
+	base := itemfile.IT0File{
+		{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1},
+		{ItemCodeBase: 2, Row: 1, Slot: 4, Type: 1},
+	}
+	copy(base[0].Name[:], "Sword")
+	copy(base[1].Name[:], "Axe")
+
+	apiData, err := it0ExItemFileToAPIData(itemfile.IT0ExFile{{Row: 0}}, base)
+	if err != nil {
+		t.Fatalf("it0ExItemFileToAPIData() error = %v", err)
+	}
+
+	if len(apiData.BaseItems) != 2 {
+		t.Fatalf("base item count = %d, want 2", len(apiData.BaseItems))
+	}
+	if *apiData.Items[0].Levels[0].Level != 11 {
+		t.Fatalf("first extension level = %d, want 11", *apiData.Items[0].Levels[0].Level)
+	}
+
+	row := uint16(1)
+	apiData.Items = []ItemFileItemAPIData{{
+		Row:    &row,
+		Levels: itemFileLevelsToAPIData(make([]itemfile.IT0RawLevelProperties, 5), 11),
+	}}
+	next, errs := it0ExItemFileFromAPIData(apiData, base)
+	if len(errs) > 0 {
+		t.Fatalf("it0ExItemFileFromAPIData() errors = %v", errs)
+	}
+	if len(next) != 1 || next[0].Row != 1 {
+		t.Fatal("IT0Ex add/delete update did not preserve requested rows")
+	}
+
+	apiData.Items = append(apiData.Items, apiData.Items[0])
+	_, errs = it0ExItemFileFromAPIData(apiData, base)
+	if len(errs) == 0 {
+		t.Fatal("expected duplicate IT0Ex row validation error")
+	}
+
+	missingRow := uint16(2)
+	apiData.Items = []ItemFileItemAPIData{{
+		Row:    &missingRow,
+		Levels: itemFileLevelsToAPIData(make([]itemfile.IT0RawLevelProperties, 5), 11),
+	}}
+	_, errs = it0ExItemFileFromAPIData(apiData, base)
+	if len(errs) == 0 {
+		t.Fatal("expected missing base row validation error")
+	}
+}
+
+func TestFixedItemFileAPIDataRejectsCountChanges(t *testing.T) {
+	original := itemfile.IT1File{{Type: 4, Row: 0, NPCPrice: 200}}
+	apiData := it1ItemFileToAPIData(original)
+	apiData.Items = append(apiData.Items, apiData.Items[0])
+
+	_, errs := it1ItemFileFromAPIData(apiData, original)
+	if len(errs) == 0 {
+		t.Fatal("expected fixed item file count validation error")
 	}
 }
 

@@ -22,6 +22,7 @@ import {
   getNPCFile,
   getSpawnFile,
   getDropFile,
+  getItemFile,
   getItemCombinationDataFile,
   getQuestFile,
   getMaps,
@@ -31,6 +32,7 @@ import { TextFileEdit } from './text-file-edit';
 import { NPCFileEdit } from './npc-file-edit';
 import { SpawnFileEdit } from './spawn-file-edit';
 import { DropFileEdit } from './drop-file-edit';
+import { ItemFileEdit } from './item-file-edit';
 import { ItemCombinationDataFileEdit } from './item-combination-data-file-edit';
 import { QuestFileEdit } from './quest-file-edit';
 import { queryKeys } from '@/constants';
@@ -121,6 +123,18 @@ export function FileEdit({ filePath }: FileEditProps) {
   });
 
   const {
+    data: itemFileData,
+    isLoading: itemFileLoading,
+    error: itemFileError,
+  } = useQuery({
+    queryKey: queryKeys.itemFile(filePath),
+    queryFn: () => {
+      return getItemFile({ path: filePath });
+    },
+    enabled: !!filePath && isItemFileType(fileType) && canEditFiles,
+  });
+
+  const {
     data: itemCombinationDataFileData,
     isLoading: itemCombinationDataFileLoading,
     error: itemCombinationDataFileError,
@@ -199,6 +213,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     npcFileError,
     spawnFileError,
     dropFileError,
+    itemFileError,
     itemCombinationDataFileError,
     questFileError,
   ]);
@@ -247,6 +262,7 @@ export function FileEdit({ filePath }: FileEditProps) {
         npcFileError ||
         spawnFileError ||
         dropFileError ||
+        itemFileError ||
         itemCombinationDataFileError ||
         questFileError) && (
         <Alert variant="destructive" className="mb-6">
@@ -379,6 +395,22 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
             </>
           )}
+          {isItemFileType(fileType) && (
+            <>
+              {itemFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {itemFileData && !itemFileError && (
+                <ItemFileEdit
+                  key={filePath}
+                  filePath={filePath}
+                  defaultData={itemFileData}
+                />
+              )}
+            </>
+          )}
           {fileType === 'a3_item_combination_data_file' && (
             <>
               {itemCombinationDataFileLoading && (
@@ -415,6 +447,7 @@ export function FileEdit({ filePath }: FileEditProps) {
             fileType !== 'a3_npc_file' &&
             fileType !== 'a3_spawn_file' &&
             fileType !== 'a3_drop_file' &&
+            !isItemFileType(fileType) &&
             fileType !== 'a3_item_combination_data_file' &&
             fileType !== 'a3_quest_file' && (
               <Card>
@@ -426,5 +459,15 @@ export function FileEdit({ filePath }: FileEditProps) {
         </>
       )}
     </div>
+  );
+}
+
+function isItemFileType(fileType: FileNode['file_type'] | undefined) {
+  return (
+    fileType === 'a3_it0_item_file' ||
+    fileType === 'a3_it0ex_item_file' ||
+    fileType === 'a3_it1_item_file' ||
+    fileType === 'a3_it2_item_file' ||
+    fileType === 'a3_it3_item_file'
   );
 }

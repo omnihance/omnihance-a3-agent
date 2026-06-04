@@ -710,6 +710,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/item-file:
+    get:
+      tags:
+        - file-system
+      summary: Get item file data
+      description: Reads and parses an A3 Online item file named 0, 0ex, 1, 2, or 3. IT0Ex files require a sibling 0 file in the same directory.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the item file to read and parse.
+      responses:
+        '200':
+          description: Item file data retrieved and parsed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemFileAPIData'
+        '400':
+          description: Bad Request - Path is a directory, file is not an item file, IT0Ex has no sibling 0 file, or path parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file read/parse error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - file-system
+      summary: Update item file
+      description: Updates known editable fields in an A3 Online item file while preserving hidden unknown fields. Files 0, 1, 2, and 3 cannot add or delete rows. File 0ex can replace its extension rows, requires sibling 0, and rejects duplicate or missing base rows.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: The path to the item file to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemFileAPIData'
+      responses:
+        '200':
+          description: File updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'File updated successfully'
+                  revision_id:
+                    type: integer
+                    format: int64
+                    description: The ID of the created file revision
+                    example: 1
+        '400':
+          description: Bad Request - Path is a directory, file is not an item file, file is not editable, IT0Ex has invalid rows, path parameter is missing, or validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error or file operation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/item-combination-data:
     get:
       tags:
@@ -4186,6 +4292,11 @@ components:
               a3_map_file,
               a3_spawn_file,
               a3_quest_file,
+              a3_it0_item_file,
+              a3_it0ex_item_file,
+              a3_it1_item_file,
+              a3_it2_item_file,
+              a3_it3_item_file,
               a3_unknown_file,
               text_file,
             ]
@@ -4447,6 +4558,186 @@ components:
           type: integer
           format: uint16
           description: Drop group value
+    ItemFileAPIData:
+      type: object
+      description: Parsed A3 Online item file data. The item_file_type field identifies which item record shape is present.
+      required:
+        - item_file_type
+        - items
+      properties:
+        item_file_type:
+          type: string
+          enum: [it0, it0ex, it1, it2, it3]
+          description: Item file family for files named 0, 0ex, 1, 2, or 3.
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemFileItemAPIData'
+          description: Parsed item rows with known fields only. Unknown binary fields are hidden and preserved for existing rows.
+        base_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemFileBaseItemAPIData'
+          description: Present for IT0Ex files; contains sibling IT0 rows that can be extended.
+    ItemFileItemAPIData:
+      type: object
+      description: Item row information. Identity fields are visible but read-only for update requests.
+      properties:
+        item_code_base:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: IT0 item code base; read-only in update requests.
+        row:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Item row. Required in update requests; read-only for 0, 1, 2, and 3 files and used as the IT0Ex base row link.
+        slot:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: IT0 item slot.
+        type:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Item type; read-only in update requests.
+        item_code:
+          type: integer
+          format: uint32
+          minimum: 0
+          description: Computed item code; read-only in update requests.
+        name:
+          type: string
+          description: Item name. For IT0Ex this comes from the sibling IT0 file and is read-only.
+        npc_price:
+          type: integer
+          format: uint32
+          minimum: 0
+          description: NPC price.
+        required_level:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Required level.
+        attribute:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Item attribute.
+        blue_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Blue option value.
+        red_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Red option value.
+        grey_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Grey option value.
+        class:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: IT2 class value.
+        skill_level:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: IT2 skill level.
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemFileLevelAPIData'
+          description: Level-specific item properties. IT0 has 10 levels; IT0Ex has 5 extension levels displayed as 11 through 15.
+    ItemFileLevelAPIData:
+      type: object
+      description: Level-specific item properties.
+      properties:
+        level:
+          type: integer
+          format: byte
+          minimum: 0
+          maximum: 255
+          description: Display level; ignored on update.
+        additional_attribute:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        strength:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        dexterity:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        intelligence:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        attribute:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        attribute_range:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+          description: Raw range value.
+        blue_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        red_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        grey_option:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+    ItemFileBaseItemAPIData:
+      type: object
+      description: Sibling IT0 item candidate for IT0Ex rows.
+      properties:
+        row:
+          type: integer
+          format: uint16
+          minimum: 0
+          maximum: 65535
+        item_code:
+          type: integer
+          format: uint32
+          minimum: 0
+        name:
+          type: string
     ItemCombinationDataFileAPIData:
       type: object
       description: Parsed binary data from an item combination data file. All fields are required when used as a request body.
