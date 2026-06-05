@@ -98,6 +98,9 @@ func TestFromConfig(t *testing.T) {
 	if result.Name != "A3" || result.Server != "localhost" || result.Database != "A3DB" {
 		t.Fatalf("unexpected mapping result: %+v", result)
 	}
+	if result.Password != "" {
+		t.Fatalf("password should not be read from persisted attrs: %+v", result)
+	}
 }
 
 func TestToConfigMatchesA3RegistryExport(t *testing.T) {
@@ -125,7 +128,6 @@ func TestToConfigMatchesA3RegistryExport(t *testing.T) {
 		"Server":   `DESKTOP-PE9M1HH\SQLEXPRESS`,
 		"Database": "ASD",
 		"LastUser": "sa",
-		"PWD":      "secret",
 	}
 	if cfg.Name != "ASD" || cfg.Driver != DriverName {
 		t.Fatalf("unexpected config metadata: %+v", cfg)
@@ -145,45 +147,7 @@ func TestToConfigMatchesA3RegistryExport(t *testing.T) {
 	}
 }
 
-func TestServiceUpdatePreservesExistingPasswordWhenBlank(t *testing.T) {
-	originalResolveDriverPath := resolveDriverPath
-	resolveDriverPath = func() (string, error) {
-		return `C:\WINDOWS\system32\SQLSRV32.dll`, nil
-	}
-	defer func() {
-		resolveDriverPath = originalResolveDriverPath
-	}()
-
-	manager := newFakeManager()
-	manager.items["A3"] = userdsn.Config{
-		Name:   "A3",
-		Driver: DriverName,
-		Attrs: map[string]string{
-			"Server":   "old",
-			"Database": "old",
-			"LastUser": "sa",
-			"PWD":      "existing-password",
-		},
-	}
-
-	service := NewService(manager)
-	err := service.Update(DSN{
-		Name:     "A3",
-		Server:   "new",
-		Database: "newdb",
-		LoginID:  "sa",
-	})
-	if err != nil {
-		t.Fatalf("update failed: %v", err)
-	}
-
-	updated := manager.items["A3"]
-	if updated.Attrs["PWD"] != "existing-password" {
-		t.Fatalf("password was not preserved: %+v", updated.Attrs)
-	}
-}
-
-func TestServiceUpdateOverwritesExistingPasswordWhenProvided(t *testing.T) {
+func TestServiceUpdateRemovesPersistedPassword(t *testing.T) {
 	originalResolveDriverPath := resolveDriverPath
 	resolveDriverPath = func() (string, error) {
 		return `C:\WINDOWS\system32\SQLSRV32.dll`, nil
@@ -217,8 +181,8 @@ func TestServiceUpdateOverwritesExistingPasswordWhenProvided(t *testing.T) {
 	}
 
 	updated := manager.items["A3"]
-	if updated.Attrs["PWD"] != "new-password" {
-		t.Fatalf("password was not updated: %+v", updated.Attrs)
+	if _, ok := updated.Attrs["PWD"]; ok {
+		t.Fatalf("password should not be persisted: %+v", updated.Attrs)
 	}
 }
 

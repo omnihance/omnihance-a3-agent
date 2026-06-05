@@ -253,7 +253,8 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Registry parity** with Windows ODBC UI:
   - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\ODBC Data Sources`
   - `HKCU\Software\WOW6432Node\ODBC\ODBC.INI\<dsnName>`
-  - Persists `Driver`, `Server`, `Database`, `Trusted_Connection`, `UID`, and `PWD`
+  - Persists `Driver`, `Server`, `Database`, and `LastUser`
+  - Does not persist SQL passwords in the registry
 
 ### 🔧 Additional Features
 
@@ -744,8 +745,8 @@ The application uses SQLite with the following main tables:
     - Navigate to the SQL ODBC page
     - Click "Create default ODBC values" to create the common A3 SQL Server User DSNs from a server name and user ID
     - Existing default DSNs are skipped so their current values are not overwritten
-    - Add DSN name, SQL Server name, login ID, password, and default database
-    - Test connection before saving
+    - Add DSN name, SQL Server name, login ID, and default database
+    - Test connection with a password before saving
     - Update or delete DSNs as needed
 
 12. **Configure Game Server Settings** (Admin and Super Admin only):

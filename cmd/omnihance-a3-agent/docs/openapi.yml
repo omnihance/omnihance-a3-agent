@@ -5426,10 +5426,6 @@ components:
           minLength: 1
           description: SQL user stored as LastUser in registry
           example: 'sa'
-        password:
-          type: string
-          description: Optional SQL authentication password for connection testing only
-          example: 'StrongPassword123'
     SQLServerODBCDSNTestRequest:
       type: object
       required:

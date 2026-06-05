@@ -175,7 +175,7 @@ func (s *Server) InitializeSQLServerODBCDSNRoutes(r *chi.Mux) {
 			if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
 				return
 			}
-			var req sqlServerDSNRequest
+			var req sqlServerDSNTestRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				writeODBCValidationError(w, "Invalid request body")
 				return
@@ -199,7 +199,14 @@ type sqlServerDSNRequest struct {
 	Server   string `json:"server" validate:"required"`
 	Database string `json:"database" validate:"required"`
 	LoginID  string `json:"login_id" validate:"required"`
-	Password string `json:"password"`
+}
+
+type sqlServerDSNTestRequest struct {
+	Name     string `json:"name" validate:"required"`
+	Server   string `json:"server" validate:"required"`
+	Database string `json:"database" validate:"required"`
+	LoginID  string `json:"login_id" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
 type sqlServerDefaultDSNRequest struct {
@@ -208,6 +215,15 @@ type sqlServerDefaultDSNRequest struct {
 }
 
 func (r sqlServerDSNRequest) toModel() sqlserverdsn.DSN {
+	return sqlserverdsn.DSN{
+		Name:     r.Name,
+		Server:   r.Server,
+		Database: r.Database,
+		LoginID:  r.LoginID,
+	}
+}
+
+func (r sqlServerDSNTestRequest) toModel() sqlserverdsn.DSN {
 	return sqlserverdsn.DSN{
 		Name:     r.Name,
 		Server:   r.Server,

@@ -2244,7 +2244,6 @@ const SQLServerODBCDSNRequestSchema = z.object({
   server: z.string().min(1),
   database: z.string().min(1),
   login_id: z.string().min(1),
-  password: z.string().optional(),
 });
 
 export type SQLServerODBCDSNRequest = z.infer<
@@ -2254,6 +2253,10 @@ export type SQLServerODBCDSNRequest = z.infer<
 const SQLServerODBCDSNTestRequestSchema = SQLServerODBCDSNRequestSchema.extend({
   password: z.string().min(1),
 });
+
+export type SQLServerODBCDSNTestRequest = z.infer<
+  typeof SQLServerODBCDSNTestRequestSchema
+>;
 
 const SQLServerODBCDefaultDSNRequestSchema = z.object({
   server: z.string().min(1),
@@ -2347,7 +2350,7 @@ export async function deleteSQLServerODBCDSN(
 }
 
 export async function testSQLServerODBCDSNConnection(
-  payload: SQLServerODBCDSNRequest,
+  payload: SQLServerODBCDSNTestRequest,
 ): Promise<MessageResponse> {
   const response = await axiosInstance.post<unknown>(
     API_ROUTES.ODBC_SQLSERVER_DSN_TEST,

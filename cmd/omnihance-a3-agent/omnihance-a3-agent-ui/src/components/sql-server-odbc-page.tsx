@@ -13,6 +13,7 @@ import {
   type SQLServerODBCDefaultDSNRequest,
   type SQLServerODBCDSN,
   type SQLServerODBCDSNRequest,
+  type SQLServerODBCDSNTestRequest,
 } from '@/lib/api';
 import { queryKeys } from '@/constants';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -53,7 +54,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const emptyForm: SQLServerODBCDSNRequest = {
+type SQLServerODBCForm = SQLServerODBCDSNRequest & {
+  password: string;
+};
+
+const emptyForm: SQLServerODBCForm = {
   name: '',
   server: '',
   database: '',
@@ -71,7 +76,7 @@ export function SQLServerODBCPage() {
   const { hasPermission } = usePermissions();
   const canManageServer = hasPermission('manage_server');
 
-  const [form, setForm] = useState<SQLServerODBCDSNRequest>(emptyForm);
+  const [form, setForm] = useState<SQLServerODBCForm>(emptyForm);
   const [defaultForm, setDefaultForm] =
     useState<SQLServerODBCDefaultDSNRequest>(emptyDefaultForm);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -162,11 +167,10 @@ export function SQLServerODBCPage() {
       server: form.server.trim(),
       database: form.database.trim(),
       login_id: form.login_id.trim(),
-      password: form.password?.trim() || '',
     };
   };
 
-  const validateAndGetTestPayload = (): SQLServerODBCDSNRequest | null => {
+  const validateAndGetTestPayload = (): SQLServerODBCDSNTestRequest | null => {
     const payload = validateAndGetSavePayload();
     if (!payload) {
       return null;
@@ -491,8 +495,8 @@ function DSNForm({
   setForm,
   disableName = false,
 }: {
-  form: SQLServerODBCDSNRequest;
-  setForm: (next: SQLServerODBCDSNRequest) => void;
+  form: SQLServerODBCForm;
+  setForm: (next: SQLServerODBCForm) => void;
   disableName?: boolean;
 }) {
   return (
@@ -531,7 +535,7 @@ function DSNForm({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="dsn-password">Password</Label>
+        <Label htmlFor="dsn-password">Password for test connection</Label>
         <Input
           id="dsn-password"
           type="password"
