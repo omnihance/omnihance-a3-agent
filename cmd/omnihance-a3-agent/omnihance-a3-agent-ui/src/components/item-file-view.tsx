@@ -20,7 +20,9 @@ import {
 import { useVirtualRows } from '@/hooks/use-virtual-rows';
 import type { ItemFileAPIData, ItemFileItemAPIData } from '@/lib/api';
 
-const ITEM_ROW_HEIGHT = 156;
+const DEFAULT_ITEM_ROW_HEIGHT = 76;
+const IT1_ITEM_ROW_HEIGHT = 124;
+const IT2_ITEM_ROW_HEIGHT = 104;
 
 interface ItemFileViewProps {
   data: ItemFileAPIData;
@@ -35,10 +37,11 @@ export function ItemFileView({ data }: ItemFileViewProps) {
     () => filterItems(data.items, normalizedQuery),
     [data.items, normalizedQuery],
   );
+  const itemRowHeight = getItemRowHeight(data.item_file_type);
   const { containerRef, onScroll, resetScrollTop, totalHeight, virtualRows } =
     useVirtualRows({
       count: filteredItems.length,
-      rowHeight: ITEM_ROW_HEIGHT,
+      rowHeight: itemRowHeight,
       overscan: 8,
     });
   const countLabel =
@@ -106,6 +109,7 @@ export function ItemFileView({ data }: ItemFileViewProps) {
                           item={item}
                           itemFileType={data.item_file_type}
                           top={top}
+                          rowHeight={itemRowHeight}
                           onViewLevels={() => setLevelItem(item)}
                         />
                       );
@@ -135,11 +139,13 @@ function ItemViewRow({
   item,
   itemFileType,
   top,
+  rowHeight,
   onViewLevels,
 }: {
   item: ItemFileItemAPIData;
   itemFileType: ItemFileAPIData['item_file_type'];
   top: number;
+  rowHeight: number;
   onViewLevels: () => void;
 }) {
   const hasLevels = (item.levels?.length ?? 0) > 0;
@@ -148,7 +154,7 @@ function ItemViewRow({
     <div
       className="absolute left-0 right-0 grid grid-cols-[5rem_18rem_8rem_6rem_1fr_7rem] items-start divide-x border-b"
       style={{
-        height: ITEM_ROW_HEIGHT,
+        height: rowHeight,
         transform: `translateY(${top}px)`,
       }}
       role="row"
@@ -169,14 +175,18 @@ function ItemViewRow({
         {formatValue(item.type)}
       </div>
       <div className="px-3 py-3">
-        <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 text-sm xl:grid-cols-3">
           {knownFieldEntries(item, itemFileType).map(([label, value]) => (
             <div
               key={label}
               className="flex justify-between gap-3 rounded-md border px-2 py-1"
             >
-              <span className="text-muted-foreground">{label}</span>
-              <span className="font-mono">{formatValue(value)}</span>
+              <span className="whitespace-nowrap text-muted-foreground">
+                {label}
+              </span>
+              <span className="whitespace-nowrap font-mono">
+                {formatValue(value)}
+              </span>
             </div>
           ))}
         </div>
@@ -275,6 +285,18 @@ function LevelViewDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function getItemRowHeight(itemFileType: ItemFileAPIData['item_file_type']) {
+  if (itemFileType === 'it1') {
+    return IT1_ITEM_ROW_HEIGHT;
+  }
+
+  if (itemFileType === 'it2') {
+    return IT2_ITEM_ROW_HEIGHT;
+  }
+
+  return DEFAULT_ITEM_ROW_HEIGHT;
 }
 
 function knownFieldEntries(

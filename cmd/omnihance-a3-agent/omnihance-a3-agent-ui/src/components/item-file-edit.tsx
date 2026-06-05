@@ -42,7 +42,9 @@ import { toast } from 'sonner';
 
 const MAX_UINT16 = 65535;
 const MAX_UINT32 = 4294967295;
-const ITEM_EDIT_ROW_HEIGHT = 220;
+const DEFAULT_ITEM_EDIT_ROW_HEIGHT = 108;
+const IT1_ITEM_EDIT_ROW_HEIGHT = 220;
+const IT2_ITEM_EDIT_ROW_HEIGHT = 156;
 const BASE_ITEM_ROW_HEIGHT = 56;
 
 interface ItemFileEditProps {
@@ -91,6 +93,7 @@ export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
     [items, normalizedQuery],
   );
   const visibleItemCount = filteredItems?.length ?? items.length;
+  const itemRowHeight = getItemEditRowHeight(defaultData.item_file_type);
   const selectedRows = useMemo(
     () => new Set(items.map((item) => item.row)),
     [items],
@@ -108,7 +111,7 @@ export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
     virtualRows: virtualItemRows,
   } = useVirtualRows({
     count: visibleItemCount,
-    rowHeight: ITEM_EDIT_ROW_HEIGHT,
+    rowHeight: itemRowHeight,
     overscan: 6,
   });
   const {
@@ -347,6 +350,7 @@ export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
                           itemFileType={defaultData.item_file_type}
                           canAddOrDelete={canAddOrDelete}
                           top={top}
+                          rowHeight={itemRowHeight}
                           updateItem={updateItem}
                           removeIT0ExItem={removeIT0ExItem}
                           editLevels={() => setLevelEditorIndex(itemIndex)}
@@ -464,6 +468,7 @@ function ItemEditRow({
   itemFileType,
   canAddOrDelete,
   top,
+  rowHeight,
   updateItem,
   removeIT0ExItem,
   editLevels,
@@ -473,6 +478,7 @@ function ItemEditRow({
   itemFileType: ItemFileAPIData['item_file_type'];
   canAddOrDelete: boolean;
   top: number;
+  rowHeight: number;
   updateItem: (index: number, field: ItemField, value: string | number) => void;
   removeIT0ExItem: (index: number) => void;
   editLevels: () => void;
@@ -483,7 +489,7 @@ function ItemEditRow({
     <div
       className="absolute left-0 right-0 grid grid-cols-[5rem_18rem_8rem_6rem_1fr_8rem] items-start divide-x border-b"
       style={{
-        height: ITEM_EDIT_ROW_HEIGHT,
+        height: rowHeight,
         transform: `translateY(${top}px)`,
       }}
       role="row"
@@ -515,7 +521,7 @@ function ItemEditRow({
         {formatValue(item.type)}
       </div>
       <div className="px-3 py-3">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
           {renderItemEditors(item, index, itemFileType, updateItem)}
         </div>
       </div>
@@ -875,6 +881,18 @@ function renderItemEditors(
   }
 
   return [];
+}
+
+function getItemEditRowHeight(itemFileType: ItemFileAPIData['item_file_type']) {
+  if (itemFileType === 'it1') {
+    return IT1_ITEM_EDIT_ROW_HEIGHT;
+  }
+
+  if (itemFileType === 'it2') {
+    return IT2_ITEM_EDIT_ROW_HEIGHT;
+  }
+
+  return DEFAULT_ITEM_EDIT_ROW_HEIGHT;
 }
 
 function NumberField({
