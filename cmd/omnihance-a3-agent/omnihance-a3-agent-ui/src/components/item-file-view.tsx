@@ -10,6 +10,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -18,17 +25,37 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useVirtualRows } from '@/hooks/use-virtual-rows';
-import type { ItemFileAPIData, ItemFileItemAPIData } from '@/lib/api';
+import type {
+  ItemFileAPIData,
+  ItemFileItemAPIData,
+  ItemFileNameEncoding,
+} from '@/lib/api';
 
 const DEFAULT_ITEM_ROW_HEIGHT = 76;
 const IT1_ITEM_ROW_HEIGHT = 124;
 const IT2_ITEM_ROW_HEIGHT = 104;
+const ITEM_NAME_ENCODING_OPTIONS: {
+  value: ItemFileNameEncoding;
+  label: string;
+}[] = [
+  { value: 'utf-8', label: 'UTF-8' },
+  { value: 'euc-kr', label: 'EUC-KR' },
+  { value: 'gbk', label: 'GBK' },
+  { value: 'big5', label: 'Big5' },
+  { value: 'shift-jis', label: 'Shift-JIS' },
+];
 
 interface ItemFileViewProps {
   data: ItemFileAPIData;
+  nameEncoding: ItemFileNameEncoding;
+  onNameEncodingChange: (encoding: ItemFileNameEncoding) => void;
 }
 
-export function ItemFileView({ data }: ItemFileViewProps) {
+export function ItemFileView({
+  data,
+  nameEncoding,
+  onNameEncodingChange,
+}: ItemFileViewProps) {
   const [query, setQuery] = useState('');
   const [levelItem, setLevelItem] = useState<ItemFileItemAPIData | null>(null);
   const deferredQuery = useDeferredValue(query);
@@ -62,14 +89,36 @@ export function ItemFileView({ data }: ItemFileViewProps) {
               <PackageSearch className="h-5 w-5" />
               Item Records ({countLabel})
             </CardTitle>
-            <Input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search row, code, or name"
-              aria-label="Search item records"
-              className="w-full lg:max-w-sm"
-            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select
+                value={nameEncoding}
+                onValueChange={(value) =>
+                  onNameEncodingChange(value as ItemFileNameEncoding)
+                }
+              >
+                <SelectTrigger
+                  className="w-full sm:w-36"
+                  aria-label="Item name encoding"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_NAME_ENCODING_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search row, code, or name"
+                aria-label="Search item records"
+                className="w-full sm:w-72"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>

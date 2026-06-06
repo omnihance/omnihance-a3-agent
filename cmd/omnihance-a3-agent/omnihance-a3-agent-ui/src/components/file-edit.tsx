@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import {
   getItemCombinationDataFile,
   getQuestFile,
   getMaps,
+  type ItemFileNameEncoding,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileEdit } from './text-file-edit';
@@ -36,7 +37,6 @@ import { ItemFileEdit } from './item-file-edit';
 import { ItemCombinationDataFileEdit } from './item-combination-data-file-edit';
 import { QuestFileEdit } from './quest-file-edit';
 import { queryKeys } from '@/constants';
-import { useMemo } from 'react';
 
 interface FileEditProps {
   filePath: string;
@@ -46,6 +46,17 @@ export function FileEdit({ filePath }: FileEditProps) {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
   const canEditFiles = hasPermission('edit_files');
+  const [itemNameEncodingState, setItemNameEncodingState] = useState<{
+    filePath: string;
+    encoding?: ItemFileNameEncoding;
+  }>({ filePath });
+  const itemNameEncoding =
+    itemNameEncodingState.filePath === filePath
+      ? itemNameEncodingState.encoding
+      : undefined;
+  const handleItemNameEncodingChange = (encoding: ItemFileNameEncoding) => {
+    setItemNameEncodingState({ filePath, encoding });
+  };
 
   const {
     data: fileTreeResponse,
@@ -127,9 +138,12 @@ export function FileEdit({ filePath }: FileEditProps) {
     isLoading: itemFileLoading,
     error: itemFileError,
   } = useQuery({
-    queryKey: queryKeys.itemFile(filePath),
+    queryKey: queryKeys.itemFile(filePath, itemNameEncoding),
     queryFn: () => {
-      return getItemFile({ path: filePath });
+      return getItemFile({
+        path: filePath,
+        name_encoding: itemNameEncoding,
+      });
     },
     enabled: !!filePath && isItemFileType(fileType) && canEditFiles,
   });
@@ -404,9 +418,11 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
               {itemFileData && !itemFileError && (
                 <ItemFileEdit
-                  key={filePath}
+                  key={`${filePath}-${itemFileData.name_encoding}`}
                   filePath={filePath}
                   defaultData={itemFileData}
+                  nameEncoding={itemNameEncoding ?? itemFileData.name_encoding}
+                  onNameEncodingChange={handleItemNameEncodingChange}
                 />
               )}
             </>

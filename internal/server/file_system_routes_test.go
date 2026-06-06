@@ -4,7 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"strings"
 	"testing"
+
+	textencoding "golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
@@ -328,7 +334,7 @@ func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
 			t.Fatalf("serializeIT0ItemFile() error = %v", err)
 		}
 
-		apiData := it0ItemFileToAPIData(original)
+		apiData := it0ItemFileToAPIData(original, "")
 		next, errs := it0ItemFileFromAPIData(apiData, original)
 		if len(errs) > 0 {
 			t.Fatalf("it0ItemFileFromAPIData() errors = %v", errs)
@@ -354,7 +360,7 @@ func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
 			t.Fatalf("serializeIT1ItemFile() error = %v", err)
 		}
 
-		apiData := it1ItemFileToAPIData(original)
+		apiData := it1ItemFileToAPIData(original, "")
 		next, errs := it1ItemFileFromAPIData(apiData, original)
 		if len(errs) > 0 {
 			t.Fatalf("it1ItemFileFromAPIData() errors = %v", errs)
@@ -380,7 +386,7 @@ func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
 			t.Fatalf("serializeIT2ItemFile() error = %v", err)
 		}
 
-		apiData := it2ItemFileToAPIData(original)
+		apiData := it2ItemFileToAPIData(original, "")
 		next, errs := it2ItemFileFromAPIData(apiData, original)
 		if len(errs) > 0 {
 			t.Fatalf("it2ItemFileFromAPIData() errors = %v", errs)
@@ -406,7 +412,7 @@ func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
 			t.Fatalf("serializeIT3ItemFile() error = %v", err)
 		}
 
-		apiData := it3ItemFileToAPIData(original)
+		apiData := it3ItemFileToAPIData(original, "")
 		next, errs := it3ItemFileFromAPIData(apiData, original)
 		if len(errs) > 0 {
 			t.Fatalf("it3ItemFileFromAPIData() errors = %v", errs)
@@ -423,12 +429,78 @@ func TestItemFileAPIDataRoundTripPreservesBytes(t *testing.T) {
 	})
 }
 
+func TestItemFileAPIDataHandlesLegacyCJKNames(t *testing.T) {
+	t.Run("decodes korean EUC-KR names and preserves unchanged bytes", func(t *testing.T) {
+		original := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
+		original[0].Name = encodeItemFileNameForTest(t, korean.EUCKR, "하늘검")
+
+		apiData := it0ItemFileToAPIData(original, "")
+		if apiData.Items[0].Name != "하늘검" {
+			t.Fatalf("decoded item name = %q, want %q", apiData.Items[0].Name, "하늘검")
+		}
+
+		next, errs := it0ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it0ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		if next[0].Name != original[0].Name {
+			t.Fatal("unchanged EUC-KR name bytes changed")
+		}
+	})
+
+	t.Run("decodes Chinese GBK names", func(t *testing.T) {
+		original := itemfile.IT1File{{Type: 4, Row: 0, NPCPrice: 200, RequiredLevel: 10, Attribute: 20, BlueOption: 30, RedOption: 40, GreyOption: 50}}
+		original[0].Name = encodeItemFileNameForTest(t, simplifiedchinese.GBK, "龙剑")
+
+		apiData := it1ItemFileToAPIData(original, itemFileNameEncodingGBK)
+		if apiData.Items[0].Name != "龙剑" {
+			t.Fatalf("decoded item name = %q, want %q", apiData.Items[0].Name, "龙剑")
+		}
+	})
+
+	t.Run("encodes edited names using detected file encoding", func(t *testing.T) {
+		original := itemfile.IT0File{
+			{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100},
+			{ItemCodeBase: 2, Row: 1, Slot: 3, Type: 1, NPCPrice: 100},
+		}
+		original[0].Name = encodeItemFileNameForTest(t, korean.EUCKR, "하늘검")
+		copy(original[1].Name[:], "Sword")
+
+		apiData := it0ItemFileToAPIData(original, "")
+		apiData.Items[1].Name = strings.Repeat("가", 16)
+
+		next, errs := it0ItemFileFromAPIData(apiData, original)
+		if len(errs) > 0 {
+			t.Fatalf("it0ItemFileFromAPIData() errors = %v", errs)
+		}
+
+		expectedName := encodeItemFileNameForTest(t, korean.EUCKR, strings.Repeat("가", 16))
+		if next[1].Name != expectedName {
+			t.Fatal("edited item name was not encoded as EUC-KR")
+		}
+	})
+
+	t.Run("validates legacy encoded byte length", func(t *testing.T) {
+		original := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
+		original[0].Name = encodeItemFileNameForTest(t, korean.EUCKR, "하늘검")
+
+		apiData := it0ItemFileToAPIData(original, "")
+		apiData.Items[0].Name = strings.Repeat("가", 17)
+
+		_, errs := it0ItemFileFromAPIData(apiData, original)
+		if len(errs) == 0 {
+			t.Fatal("expected encoded byte length validation error")
+		}
+	})
+}
+
 func TestIT0ItemFileAPIDataUpdatesVisibleFieldsOnly(t *testing.T) {
 	original := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
 	copy(original[0].Name[:], "Sword")
 	original[0].Unknown2[0] = 0x1111
 
-	apiData := it0ItemFileToAPIData(original)
+	apiData := it0ItemFileToAPIData(original, "")
 	apiData.Items[0].Name = "Blade"
 	*apiData.Items[0].NPCPrice = 150
 	*apiData.Items[0].Slot = 4
@@ -456,7 +528,7 @@ func TestIT0ExItemFileAPIDataValidatesRows(t *testing.T) {
 	copy(base[0].Name[:], "Sword")
 	copy(base[1].Name[:], "Axe")
 
-	apiData, err := it0ExItemFileToAPIData(itemfile.IT0ExFile{{Row: 0}}, base)
+	apiData, err := it0ExItemFileToAPIData(itemfile.IT0ExFile{{Row: 0}}, base, "")
 	if err != nil {
 		t.Fatalf("it0ExItemFileToAPIData() error = %v", err)
 	}
@@ -500,7 +572,7 @@ func TestIT0ExItemFileAPIDataValidatesRows(t *testing.T) {
 
 func TestFixedItemFileAPIDataRejectsCountChanges(t *testing.T) {
 	original := itemfile.IT1File{{Type: 4, Row: 0, NPCPrice: 200}}
-	apiData := it1ItemFileToAPIData(original)
+	apiData := it1ItemFileToAPIData(original, "")
 	apiData.Items = append(apiData.Items, apiData.Items[0])
 
 	_, errs := it1ItemFileFromAPIData(apiData, original)
@@ -541,6 +613,23 @@ func readQuestFixture(t *testing.T, name string) []byte {
 	}
 
 	return append([]byte(nil), raw...)
+}
+
+func encodeItemFileNameForTest(t *testing.T, nameEncoding textencoding.Encoding, name string) [itemFileNameSize]byte {
+	t.Helper()
+
+	encodedName, _, err := transform.String(nameEncoding.NewEncoder(), name)
+	if err != nil {
+		t.Fatalf("encode item name %q error = %v", name, err)
+	}
+
+	if len([]byte(encodedName)) > itemFileNameSize {
+		t.Fatalf("encoded item name %q length = %d, want <= %d", name, len([]byte(encodedName)), itemFileNameSize)
+	}
+
+	var rawName [itemFileNameSize]byte
+	copy(rawName[:], []byte(encodedName))
+	return rawName
 }
 
 func mustDecodeQuestFixture(value string) []byte {

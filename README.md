@@ -109,6 +109,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - **Item Name Display**: Shows item names when IT0-IT3 client data has been uploaded
   - **Item File Editor**: View and edit A3 item files named `0`, `0ex`, `1`, `2`, and `3`:
     - Edit known item fields while preserving hidden unknown bytes
+    - Decode and save item names with selectable UTF-8, EUC-KR, GBK, Big5, or Shift-JIS encoding for legacy Chinese, Korean, and Japanese item files
     - Keep row, type, item code base, and computed item code read-only
     - Edit IT0 equipment levels, IT1 option fields, IT2 skill/class fields, and IT3 price/name fields
     - View and edit `0ex` level extensions only when sibling `0` exists in the same directory
@@ -568,8 +569,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `PUT /api/file-tree/text-file` - Update text file
 - `GET /api/file-tree/drop-file` - Read A3 drop file data
 - `PUT /api/file-tree/drop-file` - Update A3 drop file data
-- `GET /api/file-tree/item-file` - Read A3 item file data for files named `0`, `0ex`, `1`, `2`, or `3`
-- `PUT /api/file-tree/item-file` - Update A3 item file data while preserving hidden unknown fields
+- `GET /api/file-tree/item-file` - Read A3 item file data for files named `0`, `0ex`, `1`, `2`, or `3`; accepts optional `name_encoding` (`utf-8`, `euc-kr`, `gbk`, `big5`, `shift-jis`)
+- `PUT /api/file-tree/item-file` - Update A3 item file data while preserving hidden unknown fields and saving item names using the request `name_encoding`
 - `GET /api/file-tree/item-combination-data` - Read A3 item combination data
 - `PUT /api/file-tree/item-combination-data` - Update A3 item combination data
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
@@ -720,7 +721,7 @@ The application uses SQLite with the following main tables:
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item files, item combination data files, or text files) to view and edit them (requires admin or super admin role).
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
    - **Drop File Editor**: Edit drop files (monster drop configurations) by adding, removing, and modifying entries, selecting item codes, and displaying item names when IT0-IT3 client data has been uploaded
-   - **Item File Editor**: Edit item files named `0`, `1`, `2`, and `3` in place; edit `0ex` only when sibling `0` exists, with add/delete controls for extension rows
+   - **Item File Editor**: Edit item files named `0`, `1`, `2`, and `3` in place; edit `0ex` only when sibling `0` exists, with add/delete controls for extension rows and selectable legacy name encoding for Chinese/Korean/Japanese item files
    - **Item Combination Data Editor**: Edit craft formulas with 10 ingredients, success rates, outcomes, item-name lookup, and revision-backed saves
    - **Text File Editor**: Edit text-based configuration files
    - When editing spawn files, monster names are automatically displayed based on NPC ID

@@ -326,6 +326,7 @@ export interface GetDropFileParams {
 
 export interface GetItemFileParams {
   path: string;
+  name_encoding?: ItemFileNameEncoding;
 }
 
 export interface GetItemCombinationDataFileParams {
@@ -404,6 +405,15 @@ const DropFileAPIDataSchema = z.object({
 export type DropFileAPIData = z.infer<typeof DropFileAPIDataSchema>;
 
 const ItemFileTypeSchema = z.enum(['it0', 'it0ex', 'it1', 'it2', 'it3']);
+const ItemFileNameEncodingSchema = z.enum([
+  'utf-8',
+  'euc-kr',
+  'gbk',
+  'big5',
+  'shift-jis',
+]);
+
+export type ItemFileNameEncoding = z.infer<typeof ItemFileNameEncodingSchema>;
 
 const ItemFileLevelAPIDataSchema = z.object({
   level: z.number().int().min(0).max(255).optional(),
@@ -452,6 +462,7 @@ export type ItemFileBaseItemAPIData = z.infer<
 
 const ItemFileAPIDataSchema = z.object({
   item_file_type: ItemFileTypeSchema,
+  name_encoding: ItemFileNameEncodingSchema.default('utf-8'),
   items: z.array(ItemFileItemAPIDataSchema),
   base_items: z.array(ItemFileBaseItemAPIDataSchema).optional(),
 });

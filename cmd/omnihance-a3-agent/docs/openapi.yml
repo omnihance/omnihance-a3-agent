@@ -725,6 +725,13 @@ paths:
           schema:
             type: string
           description: The path to the item file to read and parse.
+        - in: query
+          name: name_encoding
+          required: false
+          schema:
+            type: string
+            enum: [utf-8, euc-kr, gbk, big5, shift-jis]
+          description: Optional item name encoding override. Omit to auto-detect from the file.
       responses:
         '200':
           description: Item file data retrieved and parsed successfully
@@ -733,7 +740,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ItemFileAPIData'
         '400':
-          description: Bad Request - Path is a directory, file is not an item file, IT0Ex has no sibling 0 file, or path parameter is missing
+          description: Bad Request - Path is a directory, file is not an item file, IT0Ex has no sibling 0 file, path parameter is missing, or name_encoding is invalid
           content:
             application/json:
               schema:
@@ -760,7 +767,7 @@ paths:
       tags:
         - file-system
       summary: Update item file
-      description: Updates known editable fields in an A3 Online item file while preserving hidden unknown fields. Files 0, 1, 2, and 3 cannot add or delete rows. File 0ex can replace its extension rows, requires sibling 0, and rejects duplicate or missing base rows.
+      description: Updates known editable fields in an A3 Online item file while preserving hidden unknown fields. Files 0, 1, 2, and 3 cannot add or delete rows. File 0ex can replace its extension rows, requires sibling 0, and rejects duplicate or missing base rows. Item names are saved using the request name_encoding when provided.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -793,7 +800,7 @@ paths:
                     description: The ID of the created file revision
                     example: 1
         '400':
-          description: Bad Request - Path is a directory, file is not an item file, file is not editable, IT0Ex has invalid rows, path parameter is missing, or validation failed
+          description: Bad Request - Path is a directory, file is not an item file, file is not editable, IT0Ex has invalid rows, path parameter is missing, name_encoding is invalid, or validation failed
           content:
             application/json:
               schema:
@@ -4569,6 +4576,11 @@ components:
           type: string
           enum: [it0, it0ex, it1, it2, it3]
           description: Item file family for files named 0, 0ex, 1, 2, or 3.
+        name_encoding:
+          type: string
+          enum: [utf-8, euc-kr, gbk, big5, shift-jis]
+          default: utf-8
+          description: Encoding used to decode and save fixed 32-byte item names. Use euc-kr, gbk, big5, or shift-jis for legacy CJK client files when auto-detection is ambiguous.
         items:
           type: array
           items:
@@ -4614,7 +4626,7 @@ components:
           description: Computed item code; read-only in update requests.
         name:
           type: string
-          description: Item name. For IT0Ex this comes from the sibling IT0 file and is read-only.
+          description: Item name decoded with name_encoding. For IT0Ex this comes from the sibling IT0 file and is read-only.
         npc_price:
           type: integer
           format: uint32

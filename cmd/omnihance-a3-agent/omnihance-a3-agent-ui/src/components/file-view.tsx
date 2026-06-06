@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   ArrowLeft,
@@ -41,6 +41,7 @@ import {
   getRevisionSummary,
   revertFile,
   getMaps,
+  type ItemFileNameEncoding,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileView } from '@/components/text-file-view';
@@ -52,7 +53,6 @@ import { ItemCombinationDataFileView } from '@/components/item-combination-data-
 import { QuestFileView } from '@/components/quest-file-view';
 import { toast } from 'sonner';
 import { queryKeys } from '@/constants';
-import { useMemo } from 'react';
 
 interface FileViewProps {
   filePath: string;
@@ -62,6 +62,17 @@ export function FileView({ filePath }: FileViewProps) {
   const { hasPermission } = usePermissions();
   const canEditFiles = hasPermission('edit_files');
   const canRevertFiles = hasPermission('revert_files');
+  const [itemNameEncodingState, setItemNameEncodingState] = useState<{
+    filePath: string;
+    encoding?: ItemFileNameEncoding;
+  }>({ filePath });
+  const itemNameEncoding =
+    itemNameEncodingState.filePath === filePath
+      ? itemNameEncodingState.encoding
+      : undefined;
+  const handleItemNameEncodingChange = (encoding: ItemFileNameEncoding) => {
+    setItemNameEncodingState({ filePath, encoding });
+  };
 
   const {
     data: fileTreeResponse,
@@ -144,9 +155,12 @@ export function FileView({ filePath }: FileViewProps) {
     isLoading: itemFileLoading,
     error: itemFileError,
   } = useQuery({
-    queryKey: queryKeys.itemFile(filePath),
+    queryKey: queryKeys.itemFile(filePath, itemNameEncoding),
     queryFn: () => {
-      return getItemFile({ path: filePath });
+      return getItemFile({
+        path: filePath,
+        name_encoding: itemNameEncoding,
+      });
     },
     enabled: !!filePath && isItemFileType(fileType),
   });
@@ -557,7 +571,13 @@ export function FileView({ filePath }: FileViewProps) {
               {itemFileData && !itemFileError && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">Item Data</h2>
-                  <ItemFileView data={itemFileData} />
+                  <ItemFileView
+                    data={itemFileData}
+                    nameEncoding={
+                      itemNameEncoding ?? itemFileData.name_encoding
+                    }
+                    onNameEncodingChange={handleItemNameEncodingChange}
+                  />
                 </div>
               )}
             </>

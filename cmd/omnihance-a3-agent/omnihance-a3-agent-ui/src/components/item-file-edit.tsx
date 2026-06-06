@@ -21,6 +21,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -37,6 +44,7 @@ import {
   type ItemFileBaseItemAPIData,
   type ItemFileItemAPIData,
   type ItemFileLevelAPIData,
+  type ItemFileNameEncoding,
 } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -46,10 +54,22 @@ const DEFAULT_ITEM_EDIT_ROW_HEIGHT = 108;
 const IT1_ITEM_EDIT_ROW_HEIGHT = 220;
 const IT2_ITEM_EDIT_ROW_HEIGHT = 156;
 const BASE_ITEM_ROW_HEIGHT = 56;
+const ITEM_NAME_ENCODING_OPTIONS: {
+  value: ItemFileNameEncoding;
+  label: string;
+}[] = [
+  { value: 'utf-8', label: 'UTF-8' },
+  { value: 'euc-kr', label: 'EUC-KR' },
+  { value: 'gbk', label: 'GBK' },
+  { value: 'big5', label: 'Big5' },
+  { value: 'shift-jis', label: 'Shift-JIS' },
+];
 
 interface ItemFileEditProps {
   filePath: string;
   defaultData: ItemFileAPIData;
+  nameEncoding: ItemFileNameEncoding;
+  onNameEncodingChange: (encoding: ItemFileNameEncoding) => void;
 }
 
 type ItemField =
@@ -75,7 +95,12 @@ type LevelField =
   | 'red_option'
   | 'grey_option';
 
-export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
+export function ItemFileEdit({
+  filePath,
+  defaultData,
+  nameEncoding,
+  onNameEncodingChange,
+}: ItemFileEditProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [items, setItems] = useState(defaultData.items);
@@ -137,15 +162,16 @@ export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
   const mutation = useMutation({
     mutationFn: () =>
       updateItemFile(
-        { path: filePath },
+        { path: filePath, name_encoding: nameEncoding },
         {
           item_file_type: defaultData.item_file_type,
+          name_encoding: nameEncoding,
           items,
         },
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.itemFile(filePath),
+        queryKey: ['item-file', filePath],
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.fileTree(filePath),
@@ -289,6 +315,26 @@ export function ItemFileEdit({ filePath, defaultData }: ItemFileEditProps) {
               Item Records ({countLabel})
             </CardTitle>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select
+                value={nameEncoding}
+                onValueChange={(value) =>
+                  onNameEncodingChange(value as ItemFileNameEncoding)
+                }
+              >
+                <SelectTrigger
+                  className="w-full sm:w-36"
+                  aria-label="Item name encoding"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEM_NAME_ENCODING_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -509,7 +555,6 @@ function ItemEditRow({
           <Input
             value={item.name}
             onChange={(event) => updateItem(index, 'name', event.target.value)}
-            maxLength={32}
             aria-label={`Item row ${formatValue(item.row)} name`}
           />
         )}

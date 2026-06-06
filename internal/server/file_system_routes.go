@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	externalUtils "github.com/cyberinferno/go-utils/utils"
 	"github.com/go-chi/chi/v5"
@@ -29,6 +31,12 @@ import (
 	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
 	"github.com/project-agonyl/agonyl-utils-go/questfile"
+	textencoding "golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/encoding/korean"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/encoding/traditionalchinese"
+	"golang.org/x/text/transform"
 )
 
 func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
@@ -1191,7 +1199,20 @@ const (
 	itemFileTypeIT2   = "it2"
 	itemFileTypeIT3   = "it3"
 	itemFileNameSize  = 32
+
+	itemFileNameEncodingUTF8     = "utf-8"
+	itemFileNameEncodingEUCKR    = "euc-kr"
+	itemFileNameEncodingGBK      = "gbk"
+	itemFileNameEncodingBig5     = "big5"
+	itemFileNameEncodingShiftJIS = "shift-jis"
 )
+
+var itemFileNameLegacyEncodings = []*itemFileNameEncoding{
+	{label: itemFileNameEncodingEUCKR, encoding: korean.EUCKR},
+	{label: itemFileNameEncodingGBK, encoding: simplifiedchinese.GBK},
+	{label: itemFileNameEncodingBig5, encoding: traditionalchinese.Big5},
+	{label: itemFileNameEncodingShiftJIS, encoding: japanese.ShiftJIS},
+}
 
 func (s *Server) handleItemFileData(w http.ResponseWriter, r *http.Request) {
 	pathParam := r.URL.Query().Get("path")
@@ -1252,7 +1273,17 @@ func (s *Server) handleItemFileData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiData, err := s.readItemFileAPIData(cleanPath, fileType)
+	nameEncoding := r.URL.Query().Get("name_encoding")
+	if _, _, err := requestedItemFileNameEncoding(nameEncoding); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
+	apiData, err := s.readItemFileAPIData(cleanPath, fileType, nameEncoding)
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeFileReadError,
@@ -1290,6 +1321,15 @@ func (s *Server) handleUpdateItemFile(w http.ResponseWriter, r *http.Request) {
 			"errorCode": constants.ErrorCodeBadRequest,
 			"context":   "file-system",
 			"errors":    []string{"item_file_type must be " + expectedType},
+		})
+		return
+	}
+
+	if _, _, err := requestedItemFileNameEncoding(req.NameEncoding); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{err.Error()},
 		})
 		return
 	}
@@ -1403,7 +1443,7 @@ func (s *Server) validateItemFileUpdateRequest(w http.ResponseWriter, r *http.Re
 	}, fileType, true
 }
 
-func (s *Server) readItemFileAPIData(path string, fileType services.FileType) (ItemFileAPIData, error) {
+func (s *Server) readItemFileAPIData(path string, fileType services.FileType, requestedNameEncoding string) (ItemFileAPIData, error) {
 	switch fileType {
 	case services.FileTypeIT0Item:
 		data, err := s.fileEditor.ReadIT0ItemFileData(path)
@@ -1411,7 +1451,7 @@ func (s *Server) readItemFileAPIData(path string, fileType services.FileType) (I
 			return ItemFileAPIData{}, err
 		}
 
-		return it0ItemFileToAPIData(data), nil
+		return it0ItemFileToAPIData(data, requestedNameEncoding), nil
 	case services.FileTypeIT0ExItem:
 		data, err := s.fileEditor.ReadIT0ExItemFileData(path)
 		if err != nil {
@@ -1423,28 +1463,28 @@ func (s *Server) readItemFileAPIData(path string, fileType services.FileType) (I
 			return ItemFileAPIData{}, err
 		}
 
-		return it0ExItemFileToAPIData(data, baseData)
+		return it0ExItemFileToAPIData(data, baseData, requestedNameEncoding)
 	case services.FileTypeIT1Item:
 		data, err := s.fileEditor.ReadIT1ItemFileData(path)
 		if err != nil {
 			return ItemFileAPIData{}, err
 		}
 
-		return it1ItemFileToAPIData(data), nil
+		return it1ItemFileToAPIData(data, requestedNameEncoding), nil
 	case services.FileTypeIT2Item:
 		data, err := s.fileEditor.ReadIT2ItemFileData(path)
 		if err != nil {
 			return ItemFileAPIData{}, err
 		}
 
-		return it2ItemFileToAPIData(data), nil
+		return it2ItemFileToAPIData(data, requestedNameEncoding), nil
 	case services.FileTypeIT3Item:
 		data, err := s.fileEditor.ReadIT3ItemFileData(path)
 		if err != nil {
 			return ItemFileAPIData{}, err
 		}
 
-		return it3ItemFileToAPIData(data), nil
+		return it3ItemFileToAPIData(data, requestedNameEncoding), nil
 	default:
 		return ItemFileAPIData{}, fmt.Errorf("unsupported item file type %s", fileType)
 	}
@@ -1552,7 +1592,8 @@ func (s *Server) buildItemFileUpdate(path string, fileType services.FileType, re
 	}
 }
 
-func it0ItemFileToAPIData(data itemfile.IT0File) ItemFileAPIData {
+func it0ItemFileToAPIData(data itemfile.IT0File, requestedNameEncoding string) ItemFileAPIData {
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(requestedNameEncoding, it0ItemFileNameEncoding(data))
 	items := make([]ItemFileItemAPIData, len(data))
 	for i, raw := range data {
 		items[i] = ItemFileItemAPIData{
@@ -1561,16 +1602,21 @@ func it0ItemFileToAPIData(data itemfile.IT0File) ItemFileAPIData {
 			Slot:         uint16Ptr(raw.Slot),
 			Type:         uint16Ptr(raw.Type),
 			ItemCode:     uint32Ptr((uint32(raw.ItemCodeBase) << 10) + uint32(raw.Row)),
-			Name:         raw.GetName(),
+			Name:         itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
 			NPCPrice:     uint32Ptr(raw.NPCPrice),
 			Levels:       itemFileLevelsToAPIData(raw.Levels[:], 1),
 		}
 	}
 
-	return ItemFileAPIData{ItemFileType: itemFileTypeIT0, Items: items}
+	return ItemFileAPIData{
+		ItemFileType: itemFileTypeIT0,
+		NameEncoding: itemFileNameEncodingLabel(nameEncoding),
+		Items:        items,
+	}
 }
 
-func it0ExItemFileToAPIData(data itemfile.IT0ExFile, baseData itemfile.IT0File) (ItemFileAPIData, error) {
+func it0ExItemFileToAPIData(data itemfile.IT0ExFile, baseData itemfile.IT0File, requestedNameEncoding string) (ItemFileAPIData, error) {
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(requestedNameEncoding, it0ItemFileNameEncoding(baseData))
 	baseByRow := make(map[uint16]itemfile.IT0Raw, len(baseData))
 	for _, raw := range baseData {
 		baseByRow[raw.Row] = raw
@@ -1589,26 +1635,28 @@ func it0ExItemFileToAPIData(data itemfile.IT0ExFile, baseData itemfile.IT0File) 
 			Slot:         uint16Ptr(baseRaw.Slot),
 			Type:         uint16Ptr(baseRaw.Type),
 			ItemCode:     uint32Ptr((uint32(baseRaw.ItemCodeBase) << 10) + uint32(baseRaw.Row)),
-			Name:         baseRaw.GetName(),
+			Name:         itemFileNameToAPIString(baseRaw.Name, nameEncoding, forceNameEncoding),
 			Levels:       itemFileLevelsToAPIData(raw.Levels[:], 11),
 		}
 	}
 
 	return ItemFileAPIData{
 		ItemFileType: itemFileTypeIT0Ex,
+		NameEncoding: itemFileNameEncodingLabel(nameEncoding),
 		Items:        items,
-		BaseItems:    it0BaseItemsToAPIData(baseData),
+		BaseItems:    it0BaseItemsToAPIData(baseData, nameEncoding, forceNameEncoding),
 	}, nil
 }
 
-func it1ItemFileToAPIData(data itemfile.IT1File) ItemFileAPIData {
+func it1ItemFileToAPIData(data itemfile.IT1File, requestedNameEncoding string) ItemFileAPIData {
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(requestedNameEncoding, it1ItemFileNameEncoding(data))
 	items := make([]ItemFileItemAPIData, len(data))
 	for i, raw := range data {
 		items[i] = ItemFileItemAPIData{
 			Row:           uint16Ptr(raw.Row),
 			Type:          uint16Ptr(raw.Type),
 			ItemCode:      uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
-			Name:          raw.GetName(),
+			Name:          itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
 			NPCPrice:      uint32Ptr(raw.NPCPrice),
 			RequiredLevel: uint16Ptr(raw.RequiredLevel),
 			Attribute:     uint16Ptr(raw.Attribute),
@@ -1618,17 +1666,22 @@ func it1ItemFileToAPIData(data itemfile.IT1File) ItemFileAPIData {
 		}
 	}
 
-	return ItemFileAPIData{ItemFileType: itemFileTypeIT1, Items: items}
+	return ItemFileAPIData{
+		ItemFileType: itemFileTypeIT1,
+		NameEncoding: itemFileNameEncodingLabel(nameEncoding),
+		Items:        items,
+	}
 }
 
-func it2ItemFileToAPIData(data itemfile.IT2File) ItemFileAPIData {
+func it2ItemFileToAPIData(data itemfile.IT2File, requestedNameEncoding string) ItemFileAPIData {
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(requestedNameEncoding, it2ItemFileNameEncoding(data))
 	items := make([]ItemFileItemAPIData, len(data))
 	for i, raw := range data {
 		items[i] = ItemFileItemAPIData{
 			Row:           uint16Ptr(raw.Row),
 			Type:          uint16Ptr(raw.Type),
 			ItemCode:      uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
-			Name:          raw.GetName(),
+			Name:          itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
 			NPCPrice:      uint32Ptr(raw.NPCPrice),
 			Class:         uint16Ptr(raw.Class),
 			RequiredLevel: uint16Ptr(raw.RequiredLevel),
@@ -1636,31 +1689,40 @@ func it2ItemFileToAPIData(data itemfile.IT2File) ItemFileAPIData {
 		}
 	}
 
-	return ItemFileAPIData{ItemFileType: itemFileTypeIT2, Items: items}
+	return ItemFileAPIData{
+		ItemFileType: itemFileTypeIT2,
+		NameEncoding: itemFileNameEncodingLabel(nameEncoding),
+		Items:        items,
+	}
 }
 
-func it3ItemFileToAPIData(data itemfile.IT3File) ItemFileAPIData {
+func it3ItemFileToAPIData(data itemfile.IT3File, requestedNameEncoding string) ItemFileAPIData {
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(requestedNameEncoding, it3ItemFileNameEncoding(data))
 	items := make([]ItemFileItemAPIData, len(data))
 	for i, raw := range data {
 		items[i] = ItemFileItemAPIData{
 			Row:      uint16Ptr(raw.Row),
 			Type:     uint16Ptr(raw.Type),
 			ItemCode: uint32Ptr((uint32(raw.Type) << 10) + uint32(raw.Row)),
-			Name:     raw.GetName(),
+			Name:     itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
 			NPCPrice: uint32Ptr(raw.NPCPrice),
 		}
 	}
 
-	return ItemFileAPIData{ItemFileType: itemFileTypeIT3, Items: items}
+	return ItemFileAPIData{
+		ItemFileType: itemFileTypeIT3,
+		NameEncoding: itemFileNameEncodingLabel(nameEncoding),
+		Items:        items,
+	}
 }
 
-func it0BaseItemsToAPIData(data itemfile.IT0File) []ItemFileBaseItemAPIData {
+func it0BaseItemsToAPIData(data itemfile.IT0File, nameEncoding *itemFileNameEncoding, forceNameEncoding bool) []ItemFileBaseItemAPIData {
 	baseItems := make([]ItemFileBaseItemAPIData, len(data))
 	for i, raw := range data {
 		baseItems[i] = ItemFileBaseItemAPIData{
 			Row:      uint16Ptr(raw.Row),
 			ItemCode: uint32Ptr((uint32(raw.ItemCodeBase) << 10) + uint32(raw.Row)),
-			Name:     raw.GetName(),
+			Name:     itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
 		}
 	}
 
@@ -1677,6 +1739,7 @@ func it0ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT0File) (ite
 	rowToIndex, rowErrs := it0RowIndexMap(existing, "IT0")
 	errs = append(errs, rowErrs...)
 	seenRows := map[uint16]bool{}
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(req.NameEncoding, it0ItemFileNameEncoding(existing))
 	for i, apiItem := range req.Items {
 		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
 		if !ok {
@@ -1685,8 +1748,8 @@ func it0ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT0File) (ite
 		}
 
 		raw := data[rowToIndex[row]]
-		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
-			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name, nameEncoding, forceNameEncoding); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must fit selected name encoding and not exceed %d bytes", i, itemFileNameSize))
 		} else {
 			raw.Name = name
 		}
@@ -1777,6 +1840,7 @@ func it1ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT1File) (ite
 	rowToIndex, rowErrs := it1RowIndexMap(existing, "IT1")
 	errs = append(errs, rowErrs...)
 	seenRows := map[uint16]bool{}
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(req.NameEncoding, it1ItemFileNameEncoding(existing))
 	for i, apiItem := range req.Items {
 		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
 		if !ok {
@@ -1785,8 +1849,8 @@ func it1ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT1File) (ite
 		}
 
 		raw := data[rowToIndex[row]]
-		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
-			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name, nameEncoding, forceNameEncoding); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must fit selected name encoding and not exceed %d bytes", i, itemFileNameSize))
 		} else {
 			raw.Name = name
 		}
@@ -1847,6 +1911,7 @@ func it2ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT2File) (ite
 	rowToIndex, rowErrs := it2RowIndexMap(existing, "IT2")
 	errs = append(errs, rowErrs...)
 	seenRows := map[uint16]bool{}
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(req.NameEncoding, it2ItemFileNameEncoding(existing))
 	for i, apiItem := range req.Items {
 		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
 		if !ok {
@@ -1855,8 +1920,8 @@ func it2ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT2File) (ite
 		}
 
 		raw := data[rowToIndex[row]]
-		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
-			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name, nameEncoding, forceNameEncoding); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must fit selected name encoding and not exceed %d bytes", i, itemFileNameSize))
 		} else {
 			raw.Name = name
 		}
@@ -1905,6 +1970,7 @@ func it3ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT3File) (ite
 	rowToIndex, rowErrs := it3RowIndexMap(existing, "IT3")
 	errs = append(errs, rowErrs...)
 	seenRows := map[uint16]bool{}
+	nameEncoding, forceNameEncoding := itemFileNameEncodingSelection(req.NameEncoding, it3ItemFileNameEncoding(existing))
 	for i, apiItem := range req.Items {
 		row, ok := validateExistingItemRow(apiItem.Row, rowToIndex, seenRows)
 		if !ok {
@@ -1913,8 +1979,8 @@ func it3ItemFileFromAPIData(req ItemFileAPIData, existing itemfile.IT3File) (ite
 		}
 
 		raw := data[rowToIndex[row]]
-		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name); err != nil {
-			errs = append(errs, fmt.Sprintf("items[%d].name must not exceed %d bytes", i, itemFileNameSize))
+		if name, err := itemFileNameFromAPIData(raw.Name, apiItem.Name, nameEncoding, forceNameEncoding); err != nil {
+			errs = append(errs, fmt.Sprintf("items[%d].name must fit selected name encoding and not exceed %d bytes", i, itemFileNameSize))
 		} else {
 			raw.Name = name
 		}
@@ -2040,18 +2106,266 @@ func itemFileLevelFromAPIData(apiLevel ItemFileLevelAPIData, fieldPath string, e
 	return level
 }
 
-func itemFileNameFromAPIData(existingName [itemFileNameSize]byte, nextName string) ([itemFileNameSize]byte, error) {
-	if nextName == externalUtils.ReadStringFromBytes(existingName[:]) {
+func itemFileNameToAPIString(name [itemFileNameSize]byte, nameEncoding *itemFileNameEncoding, forceNameEncoding bool) string {
+	if forceNameEncoding {
+		decoded, err := itemFileNameDecodeWithEncoding(name, nameEncoding)
+		if err == nil {
+			return decoded
+		}
+	}
+
+	decoded, _ := itemFileNameDecode(name)
+	return decoded
+}
+
+func itemFileNameFromAPIData(existingName [itemFileNameSize]byte, nextName string, nameEncoding *itemFileNameEncoding, forceNameEncoding bool) ([itemFileNameSize]byte, error) {
+	existingDecoded, existingEncoding := itemFileNameDecode(existingName)
+	if forceNameEncoding {
+		decoded, err := itemFileNameDecodeWithEncoding(existingName, nameEncoding)
+		if err == nil {
+			existingDecoded = decoded
+			existingEncoding = nameEncoding
+		}
+	}
+
+	if nextName == existingDecoded {
 		return existingName, nil
 	}
 
-	if len([]byte(nextName)) > itemFileNameSize {
+	if !forceNameEncoding {
+		nameEncoding = existingEncoding
+	}
+
+	encodedName, err := itemFileNameEncode(nextName, nameEncoding)
+	if err != nil {
+		return [itemFileNameSize]byte{}, err
+	}
+
+	if len(encodedName) > itemFileNameSize {
 		return [itemFileNameSize]byte{}, fmt.Errorf("item name too long")
 	}
 
 	var name [itemFileNameSize]byte
-	copy(name[:], []byte(nextName))
+	copy(name[:], encodedName)
 	return name, nil
+}
+
+func itemFileNameDecodeWithEncoding(name [itemFileNameSize]byte, nameEncoding *itemFileNameEncoding) (string, error) {
+	rawName := itemFileNameBytes(name[:])
+	if len(rawName) == 0 {
+		return "", nil
+	}
+
+	if nameEncoding == nil {
+		if !utf8.Valid(rawName) {
+			return externalUtils.ReadStringFromBytes(name[:]), nil
+		}
+
+		return string(rawName), nil
+	}
+
+	decoded, _, err := transform.String(nameEncoding.encoding.NewDecoder(), string(rawName))
+	if err != nil {
+		return "", err
+	}
+
+	return decoded, nil
+}
+
+func itemFileNameDecode(name [itemFileNameSize]byte) (string, *itemFileNameEncoding) {
+	rawName := itemFileNameBytes(name[:])
+	if len(rawName) == 0 {
+		return "", nil
+	}
+
+	if utf8.Valid(rawName) {
+		return string(rawName), nil
+	}
+
+	var (
+		bestDecoded  string
+		bestEncoding *itemFileNameEncoding
+		bestScore    = -1
+	)
+
+	for _, candidate := range itemFileNameLegacyEncodings {
+		decoded, _, err := transform.String(candidate.encoding.NewDecoder(), string(rawName))
+		if err != nil {
+			continue
+		}
+
+		score := itemFileNameDecodeScore(decoded)
+		if score > bestScore {
+			bestDecoded = decoded
+			bestEncoding = candidate
+			bestScore = score
+		}
+	}
+
+	if bestScore >= 0 {
+		return bestDecoded, bestEncoding
+	}
+
+	return externalUtils.ReadStringFromBytes(name[:]), nil
+}
+
+func itemFileNameEncodingSelection(requestedEncoding string, detectedEncoding *itemFileNameEncoding) (*itemFileNameEncoding, bool) {
+	nameEncoding, hasRequestedEncoding, _ := requestedItemFileNameEncoding(requestedEncoding)
+	if hasRequestedEncoding {
+		return nameEncoding, true
+	}
+
+	if detectedEncoding != nil {
+		return detectedEncoding, true
+	}
+
+	return nil, false
+}
+
+func requestedItemFileNameEncoding(value string) (*itemFileNameEncoding, bool, error) {
+	normalizedValue := strings.ToLower(strings.TrimSpace(value))
+	if normalizedValue == "" {
+		return nil, false, nil
+	}
+
+	if normalizedValue == itemFileNameEncodingUTF8 {
+		return nil, true, nil
+	}
+
+	for _, candidate := range itemFileNameLegacyEncodings {
+		if normalizedValue == candidate.label {
+			return candidate, true, nil
+		}
+	}
+
+	return nil, false, fmt.Errorf("name_encoding must be one of %s", strings.Join(itemFileNameEncodingLabels(), ", "))
+}
+
+func itemFileNameEncodingLabel(nameEncoding *itemFileNameEncoding) string {
+	if nameEncoding == nil {
+		return itemFileNameEncodingUTF8
+	}
+
+	return nameEncoding.label
+}
+
+func itemFileNameEncodingLabels() []string {
+	labels := []string{itemFileNameEncodingUTF8}
+	for _, candidate := range itemFileNameLegacyEncodings {
+		labels = append(labels, candidate.label)
+	}
+
+	return labels
+}
+
+func itemFileNameEncode(name string, nameEncoding *itemFileNameEncoding) ([]byte, error) {
+	if nameEncoding == nil {
+		return []byte(name), nil
+	}
+
+	encodedName, _, err := transform.String(nameEncoding.encoding.NewEncoder(), name)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(encodedName), nil
+}
+
+func itemFileNameBytes(rawName []byte) []byte {
+	if i := bytes.IndexByte(rawName, 0); i >= 0 {
+		return rawName[:i]
+	}
+
+	return rawName
+}
+
+func itemFileNameDecodeScore(decoded string) int {
+	if decoded == "" {
+		return 0
+	}
+
+	score := 0
+	for _, r := range decoded {
+		switch {
+		case r == utf8.RuneError || unicode.IsControl(r):
+			return -1
+		case r >= 0xff61 && r <= 0xff9f:
+			score -= 4
+		case unicode.In(r, unicode.Hangul, unicode.Han, unicode.Hiragana, unicode.Katakana):
+			score += 4
+		case r >= 0x20 && r <= 0x7e:
+			score += 3
+		case unicode.IsLetter(r) || unicode.IsNumber(r):
+			score += 2
+		case unicode.IsSpace(r):
+			score++
+		case unicode.IsPunct(r) || unicode.IsSymbol(r):
+			continue
+		default:
+			score--
+		}
+	}
+
+	return score
+}
+
+func it0ItemFileNameEncoding(data itemfile.IT0File) *itemFileNameEncoding {
+	counts := map[*itemFileNameEncoding]int{}
+	for _, raw := range data {
+		countItemFileNameEncoding(counts, raw.Name)
+	}
+
+	return mostCommonItemFileNameEncoding(counts)
+}
+
+func it1ItemFileNameEncoding(data itemfile.IT1File) *itemFileNameEncoding {
+	counts := map[*itemFileNameEncoding]int{}
+	for _, raw := range data {
+		countItemFileNameEncoding(counts, raw.Name)
+	}
+
+	return mostCommonItemFileNameEncoding(counts)
+}
+
+func it2ItemFileNameEncoding(data itemfile.IT2File) *itemFileNameEncoding {
+	counts := map[*itemFileNameEncoding]int{}
+	for _, raw := range data {
+		countItemFileNameEncoding(counts, raw.Name)
+	}
+
+	return mostCommonItemFileNameEncoding(counts)
+}
+
+func it3ItemFileNameEncoding(data itemfile.IT3File) *itemFileNameEncoding {
+	counts := map[*itemFileNameEncoding]int{}
+	for _, raw := range data {
+		countItemFileNameEncoding(counts, raw.Name)
+	}
+
+	return mostCommonItemFileNameEncoding(counts)
+}
+
+func countItemFileNameEncoding(counts map[*itemFileNameEncoding]int, name [itemFileNameSize]byte) {
+	_, nameEncoding := itemFileNameDecode(name)
+	if nameEncoding != nil {
+		counts[nameEncoding]++
+	}
+}
+
+func mostCommonItemFileNameEncoding(counts map[*itemFileNameEncoding]int) *itemFileNameEncoding {
+	var (
+		bestEncoding *itemFileNameEncoding
+		bestCount    int
+	)
+
+	for _, candidate := range itemFileNameLegacyEncodings {
+		if counts[candidate] > bestCount {
+			bestEncoding = candidate
+			bestCount = counts[candidate]
+		}
+	}
+
+	return bestEncoding
 }
 
 func it0RowIndexMap(data itemfile.IT0File, label string) (map[uint16]int, []string) {
@@ -3370,6 +3684,7 @@ type DropAPIData struct {
 
 type ItemFileAPIData struct {
 	ItemFileType string                    `json:"item_file_type"`
+	NameEncoding string                    `json:"name_encoding,omitempty"`
 	Items        []ItemFileItemAPIData     `json:"items"`
 	BaseItems    []ItemFileBaseItemAPIData `json:"base_items,omitempty"`
 }
@@ -3409,6 +3724,11 @@ type ItemFileBaseItemAPIData struct {
 	Row      *uint16 `json:"row,omitempty"`
 	ItemCode *uint32 `json:"item_code,omitempty"`
 	Name     string  `json:"name"`
+}
+
+type itemFileNameEncoding struct {
+	label    string
+	encoding textencoding.Encoding
 }
 
 type ItemCombinationDataFileAPIData struct {
