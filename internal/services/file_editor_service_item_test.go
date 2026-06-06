@@ -154,7 +154,13 @@ func TestGetFileTypeItemFiles(t *testing.T) {
 		require.False(t, service.IsFileViewable(exPath, info))
 		require.False(t, service.IsFileEditable(exPath, info))
 
-		require.NoError(t, os.WriteFile(filepath.Join(filepath.Dir(exPath), "0"), nil, 0644))
+		basePath := filepath.Join(filepath.Dir(exPath), "0")
+		require.NoError(t, os.Mkdir(basePath, 0755))
+		require.False(t, service.IsFileViewable(exPath, info))
+		require.False(t, service.IsFileEditable(exPath, info))
+
+		require.NoError(t, os.Remove(basePath))
+		require.NoError(t, os.WriteFile(basePath, nil, 0644))
 		require.True(t, service.IsFileViewable(exPath, info))
 		require.True(t, service.IsFileEditable(exPath, info))
 		require.Equal(t, "/file-tree/item-file", service.GetFileAPIEndpoint(exPath, info))

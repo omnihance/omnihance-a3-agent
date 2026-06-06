@@ -231,8 +231,8 @@ func (fes *fileEditorService) GetFileAPIEndpoint(path string, fileInfo fs.FileIn
 }
 
 func (fes *fileEditorService) hasSiblingIT0ItemFile(path string) bool {
-	_, err := os.Stat(filepath.Join(filepath.Dir(path), IT0ItemFileName))
-	return err == nil
+	info, err := os.Stat(filepath.Join(filepath.Dir(path), IT0ItemFileName))
+	return err == nil && info.Mode().IsRegular()
 }
 
 func (fes *fileEditorService) ReadNPCFileData(path string) (*NPCFileData, error) {

@@ -21,12 +21,6 @@ import (
 	externalUtils "github.com/cyberinferno/go-utils/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"github.com/omnihance/omnihance-a3-agent/internal/constants"
-	"github.com/omnihance/omnihance-a3-agent/internal/logger"
-	"github.com/omnihance/omnihance-a3-agent/internal/mw"
-	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
-	"github.com/omnihance/omnihance-a3-agent/internal/services"
-	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 	"github.com/project-agonyl/agonyl-utils-go/dropfile"
 	"github.com/project-agonyl/agonyl-utils-go/itemcombinationdata"
 	"github.com/project-agonyl/agonyl-utils-go/itemfile"
@@ -37,6 +31,13 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/encoding/traditionalchinese"
 	"golang.org/x/text/transform"
+
+	"github.com/omnihance/omnihance-a3-agent/internal/constants"
+	"github.com/omnihance/omnihance-a3-agent/internal/logger"
+	"github.com/omnihance/omnihance-a3-agent/internal/mw"
+	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
+	"github.com/omnihance/omnihance-a3-agent/internal/services"
+	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 )
 
 func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
@@ -1314,6 +1315,20 @@ func (s *Server) handleUpdateItemFile(w http.ResponseWriter, r *http.Request) {
 			"errors":    []string{"Invalid request body: " + err.Error()},
 		})
 		return
+	}
+
+	queryNameEncoding := r.URL.Query().Get("name_encoding")
+	if _, _, err := requestedItemFileNameEncoding(queryNameEncoding); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{err.Error()},
+		})
+		return
+	}
+
+	if req.NameEncoding == "" {
+		req.NameEncoding = queryNameEncoding
 	}
 
 	if expectedType := itemFileAPIType(fileType); req.ItemFileType != expectedType {

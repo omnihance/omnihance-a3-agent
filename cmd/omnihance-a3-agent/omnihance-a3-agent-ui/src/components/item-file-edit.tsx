@@ -171,7 +171,7 @@ export function ItemFileEdit({
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['item-file', filePath],
+        queryKey: queryKeys.itemFile(filePath),
       });
       queryClient.invalidateQueries({
         queryKey: queryKeys.fileTree(filePath),

@@ -777,6 +777,13 @@ paths:
           schema:
             type: string
           description: The path to the item file to update.
+        - in: query
+          name: name_encoding
+          required: false
+          schema:
+            type: string
+            enum: [utf-8, euc-kr, gbk, big5, shift-jis]
+          description: Optional item name encoding override. The request body name_encoding is used when present.
       requestBody:
         required: true
         content:
@@ -4304,6 +4311,7 @@ components:
               a3_it1_item_file,
               a3_it2_item_file,
               a3_it3_item_file,
+              a3_item_combination_data_file,
               a3_unknown_file,
               text_file,
             ]
