@@ -97,13 +97,9 @@ func (s *Service) Update(dsn DSN) error {
 	if err := validatePersistDSN(dsn); err != nil {
 		return err
 	}
-	existing, err := s.Get(dsn.Name)
-	if err != nil {
-		return err
-	}
 
-	if dsn.Password == "" {
-		dsn.Password = existing.Password
+	if _, err := s.Get(dsn.Name); err != nil {
+		return err
 	}
 
 	cfg, err := toConfig(dsn)
@@ -236,9 +232,6 @@ func toConfig(dsn DSN) (userdsn.Config, error) {
 		"Database": dsn.Database,
 		"LastUser": dsn.LoginID,
 	}
-	if dsn.Password != "" {
-		attrs["PWD"] = dsn.Password
-	}
 
 	return userdsn.Config{
 		Name:   dsn.Name,
@@ -258,7 +251,6 @@ func fromConfig(cfg userdsn.Config) DSN {
 		Server:   cfg.Attrs["Server"],
 		Database: cfg.Attrs["Database"],
 		LoginID:  loginID,
-		Password: cfg.Attrs["PWD"],
 		LastUser: cfg.Attrs["LastUser"],
 	}
 }

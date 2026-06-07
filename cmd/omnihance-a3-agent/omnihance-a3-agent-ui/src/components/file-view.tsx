@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { usePermissions } from '@/hooks/use-permissions';
 import {
   ArrowLeft,
@@ -35,22 +35,24 @@ import {
   getNPCFile,
   getSpawnFile,
   getDropFile,
+  getItemFile,
   getItemCombinationDataFile,
   getQuestFile,
   getRevisionSummary,
   revertFile,
   getMaps,
+  type ItemFileNameEncoding,
 } from '@/lib/api';
 import { formatBytes, formatDate } from '@/lib/util';
 import { TextFileView } from '@/components/text-file-view';
 import { NPCFileView } from '@/components/npc-file-view';
 import { SpawnFileView } from '@/components/spawn-file-view';
 import { DropFileView } from '@/components/drop-file-view';
+import { ItemFileView } from '@/components/item-file-view';
 import { ItemCombinationDataFileView } from '@/components/item-combination-data-file-view';
 import { QuestFileView } from '@/components/quest-file-view';
 import { toast } from 'sonner';
 import { queryKeys } from '@/constants';
-import { useMemo } from 'react';
 
 interface FileViewProps {
   filePath: string;
@@ -60,6 +62,17 @@ export function FileView({ filePath }: FileViewProps) {
   const { hasPermission } = usePermissions();
   const canEditFiles = hasPermission('edit_files');
   const canRevertFiles = hasPermission('revert_files');
+  const [itemNameEncodingState, setItemNameEncodingState] = useState<{
+    filePath: string;
+    encoding?: ItemFileNameEncoding;
+  }>({ filePath });
+  const itemNameEncoding =
+    itemNameEncodingState.filePath === filePath
+      ? itemNameEncodingState.encoding
+      : undefined;
+  const handleItemNameEncodingChange = (encoding: ItemFileNameEncoding) => {
+    setItemNameEncodingState({ filePath, encoding });
+  };
 
   const {
     data: fileTreeResponse,
@@ -138,6 +151,21 @@ export function FileView({ filePath }: FileViewProps) {
   });
 
   const {
+    data: itemFileData,
+    isLoading: itemFileLoading,
+    error: itemFileError,
+  } = useQuery({
+    queryKey: queryKeys.itemFile(filePath, itemNameEncoding),
+    queryFn: () => {
+      return getItemFile({
+        path: filePath,
+        name_encoding: itemNameEncoding,
+      });
+    },
+    enabled: !!filePath && isItemFileType(fileType),
+  });
+
+  const {
     data: itemCombinationDataFileData,
     isLoading: itemCombinationDataFileLoading,
     error: itemCombinationDataFileError,
@@ -205,6 +233,9 @@ export function FileView({ filePath }: FileViewProps) {
         queryKey: queryKeys.dropFile(filePath),
       });
       queryClient.invalidateQueries({
+        queryKey: queryKeys.itemFile(filePath),
+      });
+      queryClient.invalidateQueries({
         queryKey: queryKeys.itemCombinationDataFile(filePath),
       });
       queryClient.invalidateQueries({
@@ -256,6 +287,7 @@ export function FileView({ filePath }: FileViewProps) {
     npcFileError,
     spawnFileError,
     dropFileError,
+    itemFileError,
     itemCombinationDataFileError,
     questFileError,
   ]);
@@ -344,6 +376,7 @@ export function FileView({ filePath }: FileViewProps) {
         npcFileError ||
         spawnFileError ||
         dropFileError ||
+        itemFileError ||
         itemCombinationDataFileError ||
         questFileError) && (
         <Alert variant="destructive" className="mb-6">
@@ -528,6 +561,28 @@ export function FileView({ filePath }: FileViewProps) {
             </>
           )}
 
+          {isItemFileType(fileType) && (
+            <>
+              {itemFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {itemFileData && !itemFileError && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">Item Data</h2>
+                  <ItemFileView
+                    data={itemFileData}
+                    nameEncoding={
+                      itemNameEncoding ?? itemFileData.name_encoding
+                    }
+                    onNameEncodingChange={handleItemNameEncodingChange}
+                  />
+                </div>
+              )}
+            </>
+          )}
+
           {fileType === 'a3_item_combination_data_file' && (
             <>
               {itemCombinationDataFileLoading && (
@@ -569,12 +624,14 @@ export function FileView({ filePath }: FileViewProps) {
             fileType !== 'a3_npc_file' &&
             fileType !== 'a3_spawn_file' &&
             fileType !== 'a3_drop_file' &&
+            !isItemFileType(fileType) &&
             fileType !== 'a3_item_combination_data_file' &&
             fileType !== 'a3_quest_file' &&
             !textFileLoading &&
             !npcFileLoading &&
             !spawnFileLoading &&
             !dropFileLoading &&
+            !itemFileLoading &&
             !itemCombinationDataFileLoading &&
             !questFileLoading && (
               <Card>
@@ -616,5 +673,15 @@ export function FileView({ filePath }: FileViewProps) {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function isItemFileType(fileType: FileNode['file_type'] | undefined) {
+  return (
+    fileType === 'a3_it0_item_file' ||
+    fileType === 'a3_it0ex_item_file' ||
+    fileType === 'a3_it1_item_file' ||
+    fileType === 'a3_it2_item_file' ||
+    fileType === 'a3_it3_item_file'
   );
 }

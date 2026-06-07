@@ -115,6 +115,121 @@ func TestReadClientItemFileBytesTruncated(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetFileTypeItemFiles(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	dir := t.TempDir()
+
+	tests := []struct {
+		name     string
+		fileType FileType
+	}{
+		{name: "0", fileType: FileTypeIT0Item},
+		{name: "1", fileType: FileTypeIT1Item},
+		{name: "2", fileType: FileTypeIT2Item},
+		{name: "3", fileType: FileTypeIT3Item},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(dir, test.name)
+			require.NoError(t, os.WriteFile(path, nil, 0644))
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+
+			require.Equal(t, test.fileType, service.GetFileType(path, info))
+			require.True(t, service.IsFileViewable(path, info))
+			require.True(t, service.IsFileEditable(path, info))
+			require.Equal(t, "/file-tree/item-file", service.GetFileAPIEndpoint(path, info))
+		})
+	}
+
+	t.Run("0ex requires sibling 0", func(t *testing.T) {
+		exPath := filepath.Join(t.TempDir(), "0ex")
+		require.NoError(t, os.WriteFile(exPath, nil, 0644))
+		info, err := os.Stat(exPath)
+		require.NoError(t, err)
+
+		require.Equal(t, FileTypeIT0ExItem, service.GetFileType(exPath, info))
+		require.False(t, service.IsFileViewable(exPath, info))
+		require.False(t, service.IsFileEditable(exPath, info))
+
+		basePath := filepath.Join(filepath.Dir(exPath), "0")
+		require.NoError(t, os.Mkdir(basePath, 0755))
+		require.False(t, service.IsFileViewable(exPath, info))
+		require.False(t, service.IsFileEditable(exPath, info))
+
+		require.NoError(t, os.Remove(basePath))
+		require.NoError(t, os.WriteFile(basePath, nil, 0644))
+		require.True(t, service.IsFileViewable(exPath, info))
+		require.True(t, service.IsFileEditable(exPath, info))
+		require.Equal(t, "/file-tree/item-file", service.GetFileAPIEndpoint(exPath, info))
+	})
+}
+
+func TestRawItemFileDataRoundTrip(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	dir := t.TempDir()
+
+	t.Run("it0", func(t *testing.T) {
+		path := filepath.Join(dir, "0")
+		expected := itemfile.IT0File{{ItemCodeBase: 2, Row: 0, Slot: 3, Type: 1, NPCPrice: 100}}
+		copy(expected[0].Name[:], "Sword")
+		expected[0].Unknown2[0] = 0x1111
+		expected[0].Levels[0].Strength = 10
+
+		require.NoError(t, service.WriteIT0ItemFileData(path, expected))
+		actual, err := service.ReadIT0ItemFileData(path)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("it0ex", func(t *testing.T) {
+		path := filepath.Join(dir, "0ex")
+		expected := itemfile.IT0ExFile{{Row: 0}}
+		expected[0].Levels[0].Strength = 10
+
+		require.NoError(t, service.WriteIT0ExItemFileData(path, expected))
+		actual, err := service.ReadIT0ExItemFileData(path)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("it1", func(t *testing.T) {
+		path := filepath.Join(dir, "1")
+		expected := itemfile.IT1File{{Type: 4, Row: 0, NPCPrice: 200, Unknown1: 0x1111, RequiredLevel: 10}}
+		copy(expected[0].Name[:], "Potion")
+
+		require.NoError(t, service.WriteIT1ItemFileData(path, expected))
+		actual, err := service.ReadIT1ItemFileData(path)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("it2", func(t *testing.T) {
+		path := filepath.Join(dir, "2")
+		expected := itemfile.IT2File{{Type: 5, Row: 0, NPCPrice: 300, Class: 1, Unknown1: 0x1111, SkillLevel: 5}}
+		copy(expected[0].Name[:], "Skill")
+
+		require.NoError(t, service.WriteIT2ItemFileData(path, expected))
+		actual, err := service.ReadIT2ItemFileData(path)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("it3", func(t *testing.T) {
+		path := filepath.Join(dir, "3")
+		expected := itemfile.IT3File{{Type: 6, Row: 0, NPCPrice: 400, Unknown1: 0x1111, Unknown2: 0x2222}}
+		copy(expected[0].Name[:], "Quest Item")
+
+		require.NoError(t, service.WriteIT3ItemFileData(path, expected))
+		actual, err := service.ReadIT3ItemFileData(path)
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func TestReadClientMonsterAndMapFileBytesRejectInvalidInput(t *testing.T) {
 	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
 	service := NewFileEditorService(log)

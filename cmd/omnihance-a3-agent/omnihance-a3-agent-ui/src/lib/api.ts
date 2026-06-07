@@ -15,6 +15,7 @@ export const API_ROUTES = {
   TEXT_FILE: '/api/file-tree/text-file',
   SPAWN_FILE: '/api/file-tree/spawn-file',
   DROP_FILE: '/api/file-tree/drop-file',
+  ITEM_FILE: '/api/file-tree/item-file',
   ITEM_COMBINATION_DATA_FILE: '/api/file-tree/item-combination-data',
   QUEST_FILE: '/api/file-tree/quest-file',
   REVERT_FILE: '/api/file-tree/revert-file',
@@ -241,6 +242,11 @@ type FileNode = {
   file_type?:
     | 'a3_npc_file'
     | 'a3_drop_file'
+    | 'a3_it0_item_file'
+    | 'a3_it0ex_item_file'
+    | 'a3_it1_item_file'
+    | 'a3_it2_item_file'
+    | 'a3_it3_item_file'
     | 'a3_item_combination_data_file'
     | 'a3_map_file'
     | 'a3_spawn_file'
@@ -268,6 +274,11 @@ const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
       .enum([
         'a3_npc_file',
         'a3_drop_file',
+        'a3_it0_item_file',
+        'a3_it0ex_item_file',
+        'a3_it1_item_file',
+        'a3_it2_item_file',
+        'a3_it3_item_file',
         'a3_item_combination_data_file',
         'a3_map_file',
         'a3_spawn_file',
@@ -311,6 +322,11 @@ export interface GetSpawnFileParams {
 
 export interface GetDropFileParams {
   path: string;
+}
+
+export interface GetItemFileParams {
+  path: string;
+  name_encoding?: ItemFileNameEncoding;
 }
 
 export interface GetItemCombinationDataFileParams {
@@ -387,6 +403,71 @@ const DropFileAPIDataSchema = z.object({
 });
 
 export type DropFileAPIData = z.infer<typeof DropFileAPIDataSchema>;
+
+const ItemFileTypeSchema = z.enum(['it0', 'it0ex', 'it1', 'it2', 'it3']);
+const ItemFileNameEncodingSchema = z.enum([
+  'utf-8',
+  'euc-kr',
+  'gbk',
+  'big5',
+  'shift-jis',
+]);
+
+export type ItemFileNameEncoding = z.infer<typeof ItemFileNameEncodingSchema>;
+
+const ItemFileLevelAPIDataSchema = z.object({
+  level: z.number().int().min(0).max(255).optional(),
+  additional_attribute: z.number().int().min(0).max(65535).optional(),
+  strength: z.number().int().min(0).max(65535).optional(),
+  dexterity: z.number().int().min(0).max(65535).optional(),
+  intelligence: z.number().int().min(0).max(65535).optional(),
+  attribute: z.number().int().min(0).max(65535).optional(),
+  attribute_range: z.number().int().min(0).max(65535).optional(),
+  blue_option: z.number().int().min(0).max(65535).optional(),
+  red_option: z.number().int().min(0).max(65535).optional(),
+  grey_option: z.number().int().min(0).max(65535).optional(),
+});
+
+export type ItemFileLevelAPIData = z.infer<typeof ItemFileLevelAPIDataSchema>;
+
+const ItemFileItemAPIDataSchema = z.object({
+  item_code_base: z.number().int().min(0).max(65535).optional(),
+  row: z.number().int().min(0).max(65535).optional(),
+  slot: z.number().int().min(0).max(65535).optional(),
+  type: z.number().int().min(0).max(65535).optional(),
+  item_code: z.number().int().nonnegative().optional(),
+  name: z.string(),
+  npc_price: z.number().int().nonnegative().optional(),
+  required_level: z.number().int().min(0).max(65535).optional(),
+  attribute: z.number().int().min(0).max(65535).optional(),
+  blue_option: z.number().int().min(0).max(65535).optional(),
+  red_option: z.number().int().min(0).max(65535).optional(),
+  grey_option: z.number().int().min(0).max(65535).optional(),
+  class: z.number().int().min(0).max(65535).optional(),
+  skill_level: z.number().int().min(0).max(65535).optional(),
+  levels: z.array(ItemFileLevelAPIDataSchema).optional(),
+});
+
+export type ItemFileItemAPIData = z.infer<typeof ItemFileItemAPIDataSchema>;
+
+const ItemFileBaseItemAPIDataSchema = z.object({
+  row: z.number().int().min(0).max(65535).optional(),
+  item_code: z.number().int().nonnegative().optional(),
+  name: z.string(),
+});
+
+export type ItemFileBaseItemAPIData = z.infer<
+  typeof ItemFileBaseItemAPIDataSchema
+>;
+
+const ItemFileAPIDataSchema = z.object({
+  item_file_type: ItemFileTypeSchema,
+  name_encoding: ItemFileNameEncodingSchema.default('utf-8'),
+  items: z.array(ItemFileItemAPIDataSchema),
+  base_items: z.array(ItemFileBaseItemAPIDataSchema).optional(),
+});
+
+export type ItemFileAPIData = z.infer<typeof ItemFileAPIDataSchema>;
 
 const ItemCombinationUint16Schema = z.number().int().min(0).max(65535);
 
@@ -866,6 +947,37 @@ export async function updateDropFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.DROP_FILE,
+  );
+}
+
+export async function getItemFile(
+  params: GetItemFileParams,
+): Promise<ItemFileAPIData> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.ITEM_FILE, {
+    params,
+  });
+  return validateResponse(
+    ItemFileAPIDataSchema,
+    response.data,
+    API_ROUTES.ITEM_FILE,
+  );
+}
+
+export async function updateItemFile(
+  params: GetItemFileParams,
+  data: ItemFileAPIData,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.ITEM_FILE,
+    ItemFileAPIDataSchema.parse(data),
+    {
+      params,
+    },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.ITEM_FILE,
   );
 }
 
@@ -2143,7 +2255,6 @@ const SQLServerODBCDSNRequestSchema = z.object({
   server: z.string().min(1),
   database: z.string().min(1),
   login_id: z.string().min(1),
-  password: z.string().optional(),
 });
 
 export type SQLServerODBCDSNRequest = z.infer<
@@ -2153,6 +2264,10 @@ export type SQLServerODBCDSNRequest = z.infer<
 const SQLServerODBCDSNTestRequestSchema = SQLServerODBCDSNRequestSchema.extend({
   password: z.string().min(1),
 });
+
+export type SQLServerODBCDSNTestRequest = z.infer<
+  typeof SQLServerODBCDSNTestRequestSchema
+>;
 
 const SQLServerODBCDefaultDSNRequestSchema = z.object({
   server: z.string().min(1),
@@ -2246,7 +2361,7 @@ export async function deleteSQLServerODBCDSN(
 }
 
 export async function testSQLServerODBCDSNConnection(
-  payload: SQLServerODBCDSNRequest,
+  payload: SQLServerODBCDSNTestRequest,
 ): Promise<MessageResponse> {
   const response = await axiosInstance.post<unknown>(
     API_ROUTES.ODBC_SQLSERVER_DSN_TEST,
