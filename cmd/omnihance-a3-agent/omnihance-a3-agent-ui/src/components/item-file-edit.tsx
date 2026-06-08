@@ -242,17 +242,19 @@ export function ItemFileEdit({
       return;
     }
 
+    const newItemIndex = items.length;
     setItems((currentItems) => [
       ...currentItems,
       {
         row: baseItem.row,
         item_code: baseItem.item_code,
         name: baseItem.name,
-        levels: createEmptyLevels(11, 5),
+        levels: createIT0ExLevels(baseItem),
       },
     ]);
     setAddDialogOpen(false);
     setBaseQuery('');
+    setLevelEditorIndex(newItemIndex);
   };
 
   const removeIT0ExItem = (index: number) => {
@@ -1000,6 +1002,12 @@ function createEmptyLevels(firstLevel: number, count: number) {
     blue_option: 0,
     red_option: 0,
     grey_option: 0,
+  }));
+}
+
+function createIT0ExLevels(baseItem: ItemFileBaseItemAPIData) {
+  return (baseItem.levels ?? createEmptyLevels(11, 5)).map((level) => ({
+    ...level,
   }));
 }
 

@@ -454,6 +454,7 @@ const ItemFileBaseItemAPIDataSchema = z.object({
   row: z.number().int().min(0).max(65535).optional(),
   item_code: z.number().int().nonnegative().optional(),
   name: z.string(),
+  levels: z.array(ItemFileLevelAPIDataSchema).optional(),
 });
 
 export type ItemFileBaseItemAPIData = z.infer<

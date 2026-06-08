@@ -527,6 +527,17 @@ func TestIT0ExItemFileAPIDataValidatesRows(t *testing.T) {
 	}
 	copy(base[0].Name[:], "Sword")
 	copy(base[1].Name[:], "Axe")
+	base[0].Levels[9] = itemfile.IT0RawLevelProperties{
+		AdditionalAttribute: 1,
+		Strength:            2,
+		Dexterity:           3,
+		Intelligence:        4,
+		Attribute:           5,
+		Range:               6,
+		BlueOption:          7,
+		RedOption:           8,
+		GreyOption:          9,
+	}
 
 	apiData, err := it0ExItemFileToAPIData(itemfile.IT0ExFile{{Row: 0}}, base, "")
 	if err != nil {
@@ -538,6 +549,26 @@ func TestIT0ExItemFileAPIDataValidatesRows(t *testing.T) {
 	}
 	if *apiData.Items[0].Levels[0].Level != 11 {
 		t.Fatalf("first extension level = %d, want 11", *apiData.Items[0].Levels[0].Level)
+	}
+	if len(apiData.BaseItems[0].Levels) != 5 {
+		t.Fatalf("base default level count = %d, want 5", len(apiData.BaseItems[0].Levels))
+	}
+	for i, level := range apiData.BaseItems[0].Levels {
+		expectedLevel := uint8(11 + i)
+		if *level.Level != expectedLevel {
+			t.Fatalf("base default level index %d = %d, want %d", i, *level.Level, expectedLevel)
+		}
+		if *level.AdditionalAttribute != 1 ||
+			*level.Strength != 2 ||
+			*level.Dexterity != 3 ||
+			*level.Intelligence != 4 ||
+			*level.Attribute != 5 ||
+			*level.AttributeRange != 6 ||
+			*level.BlueOption != 7 ||
+			*level.RedOption != 8 ||
+			*level.GreyOption != 9 {
+			t.Fatalf("base default level index %d did not copy IT0 level 10", i)
+		}
 	}
 
 	row := uint16(1)
