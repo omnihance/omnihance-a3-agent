@@ -1738,6 +1738,7 @@ func it0BaseItemsToAPIData(data itemfile.IT0File, nameEncoding *itemFileNameEnco
 			Row:      uint16Ptr(raw.Row),
 			ItemCode: uint32Ptr((uint32(raw.ItemCodeBase) << 10) + uint32(raw.Row)),
 			Name:     itemFileNameToAPIString(raw.Name, nameEncoding, forceNameEncoding),
+			Levels:   it0ExDefaultLevelsToAPIData(raw.Levels[9]),
 		}
 	}
 
@@ -2060,6 +2061,15 @@ func itemFileLevelsToAPIData(levels []itemfile.IT0RawLevelProperties, firstLevel
 	}
 
 	return apiLevels
+}
+
+func it0ExDefaultLevelsToAPIData(level itemfile.IT0RawLevelProperties) []ItemFileLevelAPIData {
+	levels := make([]itemfile.IT0RawLevelProperties, 5)
+	for i := range levels {
+		levels[i] = level
+	}
+
+	return itemFileLevelsToAPIData(levels, 11)
 }
 
 func itemFileLevelFromAPIData(apiLevel ItemFileLevelAPIData, fieldPath string, errs *[]string) itemfile.IT0RawLevelProperties {
@@ -3736,9 +3746,10 @@ type ItemFileLevelAPIData struct {
 }
 
 type ItemFileBaseItemAPIData struct {
-	Row      *uint16 `json:"row,omitempty"`
-	ItemCode *uint32 `json:"item_code,omitempty"`
-	Name     string  `json:"name"`
+	Row      *uint16                `json:"row,omitempty"`
+	ItemCode *uint32                `json:"item_code,omitempty"`
+	Name     string                 `json:"name"`
+	Levels   []ItemFileLevelAPIData `json:"levels,omitempty"`
 }
 
 type itemFileNameEncoding struct {

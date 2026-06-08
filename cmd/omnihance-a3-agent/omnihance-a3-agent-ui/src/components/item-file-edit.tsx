@@ -242,15 +242,21 @@ export function ItemFileEdit({
       return;
     }
 
-    setItems((currentItems) => [
-      ...currentItems,
-      {
-        row: baseItem.row,
-        item_code: baseItem.item_code,
-        name: baseItem.name,
-        levels: createEmptyLevels(11, 5),
-      },
-    ]);
+    setItems((currentItems) => {
+      const newItemIndex = currentItems.length;
+      const newItems = [
+        ...currentItems,
+        {
+          row: baseItem.row,
+          item_code: baseItem.item_code,
+          name: baseItem.name,
+          levels: createIT0ExLevels(baseItem),
+        },
+      ];
+
+      setLevelEditorIndex(newItemIndex);
+      return newItems;
+    });
     setAddDialogOpen(false);
     setBaseQuery('');
   };
@@ -1000,6 +1006,12 @@ function createEmptyLevels(firstLevel: number, count: number) {
     blue_option: 0,
     red_option: 0,
     grey_option: 0,
+  }));
+}
+
+function createIT0ExLevels(baseItem: ItemFileBaseItemAPIData) {
+  return (baseItem.levels ?? createEmptyLevels(11, 5)).map((level) => ({
+    ...level,
   }));
 }
 
