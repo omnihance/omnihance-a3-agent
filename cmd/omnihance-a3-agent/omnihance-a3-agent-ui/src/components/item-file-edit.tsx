@@ -242,19 +242,23 @@ export function ItemFileEdit({
       return;
     }
 
-    const newItemIndex = items.length;
-    setItems((currentItems) => [
-      ...currentItems,
-      {
-        row: baseItem.row,
-        item_code: baseItem.item_code,
-        name: baseItem.name,
-        levels: createIT0ExLevels(baseItem),
-      },
-    ]);
+    setItems((currentItems) => {
+      const newItemIndex = currentItems.length;
+      const newItems = [
+        ...currentItems,
+        {
+          row: baseItem.row,
+          item_code: baseItem.item_code,
+          name: baseItem.name,
+          levels: createIT0ExLevels(baseItem),
+        },
+      ];
+
+      setLevelEditorIndex(newItemIndex);
+      return newItems;
+    });
     setAddDialogOpen(false);
     setBaseQuery('');
-    setLevelEditorIndex(newItemIndex);
   };
 
   const removeIT0ExItem = (index: number) => {
