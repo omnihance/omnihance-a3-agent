@@ -3,7 +3,14 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Edit, Key, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Loader2,
+  Edit,
+  Key,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+} from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -35,8 +42,10 @@ import {
   getUsers,
   getUserStatuses,
   updateUserStatus,
+  updateUserRole,
   setUserPassword,
   type UserListItem,
+  type UserRole,
   type SetUserPasswordRequest,
   APIError,
 } from '@/lib/api';
@@ -47,6 +56,12 @@ const createUpdateStatusSchema = (allowedStatuses: string[]) =>
   z.object({
     status: z.enum(allowedStatuses as [string, ...string[]]),
   });
+
+const editableUserRoles = ['admin', 'viewer'] as const;
+
+const updateRoleSchema = z.object({
+  role: z.enum(editableUserRoles),
+});
 
 const setPasswordSchema = z
   .object({
@@ -59,6 +74,12 @@ const setPasswordSchema = z
   });
 
 type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
+type UpdateRoleFormData = z.infer<typeof updateRoleSchema>;
+
+const userRoleLabels: Record<UserRole, string> = {
+  admin: 'Admin',
+  viewer: 'Viewer',
+};
 
 function getStatusBadgeVariant(status: string) {
   switch (status) {
@@ -75,12 +96,21 @@ function getStatusBadgeVariant(status: string) {
   }
 }
 
+function getEditableUserRole(user: UserListItem): UserRole {
+  if (user.roles.includes('admin')) {
+    return 'admin';
+  }
+
+  return 'viewer';
+}
+
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [search, setSearch] = useState('');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
 
@@ -118,6 +148,13 @@ export function UsersPage() {
     },
   });
 
+  const roleForm = useForm<UpdateRoleFormData>({
+    resolver: zodResolver(updateRoleSchema),
+    defaultValues: {
+      role: 'viewer',
+    },
+  });
+
   const updateStatusMutation = useMutation({
     mutationFn: (data: { status: string }) =>
       updateUserStatus(selectedUser!.id, {
@@ -137,6 +174,27 @@ export function UsersPage() {
         toast.error(error.getErrorMessage());
       } else {
         toast.error('Failed to update user status');
+      }
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: (data: UpdateRoleFormData) =>
+      updateUserRole(selectedUser!.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.users(page, pageSize, search),
+      });
+      setRoleModalOpen(false);
+      setSelectedUser(null);
+      roleForm.reset();
+      toast.success('User role updated successfully');
+    },
+    onError: (error: unknown) => {
+      if (error instanceof APIError) {
+        toast.error(error.getErrorMessage());
+      } else {
+        toast.error('Failed to update user role');
       }
     },
   });
@@ -174,6 +232,12 @@ export function UsersPage() {
     setPasswordModalOpen(true);
   };
 
+  const handleOpenRoleModal = (user: UserListItem) => {
+    setSelectedUser(user);
+    roleForm.reset({ role: getEditableUserRole(user) });
+    setRoleModalOpen(true);
+  };
+
   const handleStatusSubmit = (data: UpdateStatusFormData) => {
     if (selectedUser && data.status !== selectedUser.status) {
       updateStatusMutation.mutate({ status: data.status as string });
@@ -185,6 +249,14 @@ export function UsersPage() {
   const handlePasswordSubmit = (data: SetPasswordFormData) => {
     if (selectedUser) {
       setPasswordMutation.mutate({ password: data.password });
+    }
+  };
+
+  const handleRoleSubmit = (data: UpdateRoleFormData) => {
+    if (selectedUser && data.role !== getEditableUserRole(selectedUser)) {
+      updateRoleMutation.mutate(data);
+    } else {
+      toast.error('New role must be different from current role');
     }
   };
 
@@ -281,15 +353,26 @@ export function UsersPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       {!user.roles.includes('super_admin') && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenStatusModal(user)}
-                          aria-label="Update status"
-                          tabIndex={0}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenRoleModal(user)}
+                            aria-label="Update role"
+                            tabIndex={0}
+                          >
+                            <Shield className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenStatusModal(user)}
+                            aria-label="Update status"
+                            tabIndex={0}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant="ghost"
@@ -398,6 +481,71 @@ export function UsersPage() {
               </Button>
               <Button type="submit" disabled={updateStatusMutation.isPending}>
                 {updateStatusMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={roleModalOpen} onOpenChange={setRoleModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update User Role</DialogTitle>
+            <DialogDescription>
+              Update the role for {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={roleForm.handleSubmit(handleRoleSubmit)}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="role">Role</Label>
+                <Controller
+                  name="role"
+                  control={roleForm.control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={updateRoleMutation.isPending}
+                    >
+                      <SelectTrigger id="role">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {editableUserRoles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {userRoleLabels[role]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {roleForm.formState.errors.role && (
+                  <p className="text-sm text-destructive">
+                    {roleForm.formState.errors.role.message}
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setRoleModalOpen(false);
+                  setSelectedUser(null);
+                  roleForm.reset();
+                }}
+                disabled={updateRoleMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateRoleMutation.isPending}>
+                {updateRoleMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Save
