@@ -50,6 +50,10 @@ type InternalDB interface {
 	GetLastCompletedFileRevision(fileID string) (*FileRevision, error)
 	GetCompletedRevisionCount(fileID string) (int64, error)
 	GetRevisionSummary(fileID string) (*RevisionSummary, error)
+	GetReusableFileDownloadLink(payload FileDownloadLinkPayload, now time.Time) (*FileDownloadLink, error)
+	CreateFileDownloadLink(payload FileDownloadLinkPayload) (*FileDownloadLink, error)
+	GetFileDownloadLinkByPublicID(publicID string) (*FileDownloadLink, error)
+	RecordFileDownload(link *FileDownloadLink, userID int64, userAgent *string, ipAddress *string) error
 	CreateSession(userID int64, expiresAt time.Time, userAgent, ipAddress *string) (*Session, error)
 	GetSession(sessionID string) (*Session, error)
 	UpdateSessionLastAccessed(sessionID string) error
@@ -282,10 +286,18 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate014FileDownloadLinksTable(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback014FileDownloadLinksTable(); err != nil {
+		return err
+	}
+
 	if err := s.rollback013ServerViewTables(); err != nil {
 		return err
 	}
@@ -1959,6 +1971,165 @@ func (s *sqliteInternalDB) rollback013ServerViewTables() error {
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit server view rollback: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate014FileDownloadLinksTable() error {
+	const migName = "014_file_download_links"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	CREATE TABLE IF NOT EXISTS file_download_links (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		public_id TEXT NOT NULL UNIQUE,
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		file_id TEXT NOT NULL,
+		source_type TEXT NOT NULL,
+		backup_run_id INTEGER REFERENCES backup_runs(id) ON DELETE CASCADE,
+		backup_file_id INTEGER REFERENCES backup_run_files(id) ON DELETE CASCADE,
+		original_path TEXT NOT NULL,
+		file_name TEXT NOT NULL,
+		file_size INTEGER NOT NULL,
+		file_hash TEXT NOT NULL,
+		file_modified_at INTEGER NOT NULL,
+		expires_at TIMESTAMP NOT NULL,
+		download_count INTEGER NOT NULL DEFAULT 0,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_downloaded_at TIMESTAMP
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_links_reuse ON file_download_links (
+		user_id,
+		source_type,
+		file_id,
+		file_hash,
+		file_size,
+		file_modified_at,
+		expires_at
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_links_backup ON file_download_links (backup_run_id, backup_file_id);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_links_expires_at ON file_download_links (expires_at);
+
+	CREATE TABLE IF NOT EXISTS file_download_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		link_id INTEGER NOT NULL REFERENCES file_download_links(id) ON DELETE CASCADE,
+		user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		file_id TEXT NOT NULL,
+		source_type TEXT NOT NULL,
+		backup_run_id INTEGER REFERENCES backup_runs(id) ON DELETE CASCADE,
+		backup_file_id INTEGER REFERENCES backup_run_files(id) ON DELETE CASCADE,
+		original_path TEXT NOT NULL,
+		file_hash TEXT NOT NULL,
+		downloaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		user_agent TEXT,
+		ip_address TEXT
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_events_link_id ON file_download_events (link_id);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_events_user_id ON file_download_events (user_id);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_events_file_id ON file_download_events (file_id);
+
+	CREATE INDEX IF NOT EXISTS idx_file_download_events_downloaded_at ON file_download_events (downloaded_at);
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin file download links migration: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create file download links tables: %w", err)
+	}
+
+	if _, err := tx.Exec("INSERT INTO migrations (name) VALUES (?)", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit file download links migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback014FileDownloadLinksTable() error {
+	const migName = "014_file_download_links"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	rollbackSQL := `
+	DROP TABLE IF EXISTS file_download_events;
+	DROP TABLE IF EXISTS file_download_links;
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin file download links rollback: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(rollbackSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback file download links tables: %w", err)
+	}
+
+	if _, err := tx.Exec("DELETE FROM migrations WHERE name = ?", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit file download links rollback: %w", err)
 	}
 
 	return nil

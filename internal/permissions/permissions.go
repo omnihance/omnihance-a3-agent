@@ -12,6 +12,7 @@ const (
 	ActionViewFiles      PermissionAction = "view_files"
 	ActionEditFiles      PermissionAction = "edit_files"
 	ActionRevertFiles    PermissionAction = "revert_files"
+	ActionDownloadFiles  PermissionAction = "download_files"
 	ActionUploadGameData PermissionAction = "upload_game_data"
 	ActionManageUsers    PermissionAction = "manage_users"
 	ActionViewMetrics    PermissionAction = "view_metrics"
@@ -24,6 +25,7 @@ var rolePermissions = map[PermissionAction][]string{
 	ActionViewFiles:      {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},
 	ActionEditFiles:      {constants.RoleSuperAdmin, constants.RoleAdmin},
 	ActionRevertFiles:    {constants.RoleSuperAdmin, constants.RoleAdmin},
+	ActionDownloadFiles:  {constants.RoleSuperAdmin, constants.RoleAdmin},
 	ActionUploadGameData: {constants.RoleSuperAdmin, constants.RoleAdmin},
 	ActionManageUsers:    {constants.RoleSuperAdmin},
 	ActionViewMetrics:    {constants.RoleSuperAdmin, constants.RoleAdmin, constants.RoleUser},

@@ -286,6 +286,110 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/download-link:
+    post:
+      tags:
+        - file-system
+      summary: Create file download link
+      description: Creates or reuses a one-day temp download link for the authenticated user when the file fingerprint is unchanged and the existing link has not expired.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: File path to download. Directories are rejected.
+      responses:
+        '200':
+          description: Download link created or reused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadLinkResponse'
+        '400':
+          description: Bad Request - Missing path or path is a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Download files permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/download/{token}:
+    get:
+      tags:
+        - file-system
+      summary: Download file from temp link
+      description: Streams the file as an attachment when the signed token belongs to the authenticated user, has not expired, and the file fingerprint is unchanged. A successful request increments the link download count and records a download event.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Invalid token, wrong user, or missing download permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Download link or file not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Download link expired or invalidated because the file changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/npc-file:
     get:
       tags:
@@ -3985,7 +4089,66 @@ paths:
       tags:
         - backups
       summary: Download a backup output file
-      description: Downloads one output file recorded for a backup run. The file ID must belong to the requested run.
+      description: Compatibility route that validates the requested successful backup output file, creates or reuses a user-bound temp link, and redirects to the shared file download endpoint.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: file_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '302':
+          description: Redirect to temp download link
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Shared temp download URL under /api/file-tree/download/{token}
+        '400':
+          description: Bad Request - Invalid backup run or file ID, failed run, or backup output is a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Download files permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Backup run file not found or output file is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/backups/runs/{run_id}/files/{file_id}/download-link:
+    post:
+      tags:
+        - backups
+      summary: Create backup output download link
+      description: Creates or reuses a one-day user-bound temp download link for a file recorded on a successful backup run. The output file must still exist and must not be a directory.
       security:
         - ApiKeyAuth: []
       parameters:
@@ -4003,14 +4166,13 @@ paths:
             format: int64
       responses:
         '200':
-          description: Backup file download
+          description: Download link created or reused
           content:
-            application/octet-stream:
+            application/json:
               schema:
-                type: string
-                format: binary
+                $ref: '#/components/schemas/DownloadLinkResponse'
         '400':
-          description: Bad Request - Invalid backup run or file ID, or backup output is a directory
+          description: Bad Request - Invalid backup run or file ID, failed run, or backup output is a directory
           content:
             application/json:
               schema:
@@ -4022,7 +4184,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden - Manage server permission is required
+          description: Forbidden - Download files permission is required
           content:
             application/json:
               schema:
@@ -4341,6 +4503,24 @@ components:
         file_tree:
           $ref: '#/components/schemas/FileNode'
           description: The file system tree structure
+    DownloadLinkResponse:
+      type: object
+      properties:
+        download_url:
+          type: string
+          description: Shared temp download URL for the authenticated user
+          example: '/api/file-tree/download/01HZX.temp-token'
+        expires_at:
+          type: string
+          format: date-time
+          description: Link expiration timestamp
+        reused:
+          type: boolean
+          description: Whether an existing unexpired link was reused
+        download_count:
+          type: integer
+          format: int64
+          description: Number of successful download requests already recorded for this link
     NPCFileAPIData:
       type: object
       description: Parsed binary data from an NPC file (API request/response format). All fields are required when used as a request body.
@@ -6285,6 +6465,9 @@ components:
         created_at:
           type: string
           format: date-time
+        download_available:
+          type: boolean
+          description: True when the run succeeded and the recorded output file still exists as a file
     BackupRunDetails:
       type: object
       properties:

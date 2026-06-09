@@ -61,6 +61,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Post("/revert-file", s.handleRevertFile)
 		r.Post("/duplicate-file", s.handleDuplicateFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
+		r.Post("/download-link", s.handleCreateFileDownloadLink)
+		r.Get("/download/{token}", s.handleDownloadLinkedFile)
 	})
 }
 

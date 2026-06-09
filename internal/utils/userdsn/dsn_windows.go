@@ -42,7 +42,9 @@ func (m *windowsManager) List() ([]string, error) {
 		}
 		return nil, fmt.Errorf("userdsn: open ODBC Data Sources: %w", err)
 	}
-	defer key.Close()
+	defer func() {
+		_ = key.Close()
+	}()
 
 	names, err := key.ReadValueNames(-1)
 	if err != nil {
@@ -64,7 +66,9 @@ func (m *windowsManager) Get(name string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("userdsn: open ODBC Data Sources: %w", err)
 	}
-	defer sourcesKey.Close()
+	defer func() {
+		_ = sourcesKey.Close()
+	}()
 
 	driver, _, err := sourcesKey.GetStringValue(name)
 	if err != nil {
@@ -81,7 +85,9 @@ func (m *windowsManager) Get(name string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("userdsn: open DSN key %q: %w", name, err)
 	}
-	defer dsnKey.Close()
+	defer func() {
+		_ = dsnKey.Close()
+	}()
 
 	valueNames, err := dsnKey.ReadValueNames(-1)
 	if err != nil {
@@ -127,7 +133,9 @@ func (m *windowsManager) Add(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("userdsn: open ODBC Data Sources: %w", err)
 	}
-	defer sourcesKey.Close()
+	defer func() {
+		_ = sourcesKey.Close()
+	}()
 
 	if err := sourcesKey.SetStringValue(cfg.Name, cfg.Driver); err != nil {
 		return fmt.Errorf("userdsn: register DSN name %q: %w", cfg.Name, err)
@@ -158,7 +166,9 @@ func (m *windowsManager) Update(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("userdsn: open ODBC Data Sources: %w", err)
 	}
-	defer sourcesKey.Close()
+	defer func() {
+		_ = sourcesKey.Close()
+	}()
 
 	if err := sourcesKey.SetStringValue(cfg.Name, cfg.Driver); err != nil {
 		return fmt.Errorf("userdsn: update driver mapping for %q: %w", cfg.Name, err)
@@ -183,7 +193,9 @@ func (m *windowsManager) Delete(name string) error {
 	if err != nil {
 		return fmt.Errorf("userdsn: open ODBC Data Sources: %w", err)
 	}
-	defer sourcesKey.Close()
+	defer func() {
+		_ = sourcesKey.Close()
+	}()
 
 	if err := sourcesKey.DeleteValue(name); err != nil {
 		return fmt.Errorf("userdsn: remove DSN entry %q: %w", name, err)
@@ -203,7 +215,9 @@ func writeAttrs(cfg Config) error {
 	if err != nil {
 		return fmt.Errorf("userdsn: create DSN key %q: %w", cfg.Name, err)
 	}
-	defer dsnKey.Close()
+	defer func() {
+		_ = dsnKey.Close()
+	}()
 
 	valueNames, err := dsnKey.ReadValueNames(-1)
 	if err != nil {

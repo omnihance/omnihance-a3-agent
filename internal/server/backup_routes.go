@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
@@ -35,6 +35,7 @@ func (s *Server) InitializeBackupRoutes(r *chi.Mux) {
 		r.Post("/jobs/{id}/cancel", s.handleCancelBackupJob)
 		r.Get("/jobs/{id}/runs", s.handleListBackupRuns)
 		r.Get("/runs/{run_id}", s.handleGetBackupRun)
+		r.Post("/runs/{run_id}/files/{file_id}/download-link", s.handleCreateBackupRunFileDownloadLink)
 		r.Get("/runs/{run_id}/files/{file_id}/download", s.handleDownloadBackupRunFile)
 		r.Get("/path-search", s.handleBackupPathSearch)
 		r.Get("/defaults/sql-server", s.handleBackupSQLServerDefaults)
@@ -212,17 +213,17 @@ func (s *Server) handleGetBackupRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	run, err := s.backupService.GetRunDetails(runID)
+	details, err := s.backupService.GetRunDetails(runID)
 	if err != nil {
 		writeBackupServiceError(w, err)
 		return
 	}
 
-	_ = utils.WriteJSONResponse(w, run)
+	_ = utils.WriteJSONResponse(w, s.backupRunDetailsResponse(details))
 }
 
-func (s *Server) handleDownloadBackupRunFile(w http.ResponseWriter, r *http.Request) {
-	if !s.requireUserPermission(w, r, permissions.ActionManageServer) {
+func (s *Server) handleCreateBackupRunFileDownloadLink(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionDownloadFiles) {
 		return
 	}
 
@@ -236,30 +237,57 @@ func (s *Server) handleDownloadBackupRunFile(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	file, err := s.backupService.GetRunFile(fileID)
+	file, err := s.validatedBackupDownloadFile(runID, fileID)
 	if err != nil {
-		writeBackupServiceError(w, err)
+		writeBackupDownloadError(w, err)
 		return
 	}
 
-	if file.RunID != runID {
-		writeBackupError(w, http.StatusNotFound, constants.ErrorCodeNotFound, "Backup file not found")
-		return
-	}
-
-	info, err := s.fileEditor.Stat(file.FilePath)
+	response, err := s.createDownloadLinkForPath(r, file.FilePath, downloadLinkSource{
+		sourceType:   db.FileDownloadSourceBackup,
+		backupRunID:  &runID,
+		backupFileID: &fileID,
+	})
 	if err != nil {
-		writeBackupError(w, http.StatusNotFound, constants.ErrorCodeNotFound, "Backup file is missing")
+		writeDownloadLinkError(w, backupsErrorContext, err)
 		return
 	}
 
-	if info.IsDir() {
-		writeBackupError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, "Backup output is a directory")
+	_ = utils.WriteJSONResponse(w, response)
+}
+
+func (s *Server) handleDownloadBackupRunFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionDownloadFiles) {
 		return
 	}
 
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(file.FilePath)+`"`)
-	http.ServeFile(w, r, file.FilePath)
+	runID, ok := backupIDParam(w, r, "run_id", "Invalid backup run ID")
+	if !ok {
+		return
+	}
+
+	fileID, ok := backupIDParam(w, r, "file_id", "Invalid backup file ID")
+	if !ok {
+		return
+	}
+
+	file, err := s.validatedBackupDownloadFile(runID, fileID)
+	if err != nil {
+		writeBackupDownloadError(w, err)
+		return
+	}
+
+	response, err := s.createDownloadLinkForPath(r, file.FilePath, downloadLinkSource{
+		sourceType:   db.FileDownloadSourceBackup,
+		backupRunID:  &runID,
+		backupFileID: &fileID,
+	})
+	if err != nil {
+		writeDownloadLinkError(w, backupsErrorContext, err)
+		return
+	}
+
+	http.Redirect(w, r, response.DownloadURL, http.StatusFound)
 }
 
 func (s *Server) handleBackupPathSearch(w http.ResponseWriter, r *http.Request) {
@@ -309,6 +337,82 @@ func writeBackupError(w http.ResponseWriter, status int, errorCode string, messa
 	})
 }
 
+func writeBackupDownloadError(w http.ResponseWriter, err error) {
+	var downloadErr *downloadLinkError
+	if errors.As(err, &downloadErr) {
+		writeBackupError(w, downloadErr.status, downloadErr.errorCode, downloadErr.message)
+		return
+	}
+
+	writeBackupServiceError(w, err)
+}
+
+func (s *Server) validatedBackupDownloadFile(runID int64, fileID int64) (*db.BackupRunFile, error) {
+	details, err := s.backupService.GetRunDetails(runID)
+	if err != nil {
+		return nil, err
+	}
+
+	if details.Run.Status != db.BackupRunStatusSucceeded {
+		return nil, newDownloadLinkError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Backup run did not succeed")
+	}
+
+	for _, file := range details.Files {
+		if file.ID != fileID {
+			continue
+		}
+
+		if file.RunID != runID {
+			return nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Backup file not found")
+		}
+
+		info, err := s.fileEditor.Stat(file.FilePath)
+		if err != nil {
+			return nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Backup file is missing")
+		}
+
+		if info.IsDir() {
+			return nil, newDownloadLinkError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Backup output is a directory")
+		}
+
+		selectedFile := file
+		return &selectedFile, nil
+	}
+
+	return nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Backup file not found")
+}
+
+func (s *Server) backupRunDetailsResponse(details *services.BackupRunDetails) BackupRunDetailsResponse {
+	files := make([]BackupRunFileResponse, len(details.Files))
+	for i, file := range details.Files {
+		files[i] = s.backupRunFileResponse(details.Run, file)
+	}
+
+	return BackupRunDetailsResponse{
+		Run:   details.Run,
+		Files: files,
+	}
+}
+
+func (s *Server) backupRunFileResponse(run db.BackupRun, file db.BackupRunFile) BackupRunFileResponse {
+	downloadAvailable := false
+	if run.Status == db.BackupRunStatusSucceeded {
+		if info, err := s.fileEditor.Stat(file.FilePath); err == nil && !info.IsDir() {
+			downloadAvailable = true
+		}
+	}
+
+	return BackupRunFileResponse{
+		ID:                file.ID,
+		RunID:             file.RunID,
+		ItemName:          file.ItemName,
+		FilePath:          file.FilePath,
+		FileSize:          file.FileSize,
+		CreatedAt:         file.CreatedAt,
+		DownloadAvailable: downloadAvailable,
+	}
+}
+
 func backupIDParam(w http.ResponseWriter, r *http.Request, name string, message string) (int64, bool) {
 	id, err := strconv.ParseInt(chi.URLParam(r, name), 10, 64)
 	if err != nil {
@@ -355,6 +459,21 @@ func backupPaginationParams(r *http.Request) (int, int) {
 type BackupRunsResponse struct {
 	Runs       []db.BackupRun `json:"runs"`
 	Pagination PaginationInfo `json:"pagination"`
+}
+
+type BackupRunDetailsResponse struct {
+	Run   db.BackupRun            `json:"run"`
+	Files []BackupRunFileResponse `json:"files"`
+}
+
+type BackupRunFileResponse struct {
+	ID                int64     `json:"id"`
+	RunID             int64     `json:"run_id"`
+	ItemName          string    `json:"item_name"`
+	FilePath          string    `json:"file_path"`
+	FileSize          int64     `json:"file_size"`
+	CreatedAt         time.Time `json:"created_at"`
+	DownloadAvailable bool      `json:"download_available"`
 }
 
 type BackupJobRequest struct {

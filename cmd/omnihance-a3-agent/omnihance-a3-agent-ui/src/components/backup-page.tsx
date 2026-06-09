@@ -81,11 +81,11 @@ import {
   APIError,
   cancelBackupJob,
   createBackupJob,
+  createBackupRunFileDownloadLink,
   deleteBackupJob,
   getBackupJob,
   getBackupJobs,
   getBackupRunDetails,
-  getBackupRunFileDownloadUrl,
   getBackupRuns,
   getBackupSQLServerDefaults,
   runBackupJob,
@@ -1180,6 +1180,29 @@ function RunDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const downloadMutation = useMutation({
+    mutationFn: ({
+      runId,
+      fileId,
+    }: {
+      runId: number;
+      fileId: number;
+      itemName: string;
+    }) => createBackupRunFileDownloadLink(runId, fileId),
+    onSuccess: (response) => {
+      window.location.assign(response.download_url);
+    },
+    onError: (error) => {
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create download link';
+      toast.error(errorMessage);
+    },
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl overflow-hidden">
@@ -1229,22 +1252,32 @@ function RunDetailsDialog({
                       <div className="text-sm text-muted-foreground">
                         {formatBytes(file.file_size, 1)}
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-fit sm:justify-self-end"
-                        asChild
-                      >
-                        <a
-                          href={getBackupRunFileDownloadUrl(
-                            details.run.id,
-                            file.id,
-                          )}
+                      {file.download_available && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-fit sm:justify-self-end"
+                          onClick={() =>
+                            downloadMutation.mutate({
+                              runId: details.run.id,
+                              fileId: file.id,
+                              itemName: file.item_name,
+                            })
+                          }
+                          disabled={
+                            downloadMutation.isPending &&
+                            downloadMutation.variables?.fileId === file.id
+                          }
                           aria-label={`Download ${file.item_name}`}
                         >
-                          <Download className="h-4 w-4" />
-                        </a>
-                      </Button>
+                          {downloadMutation.isPending &&
+                          downloadMutation.variables?.fileId === file.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

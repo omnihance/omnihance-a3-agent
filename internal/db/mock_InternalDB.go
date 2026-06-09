@@ -705,6 +705,68 @@ func (_c *MockInternalDB_CreateDirectoryShortcut_Call) RunAndReturn(run func(use
 	return _c
 }
 
+// CreateFileDownloadLink provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) CreateFileDownloadLink(payload FileDownloadLinkPayload) (*FileDownloadLink, error) {
+	ret := _mock.Called(payload)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateFileDownloadLink")
+	}
+
+	var r0 *FileDownloadLink
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(FileDownloadLinkPayload) (*FileDownloadLink, error)); ok {
+		return returnFunc(payload)
+	}
+	if returnFunc, ok := ret.Get(0).(func(FileDownloadLinkPayload) *FileDownloadLink); ok {
+		r0 = returnFunc(payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*FileDownloadLink)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(FileDownloadLinkPayload) error); ok {
+		r1 = returnFunc(payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_CreateFileDownloadLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateFileDownloadLink'
+type MockInternalDB_CreateFileDownloadLink_Call struct {
+	*mock.Call
+}
+
+// CreateFileDownloadLink is a helper method to define mock.On call
+//   - payload FileDownloadLinkPayload
+func (_e *MockInternalDB_Expecter) CreateFileDownloadLink(payload interface{}) *MockInternalDB_CreateFileDownloadLink_Call {
+	return &MockInternalDB_CreateFileDownloadLink_Call{Call: _e.mock.On("CreateFileDownloadLink", payload)}
+}
+
+func (_c *MockInternalDB_CreateFileDownloadLink_Call) Run(run func(payload FileDownloadLinkPayload)) *MockInternalDB_CreateFileDownloadLink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 FileDownloadLinkPayload
+		if args[0] != nil {
+			arg0 = args[0].(FileDownloadLinkPayload)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_CreateFileDownloadLink_Call) Return(fileDownloadLink *FileDownloadLink, err error) *MockInternalDB_CreateFileDownloadLink_Call {
+	_c.Call.Return(fileDownloadLink, err)
+	return _c
+}
+
+func (_c *MockInternalDB_CreateFileDownloadLink_Call) RunAndReturn(run func(payload FileDownloadLinkPayload) (*FileDownloadLink, error)) *MockInternalDB_CreateFileDownloadLink_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateFileRevision provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) CreateFileRevision(tx *goqu.TxDatabase, fileID string, originalPath string, revisionPath string, previousHash string, currentHash string, createdBy int64) (int64, error) {
 	ret := _mock.Called(tx, fileID, originalPath, revisionPath, previousHash, currentHash, createdBy)
@@ -3022,6 +3084,68 @@ func (_c *MockInternalDB_GetDirectoryShortcuts_Call) RunAndReturn(run func(userI
 	return _c
 }
 
+// GetFileDownloadLinkByPublicID provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetFileDownloadLinkByPublicID(publicID string) (*FileDownloadLink, error) {
+	ret := _mock.Called(publicID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetFileDownloadLinkByPublicID")
+	}
+
+	var r0 *FileDownloadLink
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) (*FileDownloadLink, error)); ok {
+		return returnFunc(publicID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) *FileDownloadLink); ok {
+		r0 = returnFunc(publicID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*FileDownloadLink)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(publicID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetFileDownloadLinkByPublicID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetFileDownloadLinkByPublicID'
+type MockInternalDB_GetFileDownloadLinkByPublicID_Call struct {
+	*mock.Call
+}
+
+// GetFileDownloadLinkByPublicID is a helper method to define mock.On call
+//   - publicID string
+func (_e *MockInternalDB_Expecter) GetFileDownloadLinkByPublicID(publicID interface{}) *MockInternalDB_GetFileDownloadLinkByPublicID_Call {
+	return &MockInternalDB_GetFileDownloadLinkByPublicID_Call{Call: _e.mock.On("GetFileDownloadLinkByPublicID", publicID)}
+}
+
+func (_c *MockInternalDB_GetFileDownloadLinkByPublicID_Call) Run(run func(publicID string)) *MockInternalDB_GetFileDownloadLinkByPublicID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetFileDownloadLinkByPublicID_Call) Return(fileDownloadLink *FileDownloadLink, err error) *MockInternalDB_GetFileDownloadLinkByPublicID_Call {
+	_c.Call.Return(fileDownloadLink, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetFileDownloadLinkByPublicID_Call) RunAndReturn(run func(publicID string) (*FileDownloadLink, error)) *MockInternalDB_GetFileDownloadLinkByPublicID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetFileRevision provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetFileRevision(revisionID int64) (*FileRevision, error) {
 	ret := _mock.Called(revisionID)
@@ -3618,6 +3742,74 @@ func (_c *MockInternalDB_GetMonsterClientDataCount_Call) Return(n int64, err err
 }
 
 func (_c *MockInternalDB_GetMonsterClientDataCount_Call) RunAndReturn(run func() (int64, error)) *MockInternalDB_GetMonsterClientDataCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetReusableFileDownloadLink provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetReusableFileDownloadLink(payload FileDownloadLinkPayload, now time.Time) (*FileDownloadLink, error) {
+	ret := _mock.Called(payload, now)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetReusableFileDownloadLink")
+	}
+
+	var r0 *FileDownloadLink
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(FileDownloadLinkPayload, time.Time) (*FileDownloadLink, error)); ok {
+		return returnFunc(payload, now)
+	}
+	if returnFunc, ok := ret.Get(0).(func(FileDownloadLinkPayload, time.Time) *FileDownloadLink); ok {
+		r0 = returnFunc(payload, now)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*FileDownloadLink)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(FileDownloadLinkPayload, time.Time) error); ok {
+		r1 = returnFunc(payload, now)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetReusableFileDownloadLink_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetReusableFileDownloadLink'
+type MockInternalDB_GetReusableFileDownloadLink_Call struct {
+	*mock.Call
+}
+
+// GetReusableFileDownloadLink is a helper method to define mock.On call
+//   - payload FileDownloadLinkPayload
+//   - now time.Time
+func (_e *MockInternalDB_Expecter) GetReusableFileDownloadLink(payload interface{}, now interface{}) *MockInternalDB_GetReusableFileDownloadLink_Call {
+	return &MockInternalDB_GetReusableFileDownloadLink_Call{Call: _e.mock.On("GetReusableFileDownloadLink", payload, now)}
+}
+
+func (_c *MockInternalDB_GetReusableFileDownloadLink_Call) Run(run func(payload FileDownloadLinkPayload, now time.Time)) *MockInternalDB_GetReusableFileDownloadLink_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 FileDownloadLinkPayload
+		if args[0] != nil {
+			arg0 = args[0].(FileDownloadLinkPayload)
+		}
+		var arg1 time.Time
+		if args[1] != nil {
+			arg1 = args[1].(time.Time)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetReusableFileDownloadLink_Call) Return(fileDownloadLink *FileDownloadLink, err error) *MockInternalDB_GetReusableFileDownloadLink_Call {
+	_c.Call.Return(fileDownloadLink, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetReusableFileDownloadLink_Call) RunAndReturn(run func(payload FileDownloadLinkPayload, now time.Time) (*FileDownloadLink, error)) *MockInternalDB_GetReusableFileDownloadLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5424,6 +5616,75 @@ func (_c *MockInternalDB_MigrateUp_Call) Return(err error) *MockInternalDB_Migra
 }
 
 func (_c *MockInternalDB_MigrateUp_Call) RunAndReturn(run func() error) *MockInternalDB_MigrateUp_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RecordFileDownload provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) RecordFileDownload(link *FileDownloadLink, userID int64, userAgent *string, ipAddress *string) error {
+	ret := _mock.Called(link, userID, userAgent, ipAddress)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RecordFileDownload")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(*FileDownloadLink, int64, *string, *string) error); ok {
+		r0 = returnFunc(link, userID, userAgent, ipAddress)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockInternalDB_RecordFileDownload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RecordFileDownload'
+type MockInternalDB_RecordFileDownload_Call struct {
+	*mock.Call
+}
+
+// RecordFileDownload is a helper method to define mock.On call
+//   - link *FileDownloadLink
+//   - userID int64
+//   - userAgent *string
+//   - ipAddress *string
+func (_e *MockInternalDB_Expecter) RecordFileDownload(link interface{}, userID interface{}, userAgent interface{}, ipAddress interface{}) *MockInternalDB_RecordFileDownload_Call {
+	return &MockInternalDB_RecordFileDownload_Call{Call: _e.mock.On("RecordFileDownload", link, userID, userAgent, ipAddress)}
+}
+
+func (_c *MockInternalDB_RecordFileDownload_Call) Run(run func(link *FileDownloadLink, userID int64, userAgent *string, ipAddress *string)) *MockInternalDB_RecordFileDownload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 *FileDownloadLink
+		if args[0] != nil {
+			arg0 = args[0].(*FileDownloadLink)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 *string
+		if args[2] != nil {
+			arg2 = args[2].(*string)
+		}
+		var arg3 *string
+		if args[3] != nil {
+			arg3 = args[3].(*string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_RecordFileDownload_Call) Return(err error) *MockInternalDB_RecordFileDownload_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockInternalDB_RecordFileDownload_Call) RunAndReturn(run func(link *FileDownloadLink, userID int64, userAgent *string, ipAddress *string) error) *MockInternalDB_RecordFileDownload_Call {
 	_c.Call.Return(run)
 	return _c
 }
