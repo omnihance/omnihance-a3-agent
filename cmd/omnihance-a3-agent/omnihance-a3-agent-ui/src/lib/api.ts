@@ -21,6 +21,7 @@ export const API_ROUTES = {
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
+  FILE_DOWNLOAD_LINK: '/api/file-tree/download-link',
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
   GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
@@ -63,6 +64,8 @@ export const API_ROUTES = {
   BACKUP_RUN: (id: number) => `/api/backups/runs/${id}`,
   BACKUP_RUN_FILE_DOWNLOAD: (runId: number, fileId: number) =>
     `/api/backups/runs/${runId}/files/${fileId}/download`,
+  BACKUP_RUN_FILE_DOWNLOAD_LINK: (runId: number, fileId: number) =>
+    `/api/backups/runs/${runId}/files/${fileId}/download-link`,
   BACKUP_PATH_SEARCH: '/api/backups/path-search',
   BACKUP_SQL_SERVER_DEFAULTS: '/api/backups/defaults/sql-server',
   SERVER_VIEW: '/api/server-view',
@@ -367,6 +370,15 @@ const DuplicateFileResponseSchema = z.object({
 });
 
 export type DuplicateFileResponse = z.infer<typeof DuplicateFileResponseSchema>;
+
+const DownloadLinkResponseSchema = z.object({
+  download_url: z.string(),
+  expires_at: z.string(),
+  reused: z.boolean(),
+  download_count: z.number().int().nonnegative(),
+});
+
+export type DownloadLinkResponse = z.infer<typeof DownloadLinkResponseSchema>;
 
 const TextFileAPIDataSchema = z.object({
   content: z.string(),
@@ -1108,6 +1120,21 @@ export async function duplicateFile(
     DuplicateFileResponseSchema,
     response.data,
     API_ROUTES.DUPLICATE_FILE,
+  );
+}
+
+export async function createFileDownloadLink(params: {
+  path: string;
+}): Promise<DownloadLinkResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.FILE_DOWNLOAD_LINK,
+    undefined,
+    { params },
+  );
+  return validateResponse(
+    DownloadLinkResponseSchema,
+    response.data,
+    API_ROUTES.FILE_DOWNLOAD_LINK,
   );
 }
 
@@ -2096,6 +2123,7 @@ const BackupRunFileSchema = z.object({
   file_path: z.string(),
   file_size: z.number().int(),
   created_at: z.string(),
+  download_available: z.boolean(),
 });
 
 export type BackupRunFile = z.infer<typeof BackupRunFileSchema>;
@@ -2243,6 +2271,15 @@ export function getBackupRunFileDownloadUrl(
   fileId: number,
 ): string {
   return API_ROUTES.BACKUP_RUN_FILE_DOWNLOAD(runId, fileId);
+}
+
+export async function createBackupRunFileDownloadLink(
+  runId: number,
+  fileId: number,
+): Promise<DownloadLinkResponse> {
+  const route = API_ROUTES.BACKUP_RUN_FILE_DOWNLOAD_LINK(runId, fileId);
+  const response = await axiosInstance.post<unknown>(route);
+  return validateResponse(DownloadLinkResponseSchema, response.data, route);
 }
 
 export async function searchBackupPaths(params: {

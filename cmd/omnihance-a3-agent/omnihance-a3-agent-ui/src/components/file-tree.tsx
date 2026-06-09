@@ -52,6 +52,7 @@ import {
   getDirectoryShortcuts,
   createDirectoryShortcut,
   duplicateFile as duplicateFileAPI,
+  createFileDownloadLink,
   APIError,
   type FileNode,
   type FileTreeResponse,
@@ -73,6 +74,7 @@ interface ProcessContextMenuWrapperProps {
   fileItem: React.ReactElement;
   canManageServer: boolean;
   onDuplicate: (item: FileNode) => void;
+  onDownload: (item: FileNode) => void;
   onAdd: () => void;
   onRemove: () => void;
 }
@@ -83,6 +85,7 @@ function ProcessContextMenuWrapper({
   fileItem,
   canManageServer,
   onDuplicate,
+  onDownload,
   onAdd,
   onRemove,
 }: ProcessContextMenuWrapperProps) {
@@ -102,6 +105,11 @@ function ProcessContextMenuWrapper({
         {item.kind === 'file' && (
           <ContextMenuItem onClick={() => onDuplicate(item)}>
             Duplicate
+          </ContextMenuItem>
+        )}
+        {item.kind === 'file' && (
+          <ContextMenuItem onClick={() => onDownload(item)}>
+            Download
           </ContextMenuItem>
         )}
         {canManageServer &&
@@ -131,6 +139,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
   const canManageServer = hasPermission('manage_server');
+  const canDownloadFiles = hasPermission('download_files');
   const [internalPath, setInternalPath] = useState<string | null>(null);
   const [showDotfiles, setShowDotfiles] = useState(false);
   const contextMenuFileRef = useRef<FileNode | null>(null);
@@ -494,6 +503,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
     },
   });
 
+  const downloadFileMutation = useMutation({
+    mutationFn: async (path: string) => {
+      return createFileDownloadLink({ path });
+    },
+    onSuccess: (response) => {
+      window.location.assign(response.download_url);
+    },
+    onError: (error: APIError) => {
+      toast.error(error.getErrorMessage());
+    },
+  });
+
   const generateSuggestedName = (): string => {
     if (!currentPath || currentPath === '') {
       return '';
@@ -572,6 +593,19 @@ export function FileTree({ initialPath }: FileTreeProps) {
       sourcePath: duplicateSourcePath,
       newFileName: trimmedName,
     });
+  };
+
+  const handleDownloadFile = (item: FileNode) => {
+    if (item.kind !== 'file') {
+      return;
+    }
+
+    if (!canDownloadFiles) {
+      toast.error('You cannot download this file');
+      return;
+    }
+
+    downloadFileMutation.mutate(getFullPath(item));
   };
 
   const isCurrentPathInShortcuts = (): boolean => {
@@ -824,6 +858,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
                   fileItem={fileItem}
                   canManageServer={Boolean(isExecutable && canManageServer)}
                   onDuplicate={handleOpenDuplicateDialog}
+                  onDownload={handleDownloadFile}
                   onAdd={() => handleAddToServer(item)}
                   onRemove={() => handleRemoveFromServer(item)}
                 />

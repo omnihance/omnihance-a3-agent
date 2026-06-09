@@ -576,6 +576,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
+- `POST /api/file-tree/download-link` - Create or reuse a one-day user-bound download link for a file (requires `download_files` permission)
+- `GET /api/file-tree/download/{token}` - Download a file through a valid user-bound temp link and record the download event
 
 ### Metrics
 
@@ -659,7 +661,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `POST /api/backups/jobs/{id}/cancel` - Cancel a running backup job
 - `GET /api/backups/jobs/{id}/runs` - List paginated run history for a backup job
 - `GET /api/backups/runs/{run_id}` - Get run details, logs, errors, and output file metadata
-- `GET /api/backups/runs/{run_id}/files/{file_id}/download` - Download a backup output file
+- `POST /api/backups/runs/{run_id}/files/{file_id}/download-link` - Create or reuse a one-day user-bound download link for a successful backup output file (requires `download_files` permission)
+- `GET /api/backups/runs/{run_id}/files/{file_id}/download` - Compatibility route that redirects successful backup output downloads through the temp-link flow
 - `GET /api/backups/path-search` - Search local source or destination paths
 - `GET /api/backups/defaults/sql-server` - Get SQL Server backup defaults and local server status
 
@@ -686,6 +689,8 @@ The application uses SQLite with the following main tables:
 - **backup_jobs**: Backup job definitions, scheduling metadata, paths, SQL settings, and statuses
 - **backup_runs**: Backup run history, trigger type, status, output logs, errors, and cancellation timestamps
 - **backup_run_files**: Output archive files created by each backup run
+- **file_download_links**: One-day user-bound file download links, file fingerprints, source context, and per-link download counts
+- **file_download_events**: Per-request file download audit events with user, link, source context, file fingerprint, IP address, and user agent
 - **server_view_svr_info_rows**: Raw `SvrInfo.ini` rows for Main, Account, Zone, and Battle servers
 - **server_view_map_zones**: Raw Main and Zone Server map-to-zone references
 - **server_view_spawn_rows**: Raw monster spawn rows from zone map `.n_ndt` files
@@ -716,7 +721,7 @@ The application uses SQLite with the following main tables:
 
 5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull, MC.ull, and IT0.ull through IT3.ull files to populate monster, map, and item databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts and right-click files to duplicate them quickly.
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts, right-click files to duplicate them, and download files with admin or super admin access.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item files, item combination data files, or text files) to view and edit them (requires admin or super admin role).
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation

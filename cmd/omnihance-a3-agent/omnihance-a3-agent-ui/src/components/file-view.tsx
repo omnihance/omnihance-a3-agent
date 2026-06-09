@@ -13,6 +13,7 @@ import {
   Edit,
   RotateCcw,
   History,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +40,7 @@ import {
   getItemCombinationDataFile,
   getQuestFile,
   getRevisionSummary,
+  createFileDownloadLink,
   revertFile,
   getMaps,
   type ItemFileNameEncoding,
@@ -62,6 +64,7 @@ export function FileView({ filePath }: FileViewProps) {
   const { hasPermission } = usePermissions();
   const canEditFiles = hasPermission('edit_files');
   const canRevertFiles = hasPermission('revert_files');
+  const canDownloadFiles = hasPermission('download_files');
   const [itemNameEncodingState, setItemNameEncodingState] = useState<{
     filePath: string;
     encoding?: ItemFileNameEncoding;
@@ -261,6 +264,33 @@ export function FileView({ filePath }: FileViewProps) {
     },
   });
 
+  const downloadMutation = useMutation({
+    mutationFn: () => {
+      return createFileDownloadLink({ path: filePath });
+    },
+    onSuccess: (response) => {
+      window.location.assign(response.download_url);
+    },
+    onError: (error) => {
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create download link';
+      toast.error(errorMessage);
+    },
+  });
+
+  const handleDownload = () => {
+    if (!canDownloadFiles) {
+      toast.error('You cannot download this file');
+      return;
+    }
+
+    downloadMutation.mutate();
+  };
+
   const fileTreeErrorMessage =
     fileTreeError instanceof APIError
       ? fileTreeError.getErrorMessage()
@@ -334,6 +364,20 @@ export function FileView({ filePath }: FileViewProps) {
             <p className="text-muted-foreground mt-1">{filePath}</p>
           </div>
           <div className="flex items-center gap-2">
+            {fileNode && (
+              <Button
+                variant="outline"
+                onClick={handleDownload}
+                disabled={downloadMutation.isPending}
+              >
+                {downloadMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Download
+              </Button>
+            )}
             {isEditable &&
               canRevertFiles &&
               revisionSummary &&

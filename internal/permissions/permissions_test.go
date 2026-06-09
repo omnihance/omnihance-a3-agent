@@ -68,6 +68,24 @@ func TestIsAllowed(t *testing.T) {
 			expected: false,
 		},
 		{
+			name:     "super_admin can download files",
+			action:   ActionDownloadFiles,
+			roles:    []string{constants.RoleSuperAdmin},
+			expected: true,
+		},
+		{
+			name:     "admin can download files",
+			action:   ActionDownloadFiles,
+			roles:    []string{constants.RoleAdmin},
+			expected: true,
+		},
+		{
+			name:     "viewer cannot download files",
+			action:   ActionDownloadFiles,
+			roles:    []string{constants.RoleUser},
+			expected: false,
+		},
+		{
 			name:     "super_admin can upload game data",
 			action:   ActionUploadGameData,
 			roles:    []string{constants.RoleSuperAdmin},

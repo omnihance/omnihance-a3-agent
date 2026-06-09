@@ -7,6 +7,7 @@ type PermissionAction =
   | 'view_files'
   | 'edit_files'
   | 'revert_files'
+  | 'download_files'
   | 'upload_game_data'
   | 'manage_users'
   | 'view_metrics'
@@ -17,6 +18,7 @@ const rolePermissions: Record<PermissionAction, string[]> = {
   view_files: ['super_admin', 'admin', 'viewer'],
   edit_files: ['super_admin', 'admin'],
   revert_files: ['super_admin', 'admin'],
+  download_files: ['super_admin', 'admin'],
   upload_game_data: ['super_admin', 'admin'],
   manage_users: ['super_admin'],
   view_metrics: ['super_admin', 'admin', 'viewer'],
