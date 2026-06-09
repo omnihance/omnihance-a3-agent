@@ -19,9 +19,9 @@ func resolveDriverDLLPath() (string, error) {
 		if err != nil {
 			continue
 		}
-		defer func() {
-			_ = key.Close()
-		}()
+		defer func(k registry.Key) {
+			_ = k.Close()
+		}(key)
 
 		value, _, err := key.GetStringValue("Driver")
 		if err != nil || value == "" {

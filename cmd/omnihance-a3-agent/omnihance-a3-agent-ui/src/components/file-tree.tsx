@@ -510,8 +510,15 @@ export function FileTree({ initialPath }: FileTreeProps) {
     onSuccess: (response) => {
       window.location.assign(response.download_url);
     },
-    onError: (error: APIError) => {
-      toast.error(error.getErrorMessage());
+    onError: (error) => {
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create download link';
+
+      toast.error(errorMessage);
     },
   });
 

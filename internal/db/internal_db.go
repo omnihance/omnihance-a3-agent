@@ -2015,8 +2015,6 @@ func (s *sqliteInternalDB) migrate014FileDownloadLinksTable() error {
 		last_downloaded_at TIMESTAMP
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_file_download_links_public_id ON file_download_links (public_id);
-
 	CREATE INDEX IF NOT EXISTS idx_file_download_links_reuse ON file_download_links (
 		user_id,
 		source_type,

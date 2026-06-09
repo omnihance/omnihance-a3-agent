@@ -74,6 +74,14 @@ func TestRecordFileDownloadIncrementsCountAndStoresEvent(t *testing.T) {
 	require.Equal(t, int64(1), eventCount)
 }
 
+func TestGetFileDownloadLinkByPublicIDReturnsNotFoundSentinel(t *testing.T) {
+	internalDB := newFileDownloadTestDB(t)
+
+	link, err := internalDB.GetFileDownloadLinkByPublicID("missing-link")
+	require.Nil(t, link)
+	require.ErrorIs(t, err, ErrFileDownloadLinkNotFound)
+}
+
 func newFileDownloadTestDB(t *testing.T) InternalDB {
 	t.Helper()
 

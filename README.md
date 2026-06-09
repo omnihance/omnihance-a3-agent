@@ -54,6 +54,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Cannot edit files or upload data
 - **Permission Actions**:
   - `view_files`: View file system and file contents (super_admin, admin, viewer)
+  - `download_files`: Create and use one-day user-bound download links for file-browser and backup output files through `POST /api/file-tree/download-link` and `GET /api/file-tree/download/{token}` (super_admin, admin)
   - `edit_files`: Edit files (super_admin, admin)
   - `revert_files`: Revert files to previous revisions (super_admin, admin)
   - `upload_game_data`: Upload MON.ull and MC.ull files (super_admin, admin)

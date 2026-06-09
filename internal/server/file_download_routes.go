@@ -79,6 +79,11 @@ func (s *Server) handleDownloadLinkedFile(w http.ResponseWriter, r *http.Request
 
 	link, err := s.internalDB.GetFileDownloadLinkByPublicID(publicID)
 	if err != nil {
+		if !errors.Is(err, db.ErrFileDownloadLinkNotFound) {
+			writeFileDownloadError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, fileDownloadErrorContext, "Failed to load download link")
+			return
+		}
+
 		writeFileDownloadError(w, http.StatusNotFound, constants.ErrorCodeNotFound, fileDownloadErrorContext, "Download link not found")
 		return
 	}
@@ -93,11 +98,14 @@ func (s *Server) handleDownloadLinkedFile(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fingerprint, err := s.buildFileDownloadFingerprint(link.OriginalPath)
+	file, fingerprint, err := s.openFileDownload(link.OriginalPath)
 	if err != nil {
 		writeDownloadLinkError(w, fileDownloadErrorContext, err)
 		return
 	}
+	defer func() {
+		_ = file.Close()
+	}()
 
 	if !downloadFingerprintMatchesLink(fingerprint, link) {
 		writeFileDownloadError(w, http.StatusGone, constants.ErrorCodeBadRequest, fileDownloadErrorContext, "Download link is no longer valid because the file changed")
@@ -117,7 +125,7 @@ func (s *Server) handleDownloadLinkedFile(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Disposition", contentDisposition)
-	http.ServeFile(w, r, link.OriginalPath)
+	http.ServeContent(w, r, link.FileName, fingerprint.modTime, file)
 }
 
 func (s *Server) createDownloadLinkForPath(r *http.Request, path string, source downloadLinkSource) (*DownloadLinkResponse, error) {
@@ -174,44 +182,79 @@ func (s *Server) createDownloadLinkForPath(r *http.Request, path string, source 
 }
 
 func (s *Server) buildFileDownloadFingerprint(path string) (*downloadFingerprint, error) {
+	file, fingerprint, err := s.openFileDownload(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	return fingerprint, nil
+}
+
+func (s *Server) openFileDownload(path string) (*os.File, *downloadFingerprint, error) {
 	cleanPath := filepath.Clean(path)
 	info, err := s.fileEditor.Stat(cleanPath)
 	if err != nil {
 		if s.fileEditor.IsNotExist(err) {
-			return nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Path not found")
+			return nil, nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Path not found")
 		}
 
-		return nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Cannot read file: "+err.Error())
+		return nil, nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Cannot read file: "+err.Error())
 	}
 
 	if info.IsDir() {
-		return nil, newDownloadLinkError(http.StatusBadRequest, constants.ErrorCodePathIsDirectory, "Path is a directory, not a file")
+		return nil, nil, newDownloadLinkError(http.StatusBadRequest, constants.ErrorCodePathIsDirectory, "Path is a directory, not a file")
 	}
 
-	fileHash, err := s.hashFile(cleanPath)
+	file, err := s.fileEditor.OpenFile(cleanPath, os.O_RDONLY, 0)
 	if err != nil {
-		return nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Failed to hash file: "+err.Error())
+		if s.fileEditor.IsNotExist(err) {
+			return nil, nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Path not found")
+		}
+
+		return nil, nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Cannot read file: "+err.Error())
 	}
 
-	return &downloadFingerprint{
+	success := false
+	defer func() {
+		if !success {
+			_ = file.Close()
+		}
+	}()
+
+	info, err = file.Stat()
+	if err != nil {
+		return nil, nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Cannot read file: "+err.Error())
+	}
+
+	if info.IsDir() {
+		return nil, nil, newDownloadLinkError(http.StatusBadRequest, constants.ErrorCodePathIsDirectory, "Path is a directory, not a file")
+	}
+
+	fileHash, err := hashFile(file)
+	if err != nil {
+		return nil, nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Failed to hash file: "+err.Error())
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, nil, newDownloadLinkError(http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Failed to prepare file download: "+err.Error())
+	}
+
+	success = true
+	return file, &downloadFingerprint{
 		path:           cleanPath,
 		fileID:         utils.GenerateMD5Hash(cleanPath),
 		fileName:       filepath.Base(cleanPath),
 		fileSize:       info.Size(),
 		fileHash:       fileHash,
 		fileModifiedAt: info.ModTime().UnixNano(),
+		modTime:        info.ModTime(),
 	}, nil
 }
 
-func (s *Server) hashFile(path string) (string, error) {
-	file, err := s.fileEditor.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
+func hashFile(file *os.File) (string, error) {
 	hash := md5.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return "", err
@@ -354,6 +397,7 @@ type downloadFingerprint struct {
 	fileSize       int64
 	fileHash       string
 	fileModifiedAt int64
+	modTime        time.Time
 }
 
 type downloadLinkError struct {

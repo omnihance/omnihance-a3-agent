@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,6 +14,8 @@ const (
 	FileDownloadSourceFileBrowser = "file_browser"
 	FileDownloadSourceBackup      = "backup"
 )
+
+var ErrFileDownloadLinkNotFound = errors.New("file download link not found")
 
 type FileDownloadLink struct {
 	ID               int64      `db:"id" json:"id"`
@@ -200,7 +203,7 @@ func (s *sqliteInternalDB) getFileDownloadLink(where goqu.Ex) (*FileDownloadLink
 	}
 
 	if !found {
-		return nil, fmt.Errorf("file download link not found")
+		return nil, ErrFileDownloadLinkNotFound
 	}
 
 	return &link, nil

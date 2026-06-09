@@ -283,12 +283,11 @@ export function FileView({ filePath }: FileViewProps) {
   });
 
   const handleDownload = () => {
-    if (!canDownloadFiles) {
-      toast.error('You cannot download this file');
-      return;
-    }
-
     downloadMutation.mutate();
+  };
+
+  const handleDownloadUnavailable = () => {
+    toast.error('You cannot download this file');
   };
 
   const fileTreeErrorMessage =
@@ -364,7 +363,7 @@ export function FileView({ filePath }: FileViewProps) {
             <p className="text-muted-foreground mt-1">{filePath}</p>
           </div>
           <div className="flex items-center gap-2">
-            {fileNode && (
+            {fileNode && canDownloadFiles && (
               <Button
                 variant="outline"
                 onClick={handleDownload}
@@ -375,6 +374,12 @@ export function FileView({ filePath }: FileViewProps) {
                 ) : (
                   <Download className="mr-2 h-4 w-4" />
                 )}
+                Download
+              </Button>
+            )}
+            {fileNode && !canDownloadFiles && (
+              <Button variant="outline" onClick={handleDownloadUnavailable}>
+                <Download className="mr-2 h-4 w-4" />
                 Download
               </Button>
             )}
