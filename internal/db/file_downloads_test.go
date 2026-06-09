@@ -79,7 +79,7 @@ func TestGetFileDownloadLinkByPublicIDReturnsNotFoundSentinel(t *testing.T) {
 
 	link, err := internalDB.GetFileDownloadLinkByPublicID("missing-link")
 	require.Nil(t, link)
-	require.ErrorIs(t, err, ErrFileDownloadLinkNotFound)
+	require.ErrorIs(t, err, constants.ErrNotFound)
 }
 
 func newFileDownloadTestDB(t *testing.T) InternalDB {

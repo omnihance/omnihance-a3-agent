@@ -79,7 +79,7 @@ func (s *Server) handleDownloadLinkedFile(w http.ResponseWriter, r *http.Request
 
 	link, err := s.internalDB.GetFileDownloadLinkByPublicID(publicID)
 	if err != nil {
-		if !errors.Is(err, db.ErrFileDownloadLinkNotFound) {
+		if !errors.Is(err, constants.ErrNotFound) {
 			writeFileDownloadError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, fileDownloadErrorContext, "Failed to load download link")
 			return
 		}

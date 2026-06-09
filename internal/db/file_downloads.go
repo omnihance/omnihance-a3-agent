@@ -1,12 +1,12 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
 	"github.com/doug-martin/goqu/v9/exp"
+	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 )
 
@@ -14,8 +14,6 @@ const (
 	FileDownloadSourceFileBrowser = "file_browser"
 	FileDownloadSourceBackup      = "backup"
 )
-
-var ErrFileDownloadLinkNotFound = errors.New("file download link not found")
 
 type FileDownloadLink struct {
 	ID               int64      `db:"id" json:"id"`
@@ -203,7 +201,7 @@ func (s *sqliteInternalDB) getFileDownloadLink(where goqu.Ex) (*FileDownloadLink
 	}
 
 	if !found {
-		return nil, ErrFileDownloadLinkNotFound
+		return nil, constants.ErrNotFound
 	}
 
 	return &link, nil

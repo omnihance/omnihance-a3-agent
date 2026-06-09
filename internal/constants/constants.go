@@ -1,5 +1,9 @@
 package constants
 
+import "errors"
+
+var ErrNotFound = errors.New("not found")
+
 const (
 	ErrorCodeUnauthorized        = "UNAUTHORIZED"
 	ErrorCodeForbidden           = "FORBIDDEN"
