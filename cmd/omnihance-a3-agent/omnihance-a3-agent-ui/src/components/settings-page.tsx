@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Controller, useForm, type UseFormReturn } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type UseFormReturn,
+} from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -766,7 +771,10 @@ function SettingForm({
   disabled: boolean;
   lockKey: boolean;
 }) {
-  const selectedKey = form.watch('key');
+  const selectedKey = useWatch({
+    control: form.control,
+    name: 'key',
+  });
   const selectedDefinition = definitions.find(
     (definition) => definition.key === selectedKey,
   );

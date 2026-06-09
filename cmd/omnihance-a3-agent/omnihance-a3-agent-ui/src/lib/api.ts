@@ -36,6 +36,7 @@ export const API_ROUTES = {
   USERS: '/api/users',
   USER_STATUSES: '/api/users/statuses',
   USER_STATUS: (id: number) => `/api/users/${id}/status`,
+  USER_ROLES: (id: number) => `/api/users/${id}/roles`,
   USER_PASSWORD: (id: number) => `/api/users/${id}/password`,
   SERVER_PROCESSES: '/api/server/processes',
   SERVER_PROCESS: (id: number) => `/api/server/processes/${id}`,
@@ -655,6 +656,25 @@ const UpdateUserStatusResponseSchema = z.object({
 
 export type UpdateUserStatusResponse = z.infer<
   typeof UpdateUserStatusResponseSchema
+>;
+
+const UserRoleSchema = z.enum(['admin', 'viewer']);
+
+export type UserRole = z.infer<typeof UserRoleSchema>;
+
+const UpdateUserRoleRequestSchema = z.object({
+  role: UserRoleSchema,
+});
+
+export type UpdateUserRoleRequest = z.infer<typeof UpdateUserRoleRequestSchema>;
+
+const UpdateUserRoleResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string(),
+});
+
+export type UpdateUserRoleResponse = z.infer<
+  typeof UpdateUserRoleResponseSchema
 >;
 
 const SetUserPasswordRequestSchema = z.object({
@@ -1284,6 +1304,21 @@ export async function updateUserStatus(
     UpdateUserStatusResponseSchema,
     response.data,
     API_ROUTES.USER_STATUS(id),
+  );
+}
+
+export async function updateUserRole(
+  id: number,
+  data: UpdateUserRoleRequest,
+): Promise<UpdateUserRoleResponse> {
+  const response = await axiosInstance.patch<unknown>(
+    API_ROUTES.USER_ROLES(id),
+    UpdateUserRoleRequestSchema.parse(data),
+  );
+  return validateResponse(
+    UpdateUserRoleResponseSchema,
+    response.data,
+    API_ROUTES.USER_ROLES(id),
   );
 }
 

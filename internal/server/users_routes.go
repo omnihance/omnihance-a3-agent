@@ -24,12 +24,18 @@ var allowedUserStatuses = map[string]bool{
 	constants.UserStatusBanned:   true,
 }
 
+var allowedUserRoles = map[string]bool{
+	constants.RoleAdmin: true,
+	constants.RoleUser:  true,
+}
+
 func (s *Server) InitializeUserManagementRoutes(r *chi.Mux) {
 	r.Route("/api/users", func(r chi.Router) {
 		r.Use(mw.CheckCookie(s.internalDB, s.cfg.CookieSecret))
 		r.Get("/", s.handleListUsers)
 		r.Get("/statuses", s.handleGetUserStatuses)
 		r.Patch("/{id}/status", s.handleUpdateUserStatus)
+		r.Patch("/{id}/roles", s.handleUpdateUserRoles)
 		r.Patch("/{id}/password", s.handleSetUserPassword)
 	})
 }
@@ -190,16 +196,13 @@ func (s *Server) handleUpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	roles := strings.Split(user.Roles, ",")
-	for _, role := range roles {
-		if strings.TrimSpace(role) == constants.RoleSuperAdmin {
-			_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-				"errorCode": constants.ErrorCodeBadRequest,
-				"context":   "user-management",
-				"errors":    []string{"Cannot update status of Super Admin user"},
-			})
-			return
-		}
+	if userHasRole(user.Roles, constants.RoleSuperAdmin) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "user-management",
+			"errors":    []string{"Cannot update status of Super Admin user"},
+		})
+		return
 	}
 
 	if user.Status == req.Status {
@@ -230,6 +233,97 @@ func (s *Server) handleUpdateUserStatus(w http.ResponseWriter, r *http.Request) 
 	_ = utils.WriteJSONResponse(w, map[string]interface{}{
 		"success": true,
 		"message": "User status updated successfully",
+	})
+}
+
+func (s *Server) handleUpdateUserRoles(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionManageUsers) {
+		return
+	}
+
+	userIDStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "user-management",
+			"errors":    []string{"Invalid user ID"},
+		})
+		return
+	}
+
+	var req UpdateUserRolesRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "form-validation",
+			"errors":    []string{"Invalid request body"},
+		})
+		return
+	}
+
+	role := strings.ToLower(strings.TrimSpace(req.Role))
+	if !isValidUserRole(role) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "form-validation",
+			"errors":    []string{"Invalid role value"},
+		})
+		return
+	}
+
+	user, err := s.internalDB.GetUserByID(userID)
+	if err != nil {
+		s.log.Error(
+			"failed to get user",
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "error", Value: err},
+		)
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusNotFound, map[string]interface{}{
+			"errorCode": constants.ErrorCodeNotFound,
+			"context":   "user-management",
+			"errors":    []string{"User not found"},
+		})
+		return
+	}
+
+	if userHasRole(user.Roles, constants.RoleSuperAdmin) {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "user-management",
+			"errors":    []string{"Cannot update role of Super Admin user"},
+		})
+		return
+	}
+
+	if strings.TrimSpace(user.Roles) == role {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "user-management",
+			"errors":    []string{"New role must be different from current role"},
+		})
+		return
+	}
+
+	updatedBy, _ := utils.GetUserIdFromContext(r.Context())
+	if err := s.internalDB.UpdateUserRoles(userID, role, updatedBy); err != nil {
+		s.log.Error(
+			"failed to update user roles",
+			logger.Field{Key: "user_id", Value: userID},
+			logger.Field{Key: "roles", Value: role},
+			logger.Field{Key: "error", Value: err},
+		)
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
+			"errorCode": constants.ErrorCodeInternalServerError,
+			"context":   "user-management",
+			"errors":    []string{"Failed to update user role"},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"success": true,
+		"message": "User role updated successfully",
 	})
 }
 
@@ -355,8 +449,26 @@ type UpdateUserStatusRequest struct {
 	Status string `json:"status" validate:"required,oneof=pending active inactive banned"`
 }
 
+type UpdateUserRolesRequest struct {
+	Role string `json:"role"`
+}
+
 func isValidUserStatus(status string) bool {
 	return allowedUserStatuses[status]
+}
+
+func isValidUserRole(role string) bool {
+	return allowedUserRoles[role]
+}
+
+func userHasRole(roles string, expectedRole string) bool {
+	for _, role := range strings.Split(roles, ",") {
+		if strings.TrimSpace(role) == expectedRole {
+			return true
+		}
+	}
+
+	return false
 }
 
 type SetUserPasswordRequest struct {
