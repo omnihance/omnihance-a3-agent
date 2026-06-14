@@ -17,6 +17,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -90,6 +91,83 @@ func TestDownloadLinkedFileRejectsWrongUserExpiredChangedAndMissingFile(t *testi
 	expiredLink := createExpiredDownloadLinkForTest(t, server, expiredPath)
 	rr = downloadLinkedFileForTest(t, server, expiredLink, constants.RoleAdmin, 1)
 	require.Equal(t, http.StatusGone, rr.Code)
+}
+
+func TestCreateDirectoryDownloadLinkReturnsInProgress(t *testing.T) {
+	server := newFileDownloadTestServer(t)
+	backupService := services.NewMockBackupService(t)
+	server.backupService = backupService
+	sourceDir := t.TempDir()
+	runID := int64(77)
+
+	backupService.EXPECT().
+		PrepareDirectoryDownload(mock.Anything, filepath.Clean(sourceDir), mock.Anything).
+		Return(&services.DirectoryDownloadResult{
+			Status:  services.DirectoryDownloadStatusInProgress,
+			Message: "This directory download is already in progress. Keep this page open; the download will start when ready.",
+			JobID:   55,
+			RunID:   runID,
+		}, nil)
+
+	req := downloadRequest(http.MethodPost, "/api/file-tree/directory-download-link?path="+url.QueryEscape(sourceDir), nil, constants.RoleAdmin, 1)
+	rr := httptest.NewRecorder()
+	server.handleCreateDirectoryDownloadLink(rr, req)
+
+	require.Equal(t, http.StatusAccepted, rr.Code, rr.Body.String())
+	var response DirectoryDownloadResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &response))
+	require.Equal(t, services.DirectoryDownloadStatusInProgress, response.Status)
+	require.Equal(t, runID, response.RunID)
+}
+
+func TestCreateDirectoryDownloadLinkUsesSecureDownloadTableWhenReady(t *testing.T) {
+	server := newFileDownloadTestServer(t)
+	backupService := services.NewMockBackupService(t)
+	server.backupService = backupService
+	dir := t.TempDir()
+	archivePath := writeDownloadTestFile(t, dir, "server.zip", []byte("zip data"))
+	sourcePath := filepath.Join(dir, "source")
+
+	job, err := server.internalDB.CreateBackupJob(db.BackupJobPayload{
+		JobType:              db.BackupJobTypeFile,
+		Name:                 "Directory download: source",
+		Status:               db.BackupJobStatusActive,
+		DestinationDirectory: dir,
+		SourcePath:           &sourcePath,
+	}, nil)
+	require.NoError(t, err)
+	run, err := server.internalDB.CreateBackupRun(job.ID, db.BackupRunTriggerDirectoryDownload, db.BackupJobStatusActive, nil)
+	require.NoError(t, err)
+	file, err := server.internalDB.CreateBackupRunFile(run.ID, "source", archivePath, 8)
+	require.NoError(t, err)
+
+	backupService.EXPECT().
+		PrepareDirectoryDownload(mock.Anything, filepath.Clean(sourcePath), mock.Anything).
+		Return(&services.DirectoryDownloadResult{
+			Status:      services.DirectoryDownloadStatusReady,
+			JobID:       job.ID,
+			RunID:       run.ID,
+			FileID:      &file.ID,
+			ArchivePath: archivePath,
+		}, nil)
+
+	req := downloadRequest(http.MethodPost, "/api/file-tree/directory-download-link?path="+url.QueryEscape(sourcePath), nil, constants.RoleAdmin, 1)
+	rr := httptest.NewRecorder()
+	server.handleCreateDirectoryDownloadLink(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	var response DirectoryDownloadResponse
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &response))
+	require.Equal(t, services.DirectoryDownloadStatusReady, response.Status)
+	require.True(t, strings.HasPrefix(response.DownloadURL, "/api/file-tree/download/"))
+
+	publicID, _, err := server.verifyDownloadToken(strings.TrimPrefix(response.DownloadURL, "/api/file-tree/download/"))
+	require.NoError(t, err)
+	link, err := server.internalDB.GetFileDownloadLinkByPublicID(publicID)
+	require.NoError(t, err)
+	require.Equal(t, db.FileDownloadSourceDirectoryDownload, link.SourceType)
+	require.Equal(t, run.ID, *link.BackupRunID)
+	require.Equal(t, file.ID, *link.BackupFileID)
 }
 
 func newFileDownloadTestServer(t *testing.T) *Server {

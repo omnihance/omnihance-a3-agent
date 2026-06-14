@@ -23,6 +23,7 @@ type EnvVars struct {
 	MetricsCleanupIntervalSeconds    int
 	RevisionsDirectory               string
 	BackupsDirectory                 string
+	DirectoryDownloadsDirectory      string
 	MetricsEnabled                   bool
 	SessionTimeoutSeconds            int
 	CookieSecret                     string
@@ -42,6 +43,7 @@ var defaultEnvVars = map[string]string{
 	"METRICS_CLEANUP_INTERVAL_SECONDS":    "3600",
 	"REVISIONS_DIRECTORY":                 ".revisions",
 	"BACKUPS_DIRECTORY":                   ".backups",
+	"DIRECTORY_DOWNLOADS_DIRECTORY":       ".directory-download",
 	"METRICS_ENABLED":                     "true",
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
 	"COOKIE_SECRET":                       externalUtils.GenerateRandomString(32),
@@ -145,6 +147,7 @@ func New() *EnvVars {
 		MetricsCleanupIntervalSeconds:    metricsCleanupIntervalSeconds,
 		RevisionsDirectory:               os.Getenv("REVISIONS_DIRECTORY"),
 		BackupsDirectory:                 os.Getenv("BACKUPS_DIRECTORY"),
+		DirectoryDownloadsDirectory:      os.Getenv("DIRECTORY_DOWNLOADS_DIRECTORY"),
 		MetricsEnabled:                   metricsEnabled,
 		SessionTimeoutSeconds:            sessionTimeoutSeconds,
 		CookieSecret:                     cookieSecret,

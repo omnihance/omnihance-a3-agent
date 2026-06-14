@@ -23,6 +23,7 @@ import (
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
+	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
 )
 
@@ -51,6 +52,68 @@ func (s *Server) handleCreateFileDownloadLink(w http.ResponseWriter, r *http.Req
 	}
 
 	_ = utils.WriteJSONResponse(w, response)
+}
+
+func (s *Server) handleCreateDirectoryDownloadLink(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionDownloadFiles) {
+		return
+	}
+
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		writeFileDownloadError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, fileDownloadErrorContext, "Path parameter is required")
+		return
+	}
+
+	result, err := s.backupService.PrepareDirectoryDownload(r.Context(), filepath.Clean(pathParam), backupUserID(r))
+	if err != nil {
+		writeDirectoryDownloadError(w, err)
+		return
+	}
+
+	response, err := s.directoryDownloadResponse(r, result)
+	if err != nil {
+		writeDownloadLinkError(w, fileDownloadErrorContext, err)
+		return
+	}
+
+	status := http.StatusOK
+	if response.Status != services.DirectoryDownloadStatusReady {
+		status = http.StatusAccepted
+	}
+
+	_ = utils.WriteJSONResponseWithStatus(w, status, response)
+}
+
+func (s *Server) handleGetDirectoryDownloadStatus(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionDownloadFiles) {
+		return
+	}
+
+	runID, err := strconv.ParseInt(chi.URLParam(r, "run_id"), 10, 64)
+	if err != nil {
+		writeFileDownloadError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, fileDownloadErrorContext, "Invalid directory download run ID")
+		return
+	}
+
+	result, err := s.backupService.GetDirectoryDownloadStatus(r.Context(), runID, backupUserID(r))
+	if err != nil {
+		writeDirectoryDownloadError(w, err)
+		return
+	}
+
+	response, err := s.directoryDownloadResponse(r, result)
+	if err != nil {
+		writeDownloadLinkError(w, fileDownloadErrorContext, err)
+		return
+	}
+
+	status := http.StatusOK
+	if response.Status == services.DirectoryDownloadStatusInProgress || response.Status == services.DirectoryDownloadStatusStarted {
+		status = http.StatusAccepted
+	}
+
+	_ = utils.WriteJSONResponseWithStatus(w, status, response)
 }
 
 func (s *Server) handleDownloadLinkedFile(w http.ResponseWriter, r *http.Request) {
@@ -344,6 +407,21 @@ func writeDownloadLinkError(w http.ResponseWriter, context string, err error) {
 	writeFileDownloadError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, context, err.Error())
 }
 
+func writeDirectoryDownloadError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, services.ErrDirectoryDownloadConflict):
+		writeFileDownloadError(w, http.StatusConflict, constants.ErrorCodeBadRequest, fileDownloadErrorContext, err.Error())
+	case errors.Is(err, services.ErrBackupNotFound), errors.Is(err, db.ErrBackupNotFound):
+		writeFileDownloadError(w, http.StatusNotFound, constants.ErrorCodeNotFound, fileDownloadErrorContext, err.Error())
+	case errors.Is(err, services.ErrBackupInvalid):
+		writeFileDownloadError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, fileDownloadErrorContext, err.Error())
+	case errors.Is(err, services.ErrBackupJobRunning):
+		writeFileDownloadError(w, http.StatusConflict, constants.ErrorCodeBadRequest, fileDownloadErrorContext, err.Error())
+	default:
+		writeFileDownloadError(w, http.StatusInternalServerError, constants.ErrorCodeInternalServerError, fileDownloadErrorContext, err.Error())
+	}
+}
+
 func writeFileDownloadError(w http.ResponseWriter, status int, errorCode string, context string, message string) {
 	_ = utils.WriteJSONResponseWithStatus(w, status, map[string]interface{}{
 		"errorCode": errorCode,
@@ -358,6 +436,42 @@ func newDownloadLinkError(status int, errorCode string, message string) error {
 		errorCode: errorCode,
 		message:   message,
 	}
+}
+
+func (s *Server) directoryDownloadResponse(r *http.Request, result *services.DirectoryDownloadResult) (*DirectoryDownloadResponse, error) {
+	response := &DirectoryDownloadResponse{
+		Status:        result.Status,
+		Message:       result.Message,
+		JobID:         result.JobID,
+		RunID:         result.RunID,
+		FileID:        result.FileID,
+		ArchiveReused: result.ArchiveReused,
+	}
+
+	if result.Status != services.DirectoryDownloadStatusReady {
+		return response, nil
+	}
+
+	if result.FileID == nil || result.ArchivePath == "" {
+		return nil, newDownloadLinkError(http.StatusNotFound, constants.ErrorCodeNotFound, "Directory download archive is missing")
+	}
+
+	backupFileID := *result.FileID
+	downloadLink, err := s.createDownloadLinkForPath(r, result.ArchivePath, downloadLinkSource{
+		sourceType:   db.FileDownloadSourceDirectoryDownload,
+		backupRunID:  &result.RunID,
+		backupFileID: &backupFileID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	response.DownloadURL = downloadLink.DownloadURL
+	response.ExpiresAt = &downloadLink.ExpiresAt
+	response.Reused = downloadLink.Reused
+	response.DownloadCount = downloadLink.DownloadCount
+
+	return response, nil
 }
 
 func downloadRequestIP(r *http.Request) string {
@@ -382,6 +496,19 @@ type DownloadLinkResponse struct {
 	ExpiresAt     time.Time `json:"expires_at"`
 	Reused        bool      `json:"reused"`
 	DownloadCount int64     `json:"download_count"`
+}
+
+type DirectoryDownloadResponse struct {
+	Status        string     `json:"status"`
+	Message       string     `json:"message,omitempty"`
+	JobID         int64      `json:"job_id"`
+	RunID         int64      `json:"run_id"`
+	FileID        *int64     `json:"file_id,omitempty"`
+	DownloadURL   string     `json:"download_url,omitempty"`
+	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
+	Reused        bool       `json:"reused"`
+	DownloadCount int64      `json:"download_count"`
+	ArchiveReused bool       `json:"archive_reused"`
 }
 
 type downloadLinkSource struct {

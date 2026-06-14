@@ -104,6 +104,8 @@ type InternalDB interface {
 	GetBackupJobs() ([]BackupJob, error)
 	GetSchedulableBackupJobs() ([]BackupJob, error)
 	GetBackupJob(id int64) (*BackupJob, error)
+	GetBackupJobByTagAndSourcePath(tag string, sourcePath string) (*BackupJob, error)
+	GetRunningBackupRunForTag(tag string) (*BackupRun, *BackupJob, error)
 	CreateBackupJob(payload BackupJobPayload, userID *int64) (*BackupJob, error)
 	UpdateBackupJob(id int64, payload BackupJobPayload, userID *int64) (*BackupJob, error)
 	UpdateBackupJobStatus(id int64, status string, userID *int64) error
@@ -119,6 +121,8 @@ type InternalDB interface {
 	GetBackupRunFiles(runID int64) ([]BackupRunFile, error)
 	GetBackupRunFile(id int64) (*BackupRunFile, error)
 	MarkOrphanedBackupRunsFailed() error
+	GetDirectoryDownloadArchive(normalizedPath string, sourceFingerprint string) (*DirectoryDownloadArchive, error)
+	UpsertDirectoryDownloadArchive(payload DirectoryDownloadArchivePayload) (*DirectoryDownloadArchive, error)
 	CreateServerViewSyncRun(userID *int64) (*ServerViewSyncRun, error)
 	FinishServerViewSyncRun(runID int64, status string, warningCount int, errorDetails *string) error
 	GetLatestServerViewSyncRun() (*ServerViewSyncRun, error)
@@ -290,10 +294,18 @@ func (s *sqliteInternalDB) MigrateUp() error {
 		return err
 	}
 
+	if err := s.migrate015DirectoryDownloadsTable(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (s *sqliteInternalDB) MigrateDown() error {
+	if err := s.rollback015DirectoryDownloadsTable(); err != nil {
+		return err
+	}
+
 	if err := s.rollback014FileDownloadLinksTable(); err != nil {
 		return err
 	}
@@ -2130,6 +2142,135 @@ func (s *sqliteInternalDB) rollback014FileDownloadLinksTable() error {
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit file download links rollback: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) migrate015DirectoryDownloadsTable() error {
+	const migName = "015_directory_downloads"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if applied {
+		return nil
+	}
+
+	s.logger.Info("Applying migration", logger.Field{Key: "migration", Value: migName})
+
+	migrationSQL := `
+	ALTER TABLE backup_jobs ADD COLUMN tag TEXT;
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_tag ON backup_jobs (tag);
+
+	CREATE INDEX IF NOT EXISTS idx_backup_jobs_tag_source_path ON backup_jobs (tag, source_path);
+
+	CREATE TABLE IF NOT EXISTS directory_download_archives (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		normalized_path TEXT NOT NULL,
+		source_fingerprint TEXT NOT NULL,
+		job_id INTEGER NOT NULL REFERENCES backup_jobs(id) ON DELETE CASCADE,
+		run_id INTEGER NOT NULL REFERENCES backup_runs(id) ON DELETE CASCADE,
+		file_id INTEGER NOT NULL REFERENCES backup_run_files(id) ON DELETE CASCADE,
+		archive_path TEXT NOT NULL,
+		archive_size INTEGER NOT NULL DEFAULT 0,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(normalized_path, source_fingerprint)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_directory_download_archives_path ON directory_download_archives (normalized_path);
+
+	CREATE INDEX IF NOT EXISTS idx_directory_download_archives_run_id ON directory_download_archives (run_id);
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin directory downloads migration: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(migrationSQL)
+	if err != nil {
+		return fmt.Errorf("failed to create directory downloads tables: %w", err)
+	}
+
+	if _, err := tx.Exec("INSERT INTO migrations (name) VALUES (?)", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as applied",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as applied: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit directory downloads migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *sqliteInternalDB) rollback015DirectoryDownloadsTable() error {
+	const migName = "015_directory_downloads"
+
+	applied, err := s.isMigrationApplied(migName)
+	if err != nil {
+		s.logger.Error(
+			"failed to check migration status",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to check migration status for %s: %w", migName, err)
+	}
+
+	if !applied {
+		return nil
+	}
+
+	s.logger.Info("Rolling back migration", logger.Field{Key: "migration", Value: migName})
+
+	rollbackSQL := `
+	DROP TABLE IF EXISTS directory_download_archives;
+	DROP INDEX IF EXISTS idx_backup_jobs_tag_source_path;
+	DROP INDEX IF EXISTS idx_backup_jobs_tag;
+	ALTER TABLE backup_jobs DROP COLUMN tag;
+	`
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin directory downloads rollback: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(rollbackSQL)
+	if err != nil {
+		return fmt.Errorf("failed to rollback directory downloads tables: %w", err)
+	}
+
+	if _, err := tx.Exec("DELETE FROM migrations WHERE name = ?", migName); err != nil {
+		s.logger.Error(
+			"failed to mark migration as rolled back",
+			logger.Field{Key: "migration", Value: migName},
+			logger.Field{Key: "error", Value: err},
+		)
+		return fmt.Errorf("failed to mark migration as rolled back: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit directory downloads rollback: %w", err)
 	}
 
 	return nil

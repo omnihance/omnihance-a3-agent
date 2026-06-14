@@ -2451,6 +2451,74 @@ func (_c *MockInternalDB_GetBackupJob_Call) RunAndReturn(run func(id int64) (*Ba
 	return _c
 }
 
+// GetBackupJobByTagAndSourcePath provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetBackupJobByTagAndSourcePath(tag string, sourcePath string) (*BackupJob, error) {
+	ret := _mock.Called(tag, sourcePath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBackupJobByTagAndSourcePath")
+	}
+
+	var r0 *BackupJob
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string) (*BackupJob, error)); ok {
+		return returnFunc(tag, sourcePath)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string) *BackupJob); ok {
+		r0 = returnFunc(tag, sourcePath)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = returnFunc(tag, sourcePath)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetBackupJobByTagAndSourcePath_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBackupJobByTagAndSourcePath'
+type MockInternalDB_GetBackupJobByTagAndSourcePath_Call struct {
+	*mock.Call
+}
+
+// GetBackupJobByTagAndSourcePath is a helper method to define mock.On call
+//   - tag string
+//   - sourcePath string
+func (_e *MockInternalDB_Expecter) GetBackupJobByTagAndSourcePath(tag interface{}, sourcePath interface{}) *MockInternalDB_GetBackupJobByTagAndSourcePath_Call {
+	return &MockInternalDB_GetBackupJobByTagAndSourcePath_Call{Call: _e.mock.On("GetBackupJobByTagAndSourcePath", tag, sourcePath)}
+}
+
+func (_c *MockInternalDB_GetBackupJobByTagAndSourcePath_Call) Run(run func(tag string, sourcePath string)) *MockInternalDB_GetBackupJobByTagAndSourcePath_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJobByTagAndSourcePath_Call) Return(backupJob *BackupJob, err error) *MockInternalDB_GetBackupJobByTagAndSourcePath_Call {
+	_c.Call.Return(backupJob, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetBackupJobByTagAndSourcePath_Call) RunAndReturn(run func(tag string, sourcePath string) (*BackupJob, error)) *MockInternalDB_GetBackupJobByTagAndSourcePath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBackupJobs provides a mock function for the type MockInternalDB
 func (_mock *MockInternalDB) GetBackupJobs() ([]BackupJob, error) {
 	ret := _mock.Called()
@@ -2828,6 +2896,74 @@ func (_c *MockInternalDB_GetCompletedRevisionCount_Call) Return(n int64, err err
 }
 
 func (_c *MockInternalDB_GetCompletedRevisionCount_Call) RunAndReturn(run func(fileID string) (int64, error)) *MockInternalDB_GetCompletedRevisionCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetDirectoryDownloadArchive provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetDirectoryDownloadArchive(normalizedPath string, sourceFingerprint string) (*DirectoryDownloadArchive, error) {
+	ret := _mock.Called(normalizedPath, sourceFingerprint)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryDownloadArchive")
+	}
+
+	var r0 *DirectoryDownloadArchive
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string) (*DirectoryDownloadArchive, error)); ok {
+		return returnFunc(normalizedPath, sourceFingerprint)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string) *DirectoryDownloadArchive); ok {
+		r0 = returnFunc(normalizedPath, sourceFingerprint)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryDownloadArchive)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = returnFunc(normalizedPath, sourceFingerprint)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_GetDirectoryDownloadArchive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryDownloadArchive'
+type MockInternalDB_GetDirectoryDownloadArchive_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryDownloadArchive is a helper method to define mock.On call
+//   - normalizedPath string
+//   - sourceFingerprint string
+func (_e *MockInternalDB_Expecter) GetDirectoryDownloadArchive(normalizedPath interface{}, sourceFingerprint interface{}) *MockInternalDB_GetDirectoryDownloadArchive_Call {
+	return &MockInternalDB_GetDirectoryDownloadArchive_Call{Call: _e.mock.On("GetDirectoryDownloadArchive", normalizedPath, sourceFingerprint)}
+}
+
+func (_c *MockInternalDB_GetDirectoryDownloadArchive_Call) Run(run func(normalizedPath string, sourceFingerprint string)) *MockInternalDB_GetDirectoryDownloadArchive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryDownloadArchive_Call) Return(directoryDownloadArchive *DirectoryDownloadArchive, err error) *MockInternalDB_GetDirectoryDownloadArchive_Call {
+	_c.Call.Return(directoryDownloadArchive, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetDirectoryDownloadArchive_Call) RunAndReturn(run func(normalizedPath string, sourceFingerprint string) (*DirectoryDownloadArchive, error)) *MockInternalDB_GetDirectoryDownloadArchive_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3934,6 +4070,76 @@ func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) Return(backupRun *Backu
 }
 
 func (_c *MockInternalDB_GetRunningBackupRunForJob_Call) RunAndReturn(run func(jobID int64) (*BackupRun, error)) *MockInternalDB_GetRunningBackupRunForJob_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRunningBackupRunForTag provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) GetRunningBackupRunForTag(tag string) (*BackupRun, *BackupJob, error) {
+	ret := _mock.Called(tag)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRunningBackupRunForTag")
+	}
+
+	var r0 *BackupRun
+	var r1 *BackupJob
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(string) (*BackupRun, *BackupJob, error)); ok {
+		return returnFunc(tag)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) *BackupRun); ok {
+		r0 = returnFunc(tag)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*BackupRun)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) *BackupJob); ok {
+		r1 = returnFunc(tag)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(*BackupJob)
+		}
+	}
+	if returnFunc, ok := ret.Get(2).(func(string) error); ok {
+		r2 = returnFunc(tag)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockInternalDB_GetRunningBackupRunForTag_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRunningBackupRunForTag'
+type MockInternalDB_GetRunningBackupRunForTag_Call struct {
+	*mock.Call
+}
+
+// GetRunningBackupRunForTag is a helper method to define mock.On call
+//   - tag string
+func (_e *MockInternalDB_Expecter) GetRunningBackupRunForTag(tag interface{}) *MockInternalDB_GetRunningBackupRunForTag_Call {
+	return &MockInternalDB_GetRunningBackupRunForTag_Call{Call: _e.mock.On("GetRunningBackupRunForTag", tag)}
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForTag_Call) Run(run func(tag string)) *MockInternalDB_GetRunningBackupRunForTag_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForTag_Call) Return(backupRun *BackupRun, backupJob *BackupJob, err error) *MockInternalDB_GetRunningBackupRunForTag_Call {
+	_c.Call.Return(backupRun, backupJob, err)
+	return _c
+}
+
+func (_c *MockInternalDB_GetRunningBackupRunForTag_Call) RunAndReturn(run func(tag string) (*BackupRun, *BackupJob, error)) *MockInternalDB_GetRunningBackupRunForTag_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7014,6 +7220,68 @@ func (_c *MockInternalDB_UpdateUserStatus_Call) Return(err error) *MockInternalD
 }
 
 func (_c *MockInternalDB_UpdateUserStatus_Call) RunAndReturn(run func(userID int64, status string, updatedBy int64) error) *MockInternalDB_UpdateUserStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpsertDirectoryDownloadArchive provides a mock function for the type MockInternalDB
+func (_mock *MockInternalDB) UpsertDirectoryDownloadArchive(payload DirectoryDownloadArchivePayload) (*DirectoryDownloadArchive, error) {
+	ret := _mock.Called(payload)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpsertDirectoryDownloadArchive")
+	}
+
+	var r0 *DirectoryDownloadArchive
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(DirectoryDownloadArchivePayload) (*DirectoryDownloadArchive, error)); ok {
+		return returnFunc(payload)
+	}
+	if returnFunc, ok := ret.Get(0).(func(DirectoryDownloadArchivePayload) *DirectoryDownloadArchive); ok {
+		r0 = returnFunc(payload)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryDownloadArchive)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(DirectoryDownloadArchivePayload) error); ok {
+		r1 = returnFunc(payload)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockInternalDB_UpsertDirectoryDownloadArchive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpsertDirectoryDownloadArchive'
+type MockInternalDB_UpsertDirectoryDownloadArchive_Call struct {
+	*mock.Call
+}
+
+// UpsertDirectoryDownloadArchive is a helper method to define mock.On call
+//   - payload DirectoryDownloadArchivePayload
+func (_e *MockInternalDB_Expecter) UpsertDirectoryDownloadArchive(payload interface{}) *MockInternalDB_UpsertDirectoryDownloadArchive_Call {
+	return &MockInternalDB_UpsertDirectoryDownloadArchive_Call{Call: _e.mock.On("UpsertDirectoryDownloadArchive", payload)}
+}
+
+func (_c *MockInternalDB_UpsertDirectoryDownloadArchive_Call) Run(run func(payload DirectoryDownloadArchivePayload)) *MockInternalDB_UpsertDirectoryDownloadArchive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 DirectoryDownloadArchivePayload
+		if args[0] != nil {
+			arg0 = args[0].(DirectoryDownloadArchivePayload)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockInternalDB_UpsertDirectoryDownloadArchive_Call) Return(directoryDownloadArchive *DirectoryDownloadArchive, err error) *MockInternalDB_UpsertDirectoryDownloadArchive_Call {
+	_c.Call.Return(directoryDownloadArchive, err)
+	return _c
+}
+
+func (_c *MockInternalDB_UpsertDirectoryDownloadArchive_Call) RunAndReturn(run func(payload DirectoryDownloadArchivePayload) (*DirectoryDownloadArchive, error)) *MockInternalDB_UpsertDirectoryDownloadArchive_Call {
 	_c.Call.Return(run)
 	return _c
 }

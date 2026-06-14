@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	FileDownloadSourceFileBrowser = "file_browser"
-	FileDownloadSourceBackup      = "backup"
+	FileDownloadSourceFileBrowser       = "file_browser"
+	FileDownloadSourceBackup            = "backup"
+	FileDownloadSourceDirectoryDownload = "directory_download"
 )
 
 type FileDownloadLink struct {

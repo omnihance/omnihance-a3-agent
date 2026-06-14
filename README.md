@@ -77,6 +77,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Text files (MIME type detection)
 - **File Viewing**: View NPC files, quest files, spawn files, drop files, item files, item combination data files, and text files in the browser
 - **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
+- **Directory Downloads**: Right-click a directory to request a ZIP download. The directory is compressed in the background through a tagged one-time backup job, stored under `DIRECTORY_DOWNLOADS_DIRECTORY`, and delivered through the same secure temp-link download flow used for files and backup outputs.
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -280,6 +281,11 @@ Omnihance A3 Agent is a full-stack application consisting of:
   - Create manual or scheduled jobs for a selected file or directory
   - Destination directories are created when missing, and destination paths must be directories
   - Source path and destination path fields support searchable path suggestions
+- **Directory download jobs**:
+  - Directory-download requests create tagged no-repeat file backup jobs with the `directory_download` tag
+  - Only one directory-download compression job can run at a time; repeat requests for the same running directory resume polling, while requests for a different directory return a conflict
+  - Completed directory ZIPs are reused until the source directory fingerprint changes
+  - Directory-download backup jobs hide their destination in the Backups UI and show the run trigger as `Directory Download`
 - **Local SQL Server backups**:
   - Back up one or more comma-separated database names
   - SQL Server host, port, username, and password can be prefilled from settings
@@ -517,6 +523,7 @@ The application uses environment variables for configuration. A `.env` file is a
 | `VERSION_CHECK_INTERVAL_SECONDS`      | `3600`                                             | How often to check GitHub for new releases                   |
 | `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups                          |
 | `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files                     |
+| `DIRECTORY_DOWNLOADS_DIRECTORY`       | `.directory-download`                              | Directory for generated directory-download ZIP archives      |
 | `MAX_FILE_UPLOAD_SIZE_MB`             | `2`                                                | Maximum multipart upload size in MB                          |
 | `DIRECTORY_SHORTCUTS_LIMIT`           | `5`                                                | Maximum pinned directories per user (`0` disables the limit) |
 | `RUNNING_IN_DOCKER`                   | `false`                                            | Disable host metrics collection when running in Docker       |
@@ -578,6 +585,8 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
 - `POST /api/file-tree/download-link` - Create or reuse a one-day user-bound download link for a file (requires `download_files` permission)
+- `POST /api/file-tree/directory-download-link` - Create, reuse, or start a background directory ZIP job and return either a secure download URL or polling metadata (requires `download_files` permission)
+- `GET /api/file-tree/directory-downloads/{run_id}` - Poll a directory-download run until it returns a secure download URL or terminal status
 - `GET /api/file-tree/download/{token}` - Download a file through a valid user-bound temp link and record the download event
 
 ### Metrics
@@ -687,9 +696,10 @@ The application uses SQLite with the following main tables:
   - Stores process name, file path, optional port, sequence order
   - Tracks start/end times for uptime calculation
   - Enforces unique paths to prevent duplicates
-- **backup_jobs**: Backup job definitions, scheduling metadata, paths, SQL settings, and statuses
+- **backup_jobs**: Backup job definitions, scheduling metadata, paths, SQL settings, statuses, and optional tags such as `directory_download`
 - **backup_runs**: Backup run history, trigger type, status, output logs, errors, and cancellation timestamps
 - **backup_run_files**: Output archive files created by each backup run
+- **directory_download_archives**: Cached generated directory ZIP archives keyed by normalized directory path and recursive fingerprint
 - **file_download_links**: One-day user-bound file download links, file fingerprints, source context, and per-link download counts
 - **file_download_events**: Per-request file download audit events with user, link, source context, file fingerprint, IP address, and user agent
 - **server_view_svr_info_rows**: Raw `SvrInfo.ini` rows for Main, Account, Zone, and Battle servers
@@ -722,7 +732,7 @@ The application uses SQLite with the following main tables:
 
 5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull, MC.ull, and IT0.ull through IT3.ull files to populate monster, map, and item databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts, right-click files to duplicate them, and download files with admin or super admin access.
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts, right-click files to duplicate them, and download files or directories with admin or super admin access. Directory downloads compress in the background; keep the page open and do not refresh so the download can start automatically when ready. If you refresh, click the same directory download again to resume polling for the in-progress job.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item files, item combination data files, or text files) to view and edit them (requires admin or super admin role).
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation
