@@ -15,6 +15,8 @@ const (
 	BackupJobTypeFile      = "file"
 	BackupJobTypeSQLServer = "sql_server"
 
+	BackupJobTagDirectoryDownload = "directory_download"
+
 	BackupJobStatusActive   = "active"
 	BackupJobStatusInactive = "inactive"
 	BackupJobStatusRunning  = "running"
@@ -26,13 +28,15 @@ const (
 	BackupRunStatusCancelled = "cancelled"
 	BackupRunStatusSkipped   = "skipped"
 
-	BackupRunTriggerManual = "manual"
-	BackupRunTriggerCron   = "cron"
+	BackupRunTriggerManual            = "manual"
+	BackupRunTriggerCron              = "cron"
+	BackupRunTriggerDirectoryDownload = "directory_download"
 )
 
 type BackupJob struct {
 	ID                   int64      `db:"id" json:"id"`
 	JobType              string     `db:"job_type" json:"job_type"`
+	Tag                  *string    `db:"tag" json:"tag"`
 	Name                 string     `db:"name" json:"name"`
 	Status               string     `db:"status" json:"status"`
 	CronExpression       *string    `db:"cron_expression" json:"cron_expression"`
@@ -80,6 +84,7 @@ type BackupRunFile struct {
 
 type BackupJobPayload struct {
 	JobType              string
+	Tag                  *string
 	Name                 string
 	Status               string
 	CronExpression       *string
@@ -599,6 +604,7 @@ func (s *sqliteInternalDB) MarkOrphanedBackupRunsFailed() error {
 func backupJobRecord(payload BackupJobPayload) goqu.Record {
 	return goqu.Record{
 		"job_type":              payload.JobType,
+		"tag":                   payload.Tag,
 		"name":                  payload.Name,
 		"status":                payload.Status,
 		"cron_expression":       payload.CronExpression,

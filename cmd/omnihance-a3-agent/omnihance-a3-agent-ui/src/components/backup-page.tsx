@@ -130,6 +130,7 @@ const emptyForm: BackupFormState = {
 
 const backupRunPageSize = 10;
 const emptyBackupRuns: BackupRun[] = [];
+const directoryDownloadBackupTag = 'directory_download';
 
 export function BackupPage() {
   const queryClient = useQueryClient();
@@ -615,8 +616,8 @@ export function BackupPage() {
                               <TableCell>
                                 <StatusBadge status={run.status} />
                               </TableCell>
-                              <TableCell className="capitalize">
-                                {run.trigger_type}
+                              <TableCell>
+                                {formatBackupTriggerLabel(run.trigger_type)}
                               </TableCell>
                               <TableCell className="text-right">
                                 <Button
@@ -1068,9 +1069,13 @@ function PasswordInput({
 }
 
 function DetailGrid({ job }: { job: BackupJob }) {
-  const items: DetailGridItem[] = [
-    { label: 'Name', value: job.name },
-    { label: 'Destination', value: job.destination_directory },
+  const items: DetailGridItem[] = [{ label: 'Name', value: job.name }];
+
+  if (!isDirectoryDownloadBackupJob(job)) {
+    items.push({ label: 'Destination', value: job.destination_directory });
+  }
+
+  items.push(
     { label: 'Cron', value: job.cron_expression || 'Manual only' },
     {
       label: 'Archive Password',
@@ -1079,7 +1084,7 @@ function DetailGrid({ job }: { job: BackupJob }) {
     },
     { label: 'Last Run', value: job.last_run_at, dateTime: true },
     { label: 'Last Updated', value: job.updated_at, dateTime: true },
-  ];
+  );
 
   if (job.job_type === 'file') {
     items.push({ label: 'Input', value: job.source_path || '-' });
@@ -1220,8 +1225,8 @@ function RunDetailsDialog({
           <div className="min-w-0 space-y-4 overflow-y-auto pr-1">
             <div className="flex flex-wrap gap-2">
               <StatusBadge status={details.run.status} />
-              <Badge variant="outline" className="capitalize">
-                {details.run.trigger_type}
+              <Badge variant="outline">
+                {formatBackupTriggerLabel(details.run.trigger_type)}
               </Badge>
             </div>
             {details.files.length > 0 && (
@@ -1333,6 +1338,14 @@ function StatusBadge({ status }: { status: string }) {
               : '';
 
   return <Badge className={className}>{formatStatusLabel(status)}</Badge>;
+}
+
+function isDirectoryDownloadBackupJob(job: BackupJob) {
+  return job.tag === directoryDownloadBackupTag;
+}
+
+function formatBackupTriggerLabel(triggerType: string) {
+  return formatStatusLabel(triggerType);
 }
 
 function jobToForm(job: BackupJob): BackupFormState {

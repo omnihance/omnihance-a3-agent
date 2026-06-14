@@ -3,7 +3,9 @@ package services
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -34,14 +36,24 @@ const (
 	backupArchiveExtension = ".zip"
 	backupSearchLimit      = 10
 	backupSkipRunningMsg   = "Skipped because backup job is already running."
+	directoryDownloadName  = "Directory download"
 )
 
 var (
-	ErrBackupInvalid       = errors.New("invalid backup job")
-	ErrBackupJobRunning    = errors.New("backup job is currently running")
-	ErrBackupNotFound      = errors.New("backup item not found")
-	ErrBackupRemoteSQLHost = errors.New("remote SQL Server backups are not supported")
-	ErrBackupNoRunningJob  = errors.New("backup job is not running")
+	ErrBackupInvalid             = errors.New("invalid backup job")
+	ErrBackupJobRunning          = errors.New("backup job is currently running")
+	ErrBackupNotFound            = errors.New("backup item not found")
+	ErrBackupRemoteSQLHost       = errors.New("remote SQL Server backups are not supported")
+	ErrBackupNoRunningJob        = errors.New("backup job is not running")
+	ErrDirectoryDownloadConflict = errors.New("another directory download job is in progress")
+)
+
+const (
+	DirectoryDownloadStatusReady      = "ready"
+	DirectoryDownloadStatusStarted    = "started"
+	DirectoryDownloadStatusInProgress = "in_progress"
+	DirectoryDownloadStatusFailed     = "failed"
+	DirectoryDownloadStatusCancelled  = "cancelled"
 )
 
 type BackupService interface {
@@ -57,6 +69,8 @@ type BackupService interface {
 	GetRuns(jobID int64, page int, pageSize int) ([]db.BackupRun, int64, error)
 	GetRunDetails(runID int64) (*BackupRunDetails, error)
 	GetRunFile(fileID int64) (*db.BackupRunFile, error)
+	PrepareDirectoryDownload(ctx context.Context, path string, userID *int64) (*DirectoryDownloadResult, error)
+	GetDirectoryDownloadStatus(ctx context.Context, runID int64, userID *int64) (*DirectoryDownloadResult, error)
 	SearchPaths(query string, kind string) ([]PathSearchResult, error)
 	GetSQLServerDefaults() SQLServerBackupDefaults
 }
@@ -64,6 +78,16 @@ type BackupService interface {
 type BackupRunDetails struct {
 	Run   db.BackupRun       `json:"run"`
 	Files []db.BackupRunFile `json:"files"`
+}
+
+type DirectoryDownloadResult struct {
+	Status        string
+	Message       string
+	JobID         int64
+	RunID         int64
+	FileID        *int64
+	ArchivePath   string
+	ArchiveReused bool
 }
 
 type PathSearchResult struct {
@@ -234,6 +258,10 @@ func (s *backupService) UpdateJob(ctx context.Context, id int64, payload db.Back
 		payload.SQLPassword = job.SQLPassword
 	}
 
+	if payload.Tag == nil {
+		payload.Tag = job.Tag
+	}
+
 	normalizedPayload, err := s.validateJobPayload(ctx, payload)
 	if err != nil {
 		return nil, err
@@ -304,44 +332,48 @@ func (s *backupService) RunJob(ctx context.Context, id int64, triggerType string
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, ok := s.runningCancels[id]; ok {
+	return s.runJobLocked(*job, triggerType, userID)
+}
+
+func (s *backupService) runJobLocked(job db.BackupJob, triggerType string, userID *int64) (*db.BackupRun, error) {
+	if _, ok := s.runningCancels[job.ID]; ok {
 		if triggerType == db.BackupRunTriggerCron {
-			return s.createSkippedCronRun(*job)
+			return s.createSkippedCronRun(job)
 		}
 
 		return nil, ErrBackupJobRunning
 	}
 
-	if running, err := s.internalDB.GetRunningBackupRunForJob(id); err != nil {
+	if running, err := s.internalDB.GetRunningBackupRunForJob(job.ID); err != nil {
 		return nil, err
 	} else if running != nil {
 		if triggerType == db.BackupRunTriggerCron {
-			return s.createSkippedCronRun(*job)
+			return s.createSkippedCronRun(job)
 		}
 
 		return nil, ErrBackupJobRunning
 	}
 
-	lockPath, err := s.acquireJobLock(id)
+	lockPath, err := s.acquireJobLock(job.ID)
 	if err != nil {
 		if triggerType == db.BackupRunTriggerCron && errors.Is(err, ErrBackupJobRunning) {
-			return s.createSkippedCronRun(*job)
+			return s.createSkippedCronRun(job)
 		}
 
 		return nil, err
 	}
 
-	run, err := s.internalDB.CreateBackupRun(id, triggerType, job.Status, userID)
+	run, err := s.internalDB.CreateBackupRun(job.ID, triggerType, job.Status, userID)
 	if err != nil {
 		s.releaseJobLock(lockPath)
 		return nil, err
 	}
 
 	runCtx, cancel := context.WithCancel(context.Background())
-	s.runningCancels[id] = cancel
-	s.runningRunIDs[id] = run.ID
+	s.runningCancels[job.ID] = cancel
+	s.runningRunIDs[job.ID] = run.ID
 	s.wg.Add(1)
-	go s.executeRun(runCtx, *job, *run, lockPath)
+	go s.executeRun(runCtx, job, *run, lockPath)
 
 	return run, nil
 }
@@ -409,6 +441,143 @@ func (s *backupService) GetRunFile(fileID int64) (*db.BackupRunFile, error) {
 	}
 
 	return file, nil
+}
+
+func (s *backupService) PrepareDirectoryDownload(ctx context.Context, path string, userID *int64) (*DirectoryDownloadResult, error) {
+	normalizedPath, err := s.validateDirectoryDownloadPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	runningResult, err := s.runningDirectoryDownloadResult(normalizedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if runningResult != nil {
+		return runningResult, nil
+	}
+
+	sourceFingerprint, err := s.buildDirectoryDownloadFingerprint(ctx, normalizedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	archive, err := s.internalDB.GetDirectoryDownloadArchive(normalizedPath, sourceFingerprint)
+	if err == nil {
+		if result := s.directoryDownloadArchiveResult(archive); result != nil {
+			return result, nil
+		}
+	} else if !errors.Is(err, constants.ErrNotFound) {
+		return nil, err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	runningRun, runningJob, err := s.internalDB.GetRunningBackupRunForTag(db.BackupJobTagDirectoryDownload)
+	if err != nil {
+		return nil, err
+	}
+
+	if runningRun != nil && runningJob != nil {
+		if runningJob.SourcePath != nil && filepath.Clean(*runningJob.SourcePath) == normalizedPath {
+			return directoryDownloadInProgressResult(*runningJob, *runningRun), nil
+		}
+
+		return nil, ErrDirectoryDownloadConflict
+	}
+
+	job, err := s.internalDB.GetBackupJobByTagAndSourcePath(db.BackupJobTagDirectoryDownload, normalizedPath)
+	if err != nil {
+		if !errors.Is(err, db.ErrBackupNotFound) {
+			return nil, err
+		}
+
+		tag := db.BackupJobTagDirectoryDownload
+		sourcePath := normalizedPath
+		payload := db.BackupJobPayload{
+			JobType:              db.BackupJobTypeFile,
+			Tag:                  &tag,
+			Name:                 directoryDownloadJobName(normalizedPath),
+			Status:               db.BackupJobStatusActive,
+			DestinationDirectory: s.directoryDownloadsDirectory(),
+			SourcePath:           &sourcePath,
+		}
+
+		job, err = s.internalDB.CreateBackupJob(payload, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	run, err := s.runJobLocked(*job, db.BackupRunTriggerDirectoryDownload, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DirectoryDownloadResult{
+		Status:  DirectoryDownloadStatusStarted,
+		Message: "Compressing directory. Keep this page open and do not refresh; the download will start automatically when ready.",
+		JobID:   job.ID,
+		RunID:   run.ID,
+	}, nil
+}
+
+func (s *backupService) GetDirectoryDownloadStatus(ctx context.Context, runID int64, userID *int64) (*DirectoryDownloadResult, error) {
+	_ = ctx
+	_ = userID
+
+	run, err := s.internalDB.GetBackupRun(runID)
+	if err != nil {
+		return nil, backupNotFoundError(err)
+	}
+
+	job, err := s.internalDB.GetBackupJob(run.JobID)
+	if err != nil {
+		return nil, backupNotFoundError(err)
+	}
+
+	if !isDirectoryDownloadJob(*job) {
+		return nil, ErrBackupNotFound
+	}
+
+	switch run.Status {
+	case db.BackupRunStatusRunning:
+		return directoryDownloadInProgressResult(*job, *run), nil
+	case db.BackupRunStatusFailed:
+		return &DirectoryDownloadResult{
+			Status:  DirectoryDownloadStatusFailed,
+			Message: backupRunMessage(*run, "Directory download failed"),
+			JobID:   job.ID,
+			RunID:   run.ID,
+		}, nil
+	case db.BackupRunStatusCancelled:
+		return &DirectoryDownloadResult{
+			Status:  DirectoryDownloadStatusCancelled,
+			Message: backupRunMessage(*run, "Directory download was cancelled"),
+			JobID:   job.ID,
+			RunID:   run.ID,
+		}, nil
+	case db.BackupRunStatusSucceeded:
+		files, err := s.internalDB.GetBackupRunFiles(run.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(files) == 0 {
+			return nil, fmt.Errorf("%w: directory download archive missing", ErrBackupNotFound)
+		}
+
+		file := files[0]
+		if info, err := s.fileEditor.Stat(file.FilePath); err != nil || info.IsDir() {
+			return nil, fmt.Errorf("%w: directory download archive missing", ErrBackupNotFound)
+		}
+
+		return directoryDownloadReadyResult(*job, run.ID, file.ID, file.FilePath, false), nil
+	default:
+		return nil, fmt.Errorf("%w: unsupported directory download run status %s", ErrBackupInvalid, run.Status)
+	}
 }
 
 func backupNotFoundError(err error) error {
@@ -526,6 +695,7 @@ func (s *backupService) validateJobPayload(ctx context.Context, payload db.Backu
 	payload.JobType = strings.TrimSpace(payload.JobType)
 	payload.Status = strings.TrimSpace(payload.Status)
 	payload.DestinationDirectory = filepath.Clean(strings.TrimSpace(payload.DestinationDirectory))
+	payload.Tag = normalizeOptionalString(payload.Tag, true)
 	payload.CronExpression = normalizeOptionalString(payload.CronExpression, true)
 	payload.ArchivePassword = normalizeOptionalString(payload.ArchivePassword, false)
 	payload.SourcePath = normalizeOptionalPath(payload.SourcePath)
@@ -690,6 +860,10 @@ func (s *backupService) runFileBackup(ctx context.Context, job db.BackupJob, run
 		return errors.New("source path is missing")
 	}
 
+	if isDirectoryDownloadJob(job) {
+		return s.runDirectoryDownloadBackup(ctx, job, run, output)
+	}
+
 	sourceInfo, err := s.fileEditor.Stat(*job.SourcePath)
 	if err != nil {
 		return err
@@ -721,6 +895,71 @@ func (s *backupService) runFileBackup(ctx context.Context, job db.BackupJob, run
 	}
 
 	_, _ = fmt.Fprintf(output, "Archived %s (%d bytes).\n", sourceInfo.Name(), archiveInfo.Size())
+
+	return nil
+}
+
+func (s *backupService) runDirectoryDownloadBackup(ctx context.Context, job db.BackupJob, run db.BackupRun, output *strings.Builder) error {
+	normalizedPath, err := s.validateDirectoryDownloadPath(*job.SourcePath)
+	if err != nil {
+		return err
+	}
+
+	sourceFingerprint, err := s.buildDirectoryDownloadFingerprint(ctx, normalizedPath)
+	if err != nil {
+		return err
+	}
+
+	itemName := filepath.Base(normalizedPath)
+	if itemName == "." || itemName == string(filepath.Separator) {
+		itemName = "directory"
+	}
+
+	archivePath, err := uniqueBackupPath(job.DestinationDirectory, itemName, job.ID)
+	if err != nil {
+		return err
+	}
+
+	output.WriteString("Creating directory download archive " + archivePath + "\n")
+	if err := createZipArchiveWithExclusions(ctx, normalizedPath, archivePath, "", []string{job.DestinationDirectory}); err != nil {
+		_ = s.fileEditor.Remove(archivePath)
+		return err
+	}
+
+	currentFingerprint, err := s.buildDirectoryDownloadFingerprint(ctx, normalizedPath)
+	if err != nil {
+		_ = s.fileEditor.Remove(archivePath)
+		return err
+	}
+
+	if currentFingerprint != sourceFingerprint {
+		_ = s.fileEditor.Remove(archivePath)
+		return errors.New("directory changed while it was being compressed; please try again")
+	}
+
+	archiveInfo, err := s.fileEditor.Stat(archivePath)
+	if err != nil {
+		return err
+	}
+
+	file, err := s.internalDB.CreateBackupRunFile(run.ID, itemName, archivePath, archiveInfo.Size())
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.internalDB.UpsertDirectoryDownloadArchive(db.DirectoryDownloadArchivePayload{
+		NormalizedPath:    normalizedPath,
+		SourceFingerprint: sourceFingerprint,
+		JobID:             job.ID,
+		RunID:             run.ID,
+		FileID:            file.ID,
+		ArchivePath:       archivePath,
+		ArchiveSize:       archiveInfo.Size(),
+	}); err != nil {
+		return err
+	}
+
+	_, _ = fmt.Fprintf(output, "Archived %s (%d bytes).\n", filepath.Base(normalizedPath), archiveInfo.Size())
 
 	return nil
 }
@@ -963,6 +1202,10 @@ func openSQLServerDatabase(ctx context.Context, job db.BackupJob) (*sql.DB, erro
 }
 
 func createZipArchive(ctx context.Context, sourcePath string, archivePath string, password string) error {
+	return createZipArchiveWithExclusions(ctx, sourcePath, archivePath, password, nil)
+}
+
+func createZipArchiveWithExclusions(ctx context.Context, sourcePath string, archivePath string, password string, excludedPaths []string) error {
 	archiveFile, err := os.Create(archivePath)
 	if err != nil {
 		return err
@@ -989,9 +1232,18 @@ func createZipArchive(ctx context.Context, sourcePath string, archivePath string
 		baseDir = filepath.Dir(sourcePath)
 	}
 
+	excludedAbsolutePaths := cleanDescendantAbsolutePaths(sourcePath, excludedPaths)
 	err = filepath.WalkDir(sourcePath, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
+		}
+
+		if shouldSkipZipPath(path, entry, sourcePath, excludedAbsolutePaths) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+
+			return nil
 		}
 
 		if err := ctx.Err(); err != nil {
@@ -1058,6 +1310,61 @@ func createZipArchive(ctx context.Context, sourcePath string, archivePath string
 	return closeArchive()
 }
 
+func cleanDescendantAbsolutePaths(sourcePath string, paths []string) []string {
+	results := make([]string, 0, len(paths))
+	sourceAbsolutePath, err := filepath.Abs(filepath.Clean(sourcePath))
+	if err != nil {
+		return results
+	}
+
+	for _, path := range paths {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			continue
+		}
+
+		absolutePath, err := filepath.Abs(filepath.Clean(path))
+		if err != nil {
+			continue
+		}
+
+		if absolutePath == sourceAbsolutePath || !isPathWithin(sourceAbsolutePath, absolutePath) {
+			continue
+		}
+
+		results = append(results, absolutePath)
+	}
+
+	return results
+}
+
+func shouldSkipZipPath(path string, entry os.DirEntry, sourcePath string, excludedAbsolutePaths []string) bool {
+	if len(excludedAbsolutePaths) == 0 {
+		return false
+	}
+
+	if filepath.Clean(path) == filepath.Clean(sourcePath) {
+		return false
+	}
+
+	absolutePath, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+
+	for _, excludedPath := range excludedAbsolutePaths {
+		if entry.IsDir() && absolutePath == excludedPath {
+			return true
+		}
+
+		if isPathWithin(excludedPath, absolutePath) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader) (int64, error) {
 	buffer := make([]byte, 1024*128)
 	var written int64
@@ -1092,6 +1399,201 @@ func copyWithContext(ctx context.Context, dst io.Writer, src io.Reader) (int64, 
 	}
 
 	return written, nil
+}
+
+func (s *backupService) validateDirectoryDownloadPath(path string) (string, error) {
+	path = filepath.Clean(strings.TrimSpace(path))
+	if path == "" || path == "." {
+		return "", fmt.Errorf("%w: directory path is required", ErrBackupInvalid)
+	}
+
+	info, err := s.fileEditor.Stat(path)
+	if err != nil {
+		if s.fileEditor.IsNotExist(err) {
+			return "", fmt.Errorf("%w: directory path does not exist", ErrBackupInvalid)
+		}
+
+		return "", fmt.Errorf("%w: cannot access directory path: %v", ErrBackupInvalid, err)
+	}
+
+	if !info.IsDir() {
+		return "", fmt.Errorf("%w: path is not a directory", ErrBackupInvalid)
+	}
+
+	return path, nil
+}
+
+func (s *backupService) buildDirectoryDownloadFingerprint(ctx context.Context, sourcePath string) (string, error) {
+	hash := sha256.New()
+	sourcePath = filepath.Clean(sourcePath)
+	excludedPath := s.directoryDownloadsDirectory()
+	excludedAbsolutePaths := cleanDescendantAbsolutePaths(sourcePath, []string{excludedPath})
+
+	err := filepath.WalkDir(sourcePath, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		if shouldSkipZipPath(path, entry, sourcePath, excludedAbsolutePaths) {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+
+			return nil
+		}
+
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		name, err := filepath.Rel(sourcePath, path)
+		if err != nil {
+			return err
+		}
+
+		name = filepath.ToSlash(name)
+		_, _ = fmt.Fprintf(
+			hash,
+			"path=%s\x00dir=%t\x00mode=%s\x00size=%d\x00mod=%d\x00",
+			name,
+			entry.IsDir(),
+			info.Mode().String(),
+			info.Size(),
+			info.ModTime().UnixNano(),
+		)
+
+		if entry.IsDir() {
+			return nil
+		}
+
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		_, copyErr := copyWithContext(ctx, hash, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+
+		return closeErr
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func (s *backupService) runningDirectoryDownloadResult(normalizedPath string) (*DirectoryDownloadResult, error) {
+	runningRun, runningJob, err := s.internalDB.GetRunningBackupRunForTag(db.BackupJobTagDirectoryDownload)
+	if err != nil {
+		return nil, err
+	}
+
+	if runningRun == nil || runningJob == nil {
+		return nil, nil
+	}
+
+	if runningJob.SourcePath != nil && filepath.Clean(*runningJob.SourcePath) == normalizedPath {
+		return directoryDownloadInProgressResult(*runningJob, *runningRun), nil
+	}
+
+	return nil, ErrDirectoryDownloadConflict
+}
+
+func (s *backupService) directoryDownloadArchiveResult(archive *db.DirectoryDownloadArchive) *DirectoryDownloadResult {
+	if archive == nil {
+		return nil
+	}
+
+	info, err := s.fileEditor.Stat(archive.ArchivePath)
+	if err != nil || info.IsDir() {
+		return nil
+	}
+
+	return &DirectoryDownloadResult{
+		Status:        DirectoryDownloadStatusReady,
+		JobID:         archive.JobID,
+		RunID:         archive.RunID,
+		FileID:        &archive.FileID,
+		ArchivePath:   archive.ArchivePath,
+		ArchiveReused: true,
+	}
+}
+
+func directoryDownloadReadyResult(job db.BackupJob, runID int64, fileID int64, archivePath string, archiveReused bool) *DirectoryDownloadResult {
+	return &DirectoryDownloadResult{
+		Status:        DirectoryDownloadStatusReady,
+		JobID:         job.ID,
+		RunID:         runID,
+		FileID:        &fileID,
+		ArchivePath:   archivePath,
+		ArchiveReused: archiveReused,
+	}
+}
+
+func directoryDownloadInProgressResult(job db.BackupJob, run db.BackupRun) *DirectoryDownloadResult {
+	return &DirectoryDownloadResult{
+		Status:  DirectoryDownloadStatusInProgress,
+		Message: "This directory download is already in progress. Keep this page open; the download will start when ready.",
+		JobID:   job.ID,
+		RunID:   run.ID,
+	}
+}
+
+func backupRunMessage(run db.BackupRun, fallback string) string {
+	if run.ErrorDetails != nil && strings.TrimSpace(*run.ErrorDetails) != "" {
+		return *run.ErrorDetails
+	}
+
+	if run.Output != nil && strings.TrimSpace(*run.Output) != "" {
+		return *run.Output
+	}
+
+	return fallback
+}
+
+func isDirectoryDownloadJob(job db.BackupJob) bool {
+	return job.Tag != nil && *job.Tag == db.BackupJobTagDirectoryDownload
+}
+
+func directoryDownloadJobName(path string) string {
+	baseName := filepath.Base(filepath.Clean(path))
+	if baseName == "." || baseName == string(filepath.Separator) {
+		return directoryDownloadName
+	}
+
+	return directoryDownloadName + ": " + baseName
+}
+
+func (s *backupService) directoryDownloadsDirectory() string {
+	if s.cfg == nil || strings.TrimSpace(s.cfg.DirectoryDownloadsDirectory) == "" {
+		return ".directory-download"
+	}
+
+	return filepath.Clean(strings.TrimSpace(s.cfg.DirectoryDownloadsDirectory))
+}
+
+func isPathWithin(parentPath string, childPath string) bool {
+	parentPath = filepath.Clean(parentPath)
+	childPath = filepath.Clean(childPath)
+	if parentPath == childPath {
+		return true
+	}
+
+	relativePath, err := filepath.Rel(parentPath, childPath)
+	if err != nil {
+		return false
+	}
+
+	return relativePath != "." && relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator))
 }
 
 func uniqueBackupPath(directory string, itemName string, jobID int64) (string, error) {

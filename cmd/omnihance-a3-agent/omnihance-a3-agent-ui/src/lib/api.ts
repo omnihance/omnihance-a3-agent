@@ -22,6 +22,9 @@ export const API_ROUTES = {
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
   FILE_DOWNLOAD_LINK: '/api/file-tree/download-link',
+  DIRECTORY_DOWNLOAD_LINK: '/api/file-tree/directory-download-link',
+  DIRECTORY_DOWNLOAD_STATUS: (runId: number) =>
+    `/api/file-tree/directory-downloads/${runId}`,
   METRICS_SUMMARY: '/api/metrics/summary',
   METRICS_CHARTS: '/api/metrics/charts',
   GAME_CLIENT_DATA_MONSTERS: '/api/game-client-data/monsters',
@@ -379,6 +382,40 @@ const DownloadLinkResponseSchema = z.object({
 });
 
 export type DownloadLinkResponse = z.infer<typeof DownloadLinkResponseSchema>;
+
+const DirectoryDownloadReadyResponseSchema = DownloadLinkResponseSchema.extend({
+  status: z.literal('ready'),
+  job_id: z.number().int(),
+  run_id: z.number().int(),
+  file_id: z.number().int(),
+  archive_reused: z.boolean(),
+});
+
+const DirectoryDownloadPendingResponseSchema = z.object({
+  status: z.enum(['started', 'in_progress']),
+  message: z.string(),
+  job_id: z.number().int(),
+  run_id: z.number().int(),
+  archive_reused: z.boolean().optional().default(false),
+});
+
+const DirectoryDownloadTerminalResponseSchema = z.object({
+  status: z.enum(['failed', 'cancelled']),
+  message: z.string(),
+  job_id: z.number().int(),
+  run_id: z.number().int(),
+  archive_reused: z.boolean().optional().default(false),
+});
+
+const DirectoryDownloadResponseSchema = z.union([
+  DirectoryDownloadReadyResponseSchema,
+  DirectoryDownloadPendingResponseSchema,
+  DirectoryDownloadTerminalResponseSchema,
+]);
+
+export type DirectoryDownloadResponse = z.infer<
+  typeof DirectoryDownloadResponseSchema
+>;
 
 const TextFileAPIDataSchema = z.object({
   content: z.string(),
@@ -1135,6 +1172,33 @@ export async function createFileDownloadLink(params: {
     DownloadLinkResponseSchema,
     response.data,
     API_ROUTES.FILE_DOWNLOAD_LINK,
+  );
+}
+
+export async function createDirectoryDownloadLink(params: {
+  path: string;
+}): Promise<DirectoryDownloadResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.DIRECTORY_DOWNLOAD_LINK,
+    undefined,
+    { params },
+  );
+  return validateResponse(
+    DirectoryDownloadResponseSchema,
+    response.data,
+    API_ROUTES.DIRECTORY_DOWNLOAD_LINK,
+  );
+}
+
+export async function getDirectoryDownloadStatus(
+  runId: number,
+): Promise<DirectoryDownloadResponse> {
+  const route = API_ROUTES.DIRECTORY_DOWNLOAD_STATUS(runId);
+  const response = await axiosInstance.get<unknown>(route);
+  return validateResponse(
+    DirectoryDownloadResponseSchema,
+    response.data,
+    route,
   );
 }
 
@@ -2076,6 +2140,7 @@ export type BackupJobType = z.infer<typeof BackupJobTypeSchema>;
 const BackupJobSchema = z.object({
   id: z.number().int(),
   job_type: BackupJobTypeSchema,
+  tag: z.string().nullable(),
   name: z.string(),
   status: z.string(),
   cron_expression: z.string().nullable(),

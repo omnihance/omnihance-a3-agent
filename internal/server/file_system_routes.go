@@ -62,6 +62,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Post("/duplicate-file", s.handleDuplicateFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
 		r.Post("/download-link", s.handleCreateFileDownloadLink)
+		r.Post("/directory-download-link", s.handleCreateDirectoryDownloadLink)
+		r.Get("/directory-downloads/{run_id}", s.handleGetDirectoryDownloadStatus)
 		r.Get("/download/{token}", s.handleDownloadLinkedFile)
 	})
 }

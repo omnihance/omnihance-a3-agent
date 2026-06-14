@@ -1,6 +1,8 @@
 import {
   type HTMLAttributes,
   type KeyboardEvent,
+  useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -14,6 +16,7 @@ import {
   AlertCircle,
   Eye,
   Pin,
+  Download,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -53,7 +56,10 @@ import {
   createDirectoryShortcut,
   duplicateFile as duplicateFileAPI,
   createFileDownloadLink,
+  createDirectoryDownloadLink,
+  getDirectoryDownloadStatus,
   APIError,
+  type DirectoryDownloadResponse,
   type FileNode,
   type FileTreeResponse,
   type ServerProcess,
@@ -107,7 +113,7 @@ function ProcessContextMenuWrapper({
             Duplicate
           </ContextMenuItem>
         )}
-        {item.kind === 'file' && (
+        {(item.kind === 'file' || item.kind === 'directory') && (
           <ContextMenuItem onClick={() => onDownload(item)}>
             Download
           </ContextMenuItem>
@@ -151,6 +157,12 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicateDialogName, setDuplicateDialogName] = useState('');
   const duplicateSourcePathRef = useRef('');
+  const [directoryDownloadRun, setDirectoryDownloadRun] = useState<{
+    runId: number;
+    path: string;
+  } | null>(null);
+  const directoryDownloadToastIdRef = useRef<string | number | null>(null);
+  const directoryDownloadToastRunIdRef = useRef<number | null>(null);
 
   const rawCurrentPath =
     internalPath !== null ? internalPath : (initialPath ?? '');
@@ -503,6 +515,59 @@ export function FileTree({ initialPath }: FileTreeProps) {
     },
   });
 
+  const clearDirectoryDownloadToast = useCallback(() => {
+    if (directoryDownloadToastIdRef.current === null) {
+      return;
+    }
+
+    toast.dismiss(directoryDownloadToastIdRef.current);
+    directoryDownloadToastIdRef.current = null;
+    directoryDownloadToastRunIdRef.current = null;
+  }, []);
+
+  const showDirectoryDownloadProgressToast = useCallback(
+    (message: string, runId: number) => {
+      if (directoryDownloadToastRunIdRef.current === runId) {
+        return;
+      }
+
+      clearDirectoryDownloadToast();
+      directoryDownloadToastIdRef.current = toast.loading(message, {
+        duration: Infinity,
+      });
+      directoryDownloadToastRunIdRef.current = runId;
+    },
+    [clearDirectoryDownloadToast],
+  );
+
+  const handleDirectoryDownloadResponse = useCallback(
+    (response: DirectoryDownloadResponse, path: string) => {
+      if (response.status === 'ready') {
+        clearDirectoryDownloadToast();
+        setDirectoryDownloadRun(null);
+        window.location.assign(response.download_url);
+        return;
+      }
+
+      if (response.status === 'failed' || response.status === 'cancelled') {
+        clearDirectoryDownloadToast();
+        setDirectoryDownloadRun(null);
+        toast.error(response.message);
+        return;
+      }
+
+      showDirectoryDownloadProgressToast(response.message, response.run_id);
+      setDirectoryDownloadRun((current) => {
+        if (current?.runId === response.run_id && current.path === path) {
+          return current;
+        }
+
+        return { runId: response.run_id, path };
+      });
+    },
+    [clearDirectoryDownloadToast, showDirectoryDownloadProgressToast],
+  );
+
   const downloadFileMutation = useMutation({
     mutationFn: async (path: string) => {
       return createFileDownloadLink({ path });
@@ -521,6 +586,62 @@ export function FileTree({ initialPath }: FileTreeProps) {
       toast.error(errorMessage);
     },
   });
+
+  const downloadDirectoryMutation = useMutation({
+    mutationFn: async (path: string) => {
+      return createDirectoryDownloadLink({ path });
+    },
+    onSuccess: (response, path) => {
+      handleDirectoryDownloadResponse(response, path);
+    },
+    onError: (error) => {
+      const errorMessage =
+        error instanceof APIError
+          ? error.getErrorMessage()
+          : error instanceof Error
+            ? error.message
+            : 'Failed to start directory download';
+
+      toast.error(errorMessage);
+    },
+  });
+
+  const { data: directoryDownloadStatus } = useQuery<DirectoryDownloadResponse>(
+    {
+      queryKey: directoryDownloadRun
+        ? queryKeys.directoryDownload(directoryDownloadRun.runId)
+        : queryKeys.directoryDownload(0),
+      queryFn: () => getDirectoryDownloadStatus(directoryDownloadRun!.runId),
+      enabled: directoryDownloadRun !== null,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (
+          status === 'ready' ||
+          status === 'failed' ||
+          status === 'cancelled'
+        ) {
+          return false;
+        }
+
+        return 2000;
+      },
+    },
+  );
+
+  useEffect(() => {
+    if (!directoryDownloadStatus || directoryDownloadRun === null) {
+      return;
+    }
+
+    handleDirectoryDownloadResponse(
+      directoryDownloadStatus,
+      directoryDownloadRun.path,
+    );
+  }, [
+    directoryDownloadStatus,
+    directoryDownloadRun,
+    handleDirectoryDownloadResponse,
+  ]);
 
   const generateSuggestedName = (): string => {
     if (!currentPath || currentPath === '') {
@@ -603,16 +724,22 @@ export function FileTree({ initialPath }: FileTreeProps) {
   };
 
   const handleDownloadFile = (item: FileNode) => {
-    if (item.kind !== 'file') {
+    if (item.kind !== 'file' && item.kind !== 'directory') {
       return;
     }
 
     if (!canDownloadFiles) {
-      toast.error('You cannot download this file');
+      toast.error('You cannot download this item');
       return;
     }
 
-    downloadFileMutation.mutate(getFullPath(item));
+    const path = getFullPath(item);
+    if (item.kind === 'directory') {
+      downloadDirectoryMutation.mutate(path);
+      return;
+    }
+
+    downloadFileMutation.mutate(path);
   };
 
   const isCurrentPathInShortcuts = (): boolean => {
@@ -757,10 +884,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
             {/* Files */}
             {sortedFiles.map((item) => {
               const isExecutable = isExecutableOrBatch(item);
-              const fullPath = isExecutable ? getFullPath(item) : '';
+              const itemPath = getFullPath(item);
+              const fullPath = isExecutable ? itemPath : '';
               const existingProcess = isExecutable
                 ? findProcessByPath(fullPath)
                 : undefined;
+              const isDownloadPending =
+                (item.kind === 'file' &&
+                  downloadFileMutation.isPending &&
+                  downloadFileMutation.variables === itemPath) ||
+                (item.kind === 'directory' &&
+                  downloadDirectoryMutation.isPending &&
+                  downloadDirectoryMutation.variables === itemPath);
               const isInteractive =
                 item.kind === 'directory' ||
                 (item.kind === 'file' && item.is_viewable);
@@ -833,6 +968,26 @@ export function FileTree({ initialPath }: FileTreeProps) {
                       : 'Unknown'}
                   </div>
                   <div className="col-span-2 sm:col-span-3 flex items-center justify-end gap-2">
+                    {(item.kind === 'file' || item.kind === 'directory') && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        aria-label={`Download ${item.name}`}
+                        disabled={isDownloadPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadFile(item);
+                        }}
+                      >
+                        {isDownloadPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                     {item.kind === 'file' && item.is_viewable && (
                       <Link
                         to="/file/view"

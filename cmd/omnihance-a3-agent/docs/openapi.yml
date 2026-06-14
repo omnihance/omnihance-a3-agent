@@ -338,6 +338,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/directory-download-link:
+    post:
+      tags:
+        - file-system
+      summary: Create directory download link
+      description: Starts or resumes a background ZIP compression job for a directory. When an unchanged cached archive is available, returns a secure temp download link immediately.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: query
+          name: path
+          required: true
+          schema:
+            type: string
+          description: Directory path to compress and download.
+      responses:
+        '200':
+          description: Directory archive is ready and a secure download link was created or reused
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryDownloadResponse'
+        '202':
+          description: Directory compression started or the same directory is already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryDownloadResponse'
+        '400':
+          description: Bad Request - Missing path or path is not a directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Download files permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A different directory download job is already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/directory-downloads/{run_id}:
+    get:
+      tags:
+        - file-system
+      summary: Get directory download status
+      description: Polls a directory download backup run. When the archive is ready, returns a secure temp download link for the authenticated user.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Directory download is ready, failed, or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryDownloadResponse'
+        '202':
+          description: Directory compression is still in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryDownloadResponse'
+        '403':
+          description: Forbidden - Download files permission is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Directory download run or archive not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/download/{token}:
     get:
       tags:
@@ -4521,6 +4619,46 @@ components:
           type: integer
           format: int64
           description: Number of successful download requests already recorded for this link
+    DirectoryDownloadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, started, in_progress, failed, cancelled]
+          description: Current directory download state
+        message:
+          type: string
+          description: User-facing status or failure message
+        job_id:
+          type: integer
+          format: int64
+          description: Backup job used for the directory archive
+        run_id:
+          type: integer
+          format: int64
+          description: Backup run used for the directory archive
+        file_id:
+          type: integer
+          format: int64
+          description: Backup run file ID for the generated archive, present when ready
+        download_url:
+          type: string
+          description: Secure temp download URL, present when ready
+          example: '/api/file-tree/download/01HZX.temp-token'
+        expires_at:
+          type: string
+          format: date-time
+          description: Link expiration timestamp, present when ready
+        reused:
+          type: boolean
+          description: Whether an existing unexpired secure download link was reused
+        download_count:
+          type: integer
+          format: int64
+          description: Number of successful download requests already recorded for the secure link
+        archive_reused:
+          type: boolean
+          description: Whether the directory ZIP archive was reused from cache
     NPCFileAPIData:
       type: object
       description: Parsed binary data from an NPC file (API request/response format). All fields are required when used as a request body.
@@ -6314,6 +6452,10 @@ components:
         job_type:
           type: string
           enum: [file, sql_server]
+        tag:
+          type: string
+          nullable: true
+          example: directory_download
         name:
           type: string
         status:

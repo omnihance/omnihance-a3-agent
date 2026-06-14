@@ -27,6 +27,7 @@ export const queryKeys = {
     }
     return ['file-tree'] as const;
   },
+  directoryDownload: (runId: number) => ['directory-download', runId] as const,
   textFile: (path: string) => ['text-file', path] as const,
   npcFile: (path: string) => ['npc-file', path] as const,
   spawnFile: (path: string) => ['spawn-file', path] as const,

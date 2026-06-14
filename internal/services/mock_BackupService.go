@@ -243,6 +243,80 @@ func (_c *MockBackupService_DeleteJob_Call) RunAndReturn(run func(ctx context.Co
 	return _c
 }
 
+// GetDirectoryDownloadStatus provides a mock function for the type MockBackupService
+func (_mock *MockBackupService) GetDirectoryDownloadStatus(ctx context.Context, runID int64, userID *int64) (*DirectoryDownloadResult, error) {
+	ret := _mock.Called(ctx, runID, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDirectoryDownloadStatus")
+	}
+
+	var r0 *DirectoryDownloadResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int64, *int64) (*DirectoryDownloadResult, error)); ok {
+		return returnFunc(ctx, runID, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int64, *int64) *DirectoryDownloadResult); ok {
+		r0 = returnFunc(ctx, runID, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryDownloadResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, int64, *int64) error); ok {
+		r1 = returnFunc(ctx, runID, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBackupService_GetDirectoryDownloadStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDirectoryDownloadStatus'
+type MockBackupService_GetDirectoryDownloadStatus_Call struct {
+	*mock.Call
+}
+
+// GetDirectoryDownloadStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - runID int64
+//   - userID *int64
+func (_e *MockBackupService_Expecter) GetDirectoryDownloadStatus(ctx interface{}, runID interface{}, userID interface{}) *MockBackupService_GetDirectoryDownloadStatus_Call {
+	return &MockBackupService_GetDirectoryDownloadStatus_Call{Call: _e.mock.On("GetDirectoryDownloadStatus", ctx, runID, userID)}
+}
+
+func (_c *MockBackupService_GetDirectoryDownloadStatus_Call) Run(run func(ctx context.Context, runID int64, userID *int64)) *MockBackupService_GetDirectoryDownloadStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int64
+		if args[1] != nil {
+			arg1 = args[1].(int64)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBackupService_GetDirectoryDownloadStatus_Call) Return(directoryDownloadResult *DirectoryDownloadResult, err error) *MockBackupService_GetDirectoryDownloadStatus_Call {
+	_c.Call.Return(directoryDownloadResult, err)
+	return _c
+}
+
+func (_c *MockBackupService_GetDirectoryDownloadStatus_Call) RunAndReturn(run func(ctx context.Context, runID int64, userID *int64) (*DirectoryDownloadResult, error)) *MockBackupService_GetDirectoryDownloadStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetJob provides a mock function for the type MockBackupService
 func (_mock *MockBackupService) GetJob(id int64) (*db.BackupJob, error) {
 	ret := _mock.Called(id)
@@ -604,6 +678,80 @@ func (_c *MockBackupService_GetSQLServerDefaults_Call) Return(sQLServerBackupDef
 }
 
 func (_c *MockBackupService_GetSQLServerDefaults_Call) RunAndReturn(run func() SQLServerBackupDefaults) *MockBackupService_GetSQLServerDefaults_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PrepareDirectoryDownload provides a mock function for the type MockBackupService
+func (_mock *MockBackupService) PrepareDirectoryDownload(ctx context.Context, path string, userID *int64) (*DirectoryDownloadResult, error) {
+	ret := _mock.Called(ctx, path, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PrepareDirectoryDownload")
+	}
+
+	var r0 *DirectoryDownloadResult
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *int64) (*DirectoryDownloadResult, error)); ok {
+		return returnFunc(ctx, path, userID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *int64) *DirectoryDownloadResult); ok {
+		r0 = returnFunc(ctx, path, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*DirectoryDownloadResult)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *int64) error); ok {
+		r1 = returnFunc(ctx, path, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockBackupService_PrepareDirectoryDownload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PrepareDirectoryDownload'
+type MockBackupService_PrepareDirectoryDownload_Call struct {
+	*mock.Call
+}
+
+// PrepareDirectoryDownload is a helper method to define mock.On call
+//   - ctx context.Context
+//   - path string
+//   - userID *int64
+func (_e *MockBackupService_Expecter) PrepareDirectoryDownload(ctx interface{}, path interface{}, userID interface{}) *MockBackupService_PrepareDirectoryDownload_Call {
+	return &MockBackupService_PrepareDirectoryDownload_Call{Call: _e.mock.On("PrepareDirectoryDownload", ctx, path, userID)}
+}
+
+func (_c *MockBackupService_PrepareDirectoryDownload_Call) Run(run func(ctx context.Context, path string, userID *int64)) *MockBackupService_PrepareDirectoryDownload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 *int64
+		if args[2] != nil {
+			arg2 = args[2].(*int64)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockBackupService_PrepareDirectoryDownload_Call) Return(directoryDownloadResult *DirectoryDownloadResult, err error) *MockBackupService_PrepareDirectoryDownload_Call {
+	_c.Call.Return(directoryDownloadResult, err)
+	return _c
+}
+
+func (_c *MockBackupService_PrepareDirectoryDownload_Call) RunAndReturn(run func(ctx context.Context, path string, userID *int64) (*DirectoryDownloadResult, error)) *MockBackupService_PrepareDirectoryDownload_Call {
 	_c.Call.Return(run)
 	return _c
 }
