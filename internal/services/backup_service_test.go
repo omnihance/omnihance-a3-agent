@@ -77,6 +77,72 @@ func TestPrepareDirectoryDownloadResumesSameRunningJobAndRejectsDifferentDirecto
 	require.ErrorIs(t, err, ErrDirectoryDownloadConflict)
 }
 
+func TestPrepareDirectoryDownloadReusesCacheWhenDifferentDirectoryIsRunning(t *testing.T) {
+	service, internalDB := newBackupServiceForTest(t)
+	sourceDir := writeDirectoryDownloadSource(t, "server", "maps/temoz.map", []byte("map data"))
+	otherDir := writeDirectoryDownloadSource(t, "other", "maps/quanato.map", []byte("map data"))
+	normalizedPath := filepath.Clean(sourceDir)
+
+	tag := db.BackupJobTagDirectoryDownload
+	sourcePath := normalizedPath
+	job, err := internalDB.CreateBackupJob(db.BackupJobPayload{
+		JobType:              db.BackupJobTypeFile,
+		Tag:                  &tag,
+		Name:                 "Directory download: server",
+		Status:               db.BackupJobStatusActive,
+		DestinationDirectory: service.directoryDownloadsDirectory(),
+		SourcePath:           &sourcePath,
+	}, nil)
+	require.NoError(t, err)
+
+	run, err := internalDB.CreateBackupRun(job.ID, db.BackupRunTriggerDirectoryDownload, db.BackupJobStatusActive, nil)
+	require.NoError(t, err)
+
+	archivePath := filepath.Join(service.directoryDownloadsDirectory(), "server.zip")
+	require.NoError(t, os.MkdirAll(filepath.Dir(archivePath), 0755))
+	require.NoError(t, os.WriteFile(archivePath, []byte("zip"), 0600))
+
+	file, err := internalDB.CreateBackupRunFile(run.ID, "server", archivePath, 3)
+	require.NoError(t, err)
+
+	otherSourcePath := filepath.Clean(otherDir)
+	otherJob, err := internalDB.CreateBackupJob(db.BackupJobPayload{
+		JobType:              db.BackupJobTypeFile,
+		Tag:                  &tag,
+		Name:                 "Directory download: other",
+		Status:               db.BackupJobStatusActive,
+		DestinationDirectory: service.directoryDownloadsDirectory(),
+		SourcePath:           &otherSourcePath,
+	}, nil)
+	require.NoError(t, err)
+
+	_, err = internalDB.CreateBackupRun(otherJob.ID, db.BackupRunTriggerDirectoryDownload, db.BackupJobStatusActive, nil)
+	require.NoError(t, err)
+
+	fingerprint := stableDirectoryDownloadFingerprint(t, service, normalizedPath)
+
+	_, err = internalDB.UpsertDirectoryDownloadArchive(db.DirectoryDownloadArchivePayload{
+		NormalizedPath:    normalizedPath,
+		SourceFingerprint: fingerprint,
+		JobID:             job.ID,
+		RunID:             run.ID,
+		FileID:            file.ID,
+		ArchivePath:       archivePath,
+		ArchiveSize:       3,
+	})
+	require.NoError(t, err)
+
+	archive, err := internalDB.GetDirectoryDownloadArchive(normalizedPath, fingerprint)
+	require.NoError(t, err)
+	require.NotNil(t, service.directoryDownloadArchiveResult(archive))
+
+	result, err := service.PrepareDirectoryDownload(context.Background(), sourceDir, nil)
+	require.NoError(t, err)
+	require.Equal(t, DirectoryDownloadStatusReady, result.Status)
+	require.True(t, result.ArchiveReused)
+	require.Equal(t, archivePath, result.ArchivePath)
+}
+
 func newBackupServiceForTest(t *testing.T) (*backupService, db.InternalDB) {
 	t.Helper()
 
@@ -132,4 +198,23 @@ func waitDirectoryDownloadReady(t *testing.T, service *backupService, runID int6
 
 	t.Fatalf("directory download did not finish")
 	return nil
+}
+
+func stableDirectoryDownloadFingerprint(t *testing.T, service *backupService, sourcePath string) string {
+	t.Helper()
+
+	var previous string
+	for range 10 {
+		current, err := service.buildDirectoryDownloadFingerprint(context.Background(), sourcePath)
+		require.NoError(t, err)
+
+		if current == previous {
+			return current
+		}
+
+		previous = current
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	return previous
 }

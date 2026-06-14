@@ -606,15 +606,23 @@ export function FileTree({ initialPath }: FileTreeProps) {
     },
   });
 
-  const { data: directoryDownloadStatus } = useQuery<DirectoryDownloadResponse>(
-    {
+  const { data: directoryDownloadStatus, error: directoryDownloadError } =
+    useQuery<DirectoryDownloadResponse>({
       queryKey: directoryDownloadRun
         ? queryKeys.directoryDownload(directoryDownloadRun.runId)
         : queryKeys.directoryDownload(0),
       queryFn: () => getDirectoryDownloadStatus(directoryDownloadRun!.runId),
       enabled: directoryDownloadRun !== null,
       refetchInterval: (query) => {
+        if (query.state.error) {
+          return false;
+        }
+
         const status = query.state.data?.status;
+        if (!status) {
+          return false;
+        }
+
         if (
           status === 'ready' ||
           status === 'failed' ||
@@ -625,8 +633,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
 
         return 2000;
       },
-    },
-  );
+    });
 
   useEffect(() => {
     if (!directoryDownloadStatus || directoryDownloadRun === null) {
@@ -641,6 +648,28 @@ export function FileTree({ initialPath }: FileTreeProps) {
     directoryDownloadStatus,
     directoryDownloadRun,
     handleDirectoryDownloadResponse,
+  ]);
+
+  useEffect(() => {
+    if (!directoryDownloadError || directoryDownloadRun === null) {
+      return;
+    }
+
+    clearDirectoryDownloadToast();
+    setDirectoryDownloadRun(null);
+
+    const errorMessage =
+      directoryDownloadError instanceof APIError
+        ? directoryDownloadError.getErrorMessage()
+        : directoryDownloadError instanceof Error
+          ? directoryDownloadError.message
+          : 'Failed to get directory download status';
+
+    toast.error(errorMessage);
+  }, [
+    clearDirectoryDownloadToast,
+    directoryDownloadError,
+    directoryDownloadRun,
   ]);
 
   const generateSuggestedName = (): string => {
@@ -889,13 +918,17 @@ export function FileTree({ initialPath }: FileTreeProps) {
               const existingProcess = isExecutable
                 ? findProcessByPath(fullPath)
                 : undefined;
+              const isDirectoryDownloadPolling =
+                item.kind === 'directory' &&
+                directoryDownloadRun?.path === itemPath;
               const isDownloadPending =
                 (item.kind === 'file' &&
                   downloadFileMutation.isPending &&
                   downloadFileMutation.variables === itemPath) ||
                 (item.kind === 'directory' &&
-                  downloadDirectoryMutation.isPending &&
-                  downloadDirectoryMutation.variables === itemPath);
+                  ((downloadDirectoryMutation.isPending &&
+                    downloadDirectoryMutation.variables === itemPath) ||
+                    isDirectoryDownloadPolling));
               const isInteractive =
                 item.kind === 'directory' ||
                 (item.kind === 'file' && item.is_viewable);

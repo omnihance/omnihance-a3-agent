@@ -449,15 +449,6 @@ func (s *backupService) PrepareDirectoryDownload(ctx context.Context, path strin
 		return nil, err
 	}
 
-	runningResult, err := s.runningDirectoryDownloadResult(normalizedPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if runningResult != nil {
-		return runningResult, nil
-	}
-
 	sourceFingerprint, err := s.buildDirectoryDownloadFingerprint(ctx, normalizedPath)
 	if err != nil {
 		return nil, err
@@ -470,6 +461,15 @@ func (s *backupService) PrepareDirectoryDownload(ctx context.Context, path strin
 		}
 	} else if !errors.Is(err, constants.ErrNotFound) {
 		return nil, err
+	}
+
+	runningResult, err := s.runningDirectoryDownloadResult(normalizedPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if runningResult != nil {
+		return runningResult, nil
 	}
 
 	s.mu.Lock()

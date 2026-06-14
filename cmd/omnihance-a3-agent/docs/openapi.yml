@@ -372,6 +372,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Authentication is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden - Download files permission is required
           content:
@@ -418,6 +424,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DirectoryDownloadResponse'
+        '401':
+          description: Unauthorized - Authentication is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden - Download files permission is required
           content:
@@ -4621,6 +4633,11 @@ components:
           description: Number of successful download requests already recorded for this link
     DirectoryDownloadResponse:
       type: object
+      required:
+        - status
+        - message
+        - job_id
+        - run_id
       properties:
         status:
           type: string
