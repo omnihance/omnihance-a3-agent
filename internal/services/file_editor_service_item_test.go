@@ -167,6 +167,20 @@ func TestGetFileTypeItemFiles(t *testing.T) {
 	})
 }
 
+func TestGetFileTypeINIFile(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), "SvrInfo.ini")
+	require.NoError(t, os.WriteFile(path, []byte("[server]\nname=A3\n"), 0644))
+
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, FileTypeText, service.GetFileType(path, info))
+	require.True(t, service.IsFileViewable(path, info))
+	require.True(t, service.IsFileEditable(path, info))
+	require.Equal(t, "/file-tree/text-file", service.GetFileAPIEndpoint(path, info))
+}
+
 func TestRawItemFileDataRoundTrip(t *testing.T) {
 	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
 	service := NewFileEditorService(log)

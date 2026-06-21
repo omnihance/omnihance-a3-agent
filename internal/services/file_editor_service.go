@@ -49,6 +49,7 @@ const (
 	IT2ItemFileName             = "2"
 	IT3ItemFileName             = "3"
 	ItemCombinationDataFileName = "ItemCombinationData"
+	INIFileExtension            = ".ini"
 	MapFileExtension            = ".map"
 	SpawnFileExtension          = ".n_ndt"
 	QuestFileExtension          = ".dat"
@@ -166,6 +167,8 @@ func (fes *fileEditorService) GetFileType(path string, fileInfo fs.FileInfo) Fil
 		return FileTypeSpawn
 	case QuestFileExtension:
 		return FileTypeQuest
+	case INIFileExtension:
+		return FileTypeText
 	default:
 		if fileInfo.Size() == NPCFileSize {
 			return FileTypeNPC
