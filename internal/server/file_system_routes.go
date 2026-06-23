@@ -1009,7 +1009,7 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 
 	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
 		return currentData, func() error {
-			return s.fileEditor.WriteTextFileData(ctx.cleanPath, *req.Content)
+			return s.fileEditor.WriteTextFileData(ctx.cleanPath, *req.Content, ctx.info.Mode())
 		}, true
 	})
 	if !ok {

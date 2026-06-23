@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -32,6 +33,29 @@ func TestUpdateTextFileAllowsEmptyContent(t *testing.T) {
 	content, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 	require.Empty(t, content)
+}
+
+func TestUpdateTextFilePreservesPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose POSIX file mode bits consistently")
+	}
+
+	server, userID := newTextFileUpdateTestServer(t)
+	filePath := writeTextUpdateTestFile(t, t.TempDir(), ".env", []byte("PORT=8080\n"))
+	require.NoError(t, os.Chmod(filePath, 0600))
+
+	beforeInfo, err := os.Stat(filePath)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0600), beforeInfo.Mode().Perm())
+
+	req := textFileUpdateRequest(http.MethodPut, "/api/file-tree/text-file?path="+url.QueryEscape(filePath), bytes.NewBufferString(`{"content":"PORT=9090\n"}`), userID)
+	rr := httptest.NewRecorder()
+	server.handleUpdateTextFile(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
+	afterInfo, err := os.Stat(filePath)
+	require.NoError(t, err)
+	require.Equal(t, beforeInfo.Mode().Perm(), afterInfo.Mode().Perm())
 }
 
 func TestUpdateTextFileRejectsMissingContent(t *testing.T) {

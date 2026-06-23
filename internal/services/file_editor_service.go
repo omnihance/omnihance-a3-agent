@@ -64,7 +64,7 @@ type FileEditorService interface {
 	IsFileViewable(path string, fileInfo fs.FileInfo) bool
 	ReadNPCFileData(path string) (*NPCFileData, error)
 	WriteNPCFileData(path string, data *NPCFileData) error
-	WriteTextFileData(path string, content string) error
+	WriteTextFileData(path string, content string, perm fs.FileMode) error
 	ReadSpawnFileData(path string) ([]NPCSpawnData, error)
 	WriteSpawnFileData(path string, data []NPCSpawnData) error
 	ReadDropFileData(path string) (dropfile.DropFile, error)
@@ -287,8 +287,8 @@ func (fes *fileEditorService) WriteNPCFileData(path string, data *NPCFileData) e
 	return nil
 }
 
-func (fes *fileEditorService) WriteTextFileData(path string, content string) error {
-	return os.WriteFile(path, []byte(content), 0644)
+func (fes *fileEditorService) WriteTextFileData(path string, content string, perm fs.FileMode) error {
+	return os.WriteFile(path, []byte(content), perm.Perm())
 }
 
 func (fes *fileEditorService) ReadSpawnFileData(path string) ([]NPCSpawnData, error) {

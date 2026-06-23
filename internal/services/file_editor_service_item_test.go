@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
@@ -219,6 +220,21 @@ func TestIsEnvFileName(t *testing.T) {
 			require.Equal(t, test.match, isEnvFileName(test.name))
 		})
 	}
+}
+
+func TestWriteTextFileDataUsesProvidedPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose POSIX file mode bits consistently")
+	}
+
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), ".env")
+
+	require.NoError(t, service.WriteTextFileData(path, "PORT=8080\n", 0600))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
 
 func TestRawItemFileDataRoundTrip(t *testing.T) {
