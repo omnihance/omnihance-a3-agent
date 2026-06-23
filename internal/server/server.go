@@ -25,6 +25,7 @@ type Server struct {
 	versionChecker       services.VersionCheckerService
 	backupService        services.BackupService
 	serverViewService    services.ServerViewService
+	uploadManager        *fileUploadManager
 }
 
 func NewServer(
@@ -56,6 +57,11 @@ func NewServer(
 		serverViewService:    serverViewService,
 	}
 
+	newServer.uploadManager = newFileUploadManager(cfg.RevisionsDirectory, fileEditor, log, cfg.MaxFileUploadSizeBytes())
+	if err := newServer.uploadManager.Start(); err != nil && log != nil {
+		log.Error("Could not start file upload manager", logger.Field{Key: "error", Value: err})
+	}
+
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", newServer.cfg.Port),
 		Handler:           newServer.RegisterRoutes(),
@@ -64,6 +70,7 @@ func NewServer(
 		WriteTimeout:      30 * time.Second,
 		ReadHeaderTimeout: 9 * time.Minute,
 	}
+	server.RegisterOnShutdown(newServer.uploadManager.Stop)
 
 	return server
 }

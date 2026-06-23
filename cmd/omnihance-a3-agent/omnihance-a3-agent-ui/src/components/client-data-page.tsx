@@ -11,10 +11,13 @@ import {
   uploadIt2File,
   uploadIt3File,
 } from '@/lib/api';
+import { useStatus } from '@/hooks/use-status';
 
 export function ClientDataPage() {
   const { hasPermission } = usePermissions();
+  const { status } = useStatus();
   const canUploadGameData = hasPermission('upload_game_data');
+  const maxFileUploadSizeBytes = status?.max_file_upload_size_bytes;
   const {
     data: counts,
     isLoading: countsLoading,
@@ -40,11 +43,13 @@ export function ClientDataPage() {
             existingCount={counts?.monsters}
             countLoading={countsLoading}
             countError={countsError}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
           <MapFileUpload
             existingCount={counts?.maps}
             countLoading={countsLoading}
             countError={countsError}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
           <ItemFileUpload
             fileLabel="IT0"
@@ -52,6 +57,7 @@ export function ClientDataPage() {
             countLoading={countsLoading}
             countError={countsError}
             uploadFile={uploadIt0File}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
           <ItemFileUpload
             fileLabel="IT1"
@@ -59,6 +65,7 @@ export function ClientDataPage() {
             countLoading={countsLoading}
             countError={countsError}
             uploadFile={uploadIt1File}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
           <ItemFileUpload
             fileLabel="IT2"
@@ -66,6 +73,7 @@ export function ClientDataPage() {
             countLoading={countsLoading}
             countError={countsError}
             uploadFile={uploadIt2File}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
           <ItemFileUpload
             fileLabel="IT3"
@@ -73,6 +81,7 @@ export function ClientDataPage() {
             countLoading={countsLoading}
             countError={countsError}
             uploadFile={uploadIt3File}
+            maxFileUploadSizeBytes={maxFileUploadSizeBytes}
           />
         </div>
       ) : (

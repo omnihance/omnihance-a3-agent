@@ -14,6 +14,10 @@ const (
 	ErrorCodePathIsDirectory     = "PATH_IS_DIRECTORY"
 	ErrorCodeFileNotViewable     = "FILE_NOT_VIEWABLE"
 	ErrorCodeFileReadError       = "FILE_READ_ERROR"
+	ErrorCodeFileTooLarge        = "FILE_TOO_LARGE"
+	ErrorCodeDiskFull            = "DISK_FULL"
+	ErrorCodeHashMismatch        = "HASH_MISMATCH"
+	ErrorCodeUploadExpired       = "UPLOAD_EXPIRED"
 )
 
 const (

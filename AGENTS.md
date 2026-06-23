@@ -129,3 +129,10 @@ For multi-step tasks, state a brief plan:
 - **Magic Numbers:** Avoid using magic numbers; use constants or named variables.
 - **Redundant Code:** Do NOT write redundant code.
 - **Hardcoded Values:** Do NOT use hardcoded values; use constants or named variables.
+
+### Workflow Guidelines
+
+- You have access to GitHub CLI. Use it for all GitHub related actions.
+- Before implementing, check the active branch:
+  1. On `master` or `main`: pull latest, then create a short branch named `feat/{feature}`, `fix/{fix}`, or `docs/{docs}`.
+  2. Already on a non-default branch: no action needed.

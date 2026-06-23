@@ -11,9 +11,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { APIError, type UploadFileResponse } from '@/lib/api';
-import { cn } from '@/lib/util';
+import { cn, formatBytes } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { ClientDataCountBadge } from '@/components/client-data/client-data-count-badge';
+import { validateGameClientUploadFile } from '@/components/client-data/upload-validation';
 
 type ItemFileUploadProps = {
   fileLabel: string;
@@ -21,6 +22,7 @@ type ItemFileUploadProps = {
   countLoading: boolean;
   countError: boolean;
   uploadFile: (file: File) => Promise<UploadFileResponse>;
+  maxFileUploadSizeBytes?: number;
 };
 
 export function ItemFileUpload({
@@ -29,6 +31,7 @@ export function ItemFileUpload({
   countLoading,
   countError,
   uploadFile,
+  maxFileUploadSizeBytes,
 }: ItemFileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -40,6 +43,7 @@ export function ItemFileUpload({
     mutationFn: uploadFile,
     onSuccess: () => {
       setFile(null);
+      setValidationError(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -74,13 +78,7 @@ export function ItemFileUpload({
       return;
     }
 
-    if (!droppedFile.name.toLowerCase().endsWith('.ull')) {
-      setValidationError(`Please select a valid ${fileLabel}.ull file.`);
-      return;
-    }
-
-    setValidationError(null);
-    setFile(droppedFile);
+    selectFile(droppedFile);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,8 +87,22 @@ export function ItemFileUpload({
       return;
     }
 
-    if (!selectedFile.name.toLowerCase().endsWith('.ull')) {
-      setValidationError(`Please select a valid ${fileLabel}.ull file.`);
+    selectFile(selectedFile);
+  };
+
+  const selectFile = (selectedFile: File) => {
+    uploadMutation.reset();
+    const errorMessage = validateGameClientUploadFile(
+      selectedFile,
+      fileLabel,
+      maxFileUploadSizeBytes,
+    );
+    if (errorMessage) {
+      setFile(null);
+      setValidationError(errorMessage);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
@@ -111,6 +123,7 @@ export function ItemFileUpload({
   const resetFile = () => {
     setFile(null);
     setValidationError(null);
+    uploadMutation.reset();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -197,7 +210,7 @@ export function ItemFileUpload({
               <Box className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="truncate text-sm font-medium">{file.name}</span>
               <span className="shrink-0 text-xs text-muted-foreground">
-                ({(file.size / 1024).toFixed(2)} KB)
+                ({formatBytes(file.size)})
               </span>
             </div>
             <Button
