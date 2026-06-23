@@ -3,6 +3,8 @@ import type { AxiosError } from 'axios';
 import type { EChartsOption } from 'echarts';
 import { z } from 'zod';
 
+const maxFileUploadChunkSize = 8 * 1024 * 1024;
+
 export const API_ROUTES = {
   AUTH_SIGN_IN: '/api/auth/sign-in',
   AUTH_SIGN_UP: '/api/auth/sign-up',
@@ -391,7 +393,7 @@ const CreateFileUploadRequestFileSchema = z.object({
 
 const CreateFileUploadRequestSchema = z.object({
   destination_path: z.string().min(1),
-  chunk_size: z.number().int().positive(),
+  chunk_size: z.number().int().positive().max(maxFileUploadChunkSize),
   files: z.array(CreateFileUploadRequestFileSchema).min(1),
 });
 
@@ -431,7 +433,7 @@ export type FileUploadChunkResponse = z.infer<
 >;
 
 const CompleteFileUploadRequestSchema = z.object({
-  sha256: z.string().length(64),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
 const CompleteFileUploadResponseSchema = z.object({

@@ -34,6 +34,7 @@ const (
 	fileUploadCleanupInterval        = 15 * time.Minute
 	fileUploadDefaultRegistryDirName = ".revisions"
 	fileUploadRegistryFileName       = "file-upload-temp-registry.json"
+	fileUploadMaxChunkSize           = 8 * 1024 * 1024
 )
 
 type fileUploadManager struct {
@@ -46,6 +47,7 @@ type fileUploadManager struct {
 	sessions     map[string]*fileUploadSession
 	reservations map[string]string
 	stopCh       chan struct{}
+	stopDoneCh   chan struct{}
 	started      bool
 }
 
@@ -88,7 +90,6 @@ func newFileUploadManager(registryDir string, fileEditor services.FileEditorServ
 		registryPath: filepath.Join(registryDir, fileUploadRegistryFileName),
 		sessions:     make(map[string]*fileUploadSession),
 		reservations: make(map[string]string),
-		stopCh:       make(chan struct{}),
 	}
 }
 
@@ -99,14 +100,29 @@ func (m *fileUploadManager) Start() error {
 		return nil
 	}
 
-	m.started = true
 	m.mu.Unlock()
 
 	if err := m.cleanupRegisteredTempRoots(); err != nil {
 		return err
 	}
 
+	stopCh := make(chan struct{})
+	stopDoneCh := make(chan struct{})
+
+	m.mu.Lock()
+	if m.started {
+		m.mu.Unlock()
+		return nil
+	}
+
+	m.stopCh = stopCh
+	m.stopDoneCh = stopDoneCh
+	m.started = true
+	m.mu.Unlock()
+
 	go func() {
+		defer close(stopDoneCh)
+
 		ticker := time.NewTicker(fileUploadCleanupInterval)
 		defer ticker.Stop()
 
@@ -114,7 +130,7 @@ func (m *fileUploadManager) Start() error {
 			select {
 			case <-ticker.C:
 				m.cleanupExpiredSessions(time.Now())
-			case <-m.stopCh:
+			case <-stopCh:
 				return
 			}
 		}
@@ -130,10 +146,15 @@ func (m *fileUploadManager) Stop() {
 		return
 	}
 
+	stopCh := m.stopCh
+	stopDoneCh := m.stopDoneCh
 	m.started = false
-	close(m.stopCh)
-	m.stopCh = make(chan struct{})
+	m.stopCh = nil
+	m.stopDoneCh = nil
+	close(stopCh)
 	m.mu.Unlock()
+
+	<-stopDoneCh
 }
 
 func (s *Server) ensureUploadManager() *fileUploadManager {
@@ -413,38 +434,57 @@ func (m *fileUploadManager) UploadChunk(uploadID string, fileID string, chunkInd
 	}
 
 	expectedSize := expectedUploadChunkSize(file.Size, file.ChunkSize, chunkIndex)
+	chunkSize := file.ChunkSize
+	tempPath := file.TempPath
+	tempRoot := session.TempRoot
+	m.mu.Unlock()
+
 	chunkData, err := io.ReadAll(io.LimitReader(body, expectedSize+1))
 	if err != nil {
-		m.mu.Unlock()
 		return nil, classifyFileUploadError(err, "Failed to read upload chunk")
 	}
 
 	if int64(len(chunkData)) != expectedSize {
-		m.mu.Unlock()
 		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Chunk size does not match expected size")
 	}
 
-	if err := m.fileEditor.MkdirAll(filepath.Dir(file.TempPath), 0700); err != nil {
-		m.mu.Unlock()
+	if err := m.fileEditor.MkdirAll(filepath.Dir(tempPath), 0700); err != nil {
 		return nil, classifyFileUploadError(err, "Failed to create upload temp directory")
 	}
 
-	tempFile, err := m.fileEditor.OpenFile(file.TempPath, os.O_CREATE|os.O_WRONLY, 0600)
+	tempFile, err := m.fileEditor.OpenFile(tempPath, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		m.mu.Unlock()
 		return nil, classifyFileUploadError(err, "Failed to open upload temp file")
 	}
 
-	_, writeErr := tempFile.WriteAt(chunkData, int64(chunkIndex)*file.ChunkSize)
+	_, writeErr := tempFile.WriteAt(chunkData, int64(chunkIndex)*chunkSize)
 	closeErr := tempFile.Close()
 	if writeErr != nil {
-		m.mu.Unlock()
 		return nil, classifyFileUploadError(writeErr, "Failed to write upload chunk")
 	}
 
 	if closeErr != nil {
-		m.mu.Unlock()
 		return nil, classifyFileUploadError(closeErr, "Failed to close upload temp file")
+	}
+
+	m.mu.Lock()
+	session, file, err = m.activeFileLocked(uploadID, fileID, time.Now())
+	if err != nil {
+		m.mu.Unlock()
+		m.removeTempRoot(tempRoot)
+		return nil, err
+	}
+
+	if file.Completed {
+		m.mu.Unlock()
+		_ = m.fileEditor.Remove(tempPath)
+		return nil, newFileUploadHTTPError(http.StatusConflict, constants.ErrorCodeBadRequest, "File is already complete")
+	}
+
+	if chunkIndex >= file.TotalChunks {
+		m.mu.Unlock()
+		_ = m.fileEditor.Remove(tempPath)
+		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Chunk index is out of range")
 	}
 
 	file.ReceivedChunks[chunkIndex] = expectedSize
@@ -847,6 +887,10 @@ func cleanUploadFiles(req CreateFileUploadRequest) ([]cleanUploadFile, error) {
 
 	if req.ChunkSize <= 0 {
 		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "chunk_size must be greater than zero")
+	}
+
+	if req.ChunkSize > fileUploadMaxChunkSize {
+		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "chunk_size exceeds maximum allowed size")
 	}
 
 	cleanFiles := make([]cleanUploadFile, 0, len(req.Files))

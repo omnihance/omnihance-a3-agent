@@ -211,6 +211,22 @@ export function useFileBrowserUploader({
     [enqueueUpload],
   );
 
+  const enqueueDroppedDataTransfer = useCallback(
+    async (dataTransfer: DataTransfer) => {
+      try {
+        const sources = await uploadSourcesFromDataTransfer(dataTransfer);
+        enqueueUpload(sources);
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to read dropped files',
+        );
+      }
+    },
+    [enqueueUpload],
+  );
+
   const handleDrop = useCallback(
     async (event: React.DragEvent<HTMLDivElement>) => {
       if (!canUpload) {
@@ -221,18 +237,9 @@ export function useFileBrowserUploader({
       event.stopPropagation();
       setIsDragging(false);
 
-      try {
-        const sources = await uploadSourcesFromDataTransfer(event.dataTransfer);
-        enqueueUpload(sources);
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to read dropped files',
-        );
-      }
+      await enqueueDroppedDataTransfer(event.dataTransfer);
     },
-    [canUpload, enqueueUpload],
+    [canUpload, enqueueDroppedDataTransfer],
   );
 
   const dropHandlers = useMemo(
@@ -338,18 +345,7 @@ export function useFileBrowserUploader({
           onDrop={async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            try {
-              const sources = await uploadSourcesFromDataTransfer(
-                event.dataTransfer,
-              );
-              enqueueUpload(sources);
-            } catch (error) {
-              toast.error(
-                error instanceof Error
-                  ? error.message
-                  : 'Failed to read dropped files',
-              );
-            }
+            await enqueueDroppedDataTransfer(event.dataTransfer);
           }}
         >
           <input
@@ -509,6 +505,11 @@ function UploadTaskRow({
                 : 'bg-primary',
           )}
           style={{ width: `${progress}%` }}
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Upload progress for ${label}`}
         />
       </div>
       <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -822,11 +823,11 @@ function dedupeUploadSources(sources: UploadSource[]) {
   const result: UploadSource[] = [];
   for (const source of sources) {
     const relativePath = normalizeRelativeUploadPath(source.relativePath);
-    if (!relativePath || seen.has(relativePath.toLowerCase())) {
+    if (!relativePath || seen.has(relativePath)) {
       continue;
     }
 
-    seen.add(relativePath.toLowerCase());
+    seen.add(relativePath);
     result.push({
       file: source.file,
       relativePath,

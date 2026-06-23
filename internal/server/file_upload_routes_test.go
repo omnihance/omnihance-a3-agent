@@ -15,11 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/omnihance/omnihance-a3-agent/internal/config"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/services"
 	"github.com/omnihance/omnihance-a3-agent/internal/utils"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCreateFileUploadRejectsViewerAndRootDestination(t *testing.T) {
@@ -46,6 +47,33 @@ func TestCreateFileUploadRejectsViewerAndRootDestination(t *testing.T) {
 	rr = httptest.NewRecorder()
 	server.handleCreateFileUpload(rr, req)
 	require.Equal(t, http.StatusBadRequest, rr.Code)
+}
+
+func TestCreateFileUploadRejectsOversizedChunkSize(t *testing.T) {
+	manager := newFileUploadTestManager(t)
+	destination := t.TempDir()
+
+	_, err := manager.CreateSession(CreateFileUploadRequest{
+		DestinationPath: destination,
+		ChunkSize:       fileUploadMaxChunkSize + 1,
+		Files: []CreateFileUploadRequestFile{
+			{ClientFileID: "file-1", RelativePath: "server.txt", Size: 1},
+		},
+	})
+
+	require.Error(t, err)
+	var uploadErr *fileUploadHTTPError
+	require.ErrorAs(t, err, &uploadErr)
+	require.Equal(t, http.StatusBadRequest, uploadErr.status)
+}
+
+func TestFileUploadManagerStartStopCanRestart(t *testing.T) {
+	manager := newFileUploadTestManager(t)
+
+	require.NoError(t, manager.Start())
+	manager.Stop()
+	require.NoError(t, manager.Start())
+	manager.Stop()
 }
 
 func TestFileUploadSessionReservesDuplicateNamesAcrossTabs(t *testing.T) {

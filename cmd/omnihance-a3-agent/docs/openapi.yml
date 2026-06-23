@@ -5171,6 +5171,7 @@ components:
           type: integer
           format: int64
           minimum: 1
+          maximum: 8388608
           description: Chunk size in bytes that the client will use for each uploaded file.
           example: 4194304
         files:
@@ -5274,6 +5275,7 @@ components:
           type: string
           minLength: 64
           maxLength: 64
+          pattern: '^[a-f0-9]{64}$'
           description: Lowercase hexadecimal SHA-256 hash of the original browser file.
           example: '6d37795021e544d53d2569bb6139720ee0869d1111d924aed610ea148a84efcf'
     CompleteFileUploadResponse:

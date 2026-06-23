@@ -132,5 +132,7 @@ For multi-step tasks, state a brief plan:
 
 ### Workflow Guidelines
 
-- You have access to Github CLI. Use it for all Github related actions.
-- Before starting to implement anything please check the active branch. If its `master` or `main` pull the latest changes. Then fork a new branch from it with naming convention like `feat/{some-feature}` or `fix/{some-fix}` or `docs/{some-docs}` etc. Keep branch name short but meaningful with conventional commit prefix. If its already in non default branch do not do anything.
+- You have access to GitHub CLI. Use it for all GitHub related actions.
+- Before implementing, check the active branch:
+  1. On `master` or `main`: pull latest, then create a short branch named `feat/{feature}`, `fix/{fix}`, or `docs/{docs}`.
+  2. Already on a non-default branch: no action needed.
