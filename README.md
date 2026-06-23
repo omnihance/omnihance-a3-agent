@@ -43,7 +43,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
     - Can manage users (list, update status, set passwords)
     - Cannot have status changed by other admins
   - **Admin** (`admin`): Administrative access
-    - Can view and edit files
+    - Can view, edit, and upload files in the file browser
     - Can revert file changes
     - Can upload game client data
     - Can view metrics and game data
@@ -55,7 +55,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **Permission Actions**:
   - `view_files`: View file system and file contents (super_admin, admin, viewer)
   - `download_files`: Create and use one-day user-bound download links for file-browser and backup output files through `POST /api/file-tree/download-link` and `GET /api/file-tree/download/{token}` (super_admin, admin)
-  - `edit_files`: Edit files (super_admin, admin)
+  - `edit_files`: Edit files and upload files through the file browser (super_admin, admin)
   - `revert_files`: Revert files to previous revisions (super_admin, admin)
   - `upload_game_data`: Upload MON.ull and MC.ull files (super_admin, admin)
   - `manage_users`: Manage user accounts (super_admin only)
@@ -78,6 +78,7 @@ Omnihance A3 Agent is a full-stack application consisting of:
 - **File Viewing**: View NPC files, quest files, spawn files, drop files, item files, item combination data files, and text files in the browser
 - **File Duplication**: Right-click any file in the file explorer to duplicate it with a custom name
 - **Directory Downloads**: Right-click a directory to request a ZIP download. The directory is compressed in the background through a tagged one-time backup job, stored under `DIRECTORY_DOWNLOADS_DIRECTORY`, and delivered through the same secure temp-link download flow used for files and backup outputs.
+- **Chunked File Uploads**: Drag files or folders into a real directory, or use the Upload button next to Show dotfiles to open a drop zone with file and folder pickers. Uploads are disabled on the root drive-listing page, run one file at a time per browser tab, auto-rename conflicts with the existing `(copy)` naming pattern, retry transient chunk failures, verify SHA-256 before finalizing, and keep abandoned temp data hidden until server cleanup removes it.
 - **File Editing**:
   - **NPC File Editor**: Edit NPC properties including:
     - ID, Name, Respawn Rate
@@ -583,6 +584,11 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `PUT /api/file-tree/item-combination-data` - Update A3 item combination data
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
+- `POST /api/file-tree/uploads` - Start a file-browser upload batch for a non-root destination directory and reserve conflict-safe target names
+- `PUT /api/file-tree/uploads/{upload_id}/files/{file_id}/chunks/{chunk_index}` - Upload one binary file chunk with retry support
+- `POST /api/file-tree/uploads/{upload_id}/files/{file_id}/complete` - Verify SHA-256 and finalize one uploaded file
+- `POST /api/file-tree/uploads/{upload_id}/heartbeat` - Keep an active upload session alive while the browser tab is open
+- `DELETE /api/file-tree/uploads/{upload_id}` - Cancel an upload session and remove hidden temp data
 - `GET /api/file-tree/revision-summary` - Get revision count for a file
 - `POST /api/file-tree/download-link` - Create or reuse a one-day user-bound download link for a file (requires `download_files` permission)
 - `POST /api/file-tree/directory-download-link` - Create, reuse, or start a background directory ZIP job and return either a secure download URL or polling metadata (requires `download_files` permission)
@@ -732,7 +738,7 @@ The application uses SQLite with the following main tables:
 
 5. **Upload Game Client Data**: Navigate to the Client Data section and upload MON.ull, MC.ull, and IT0.ull through IT3.ull files to populate monster, map, and item databases (requires admin or super admin role).
 
-6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts, right-click files to duplicate them, and download files or directories with admin or super admin access. Directory downloads compress in the background; keep the page open and do not refresh so the download can start automatically when ready. If you refresh, click the same directory download again to resume polling for the in-progress job.
+6. **Navigate Files**: Use the file tree sidebar to browse your server's file system (all authenticated users can view). Pin frequently used directories as shortcuts, right-click files to duplicate them, and download files or directories with admin or super admin access. Admins and super admins can upload files or folders inside a selected directory by dragging into the browser or using the Upload button beside Show dotfiles; uploads are queued per tab, conflicts are auto-renamed, and progress stays visible in the bottom-right panel. Directory downloads compress in the background; keep the page open and do not refresh so the download can start automatically when ready. If you refresh, click the same directory download again to resume polling for the in-progress job.
 
 7. **Edit Files**: Click on editable files (NPC files, quest files, spawn files, drop files (monster drop configurations), item files, item combination data files, or text files) to view and edit them (requires admin or super admin role).
    - **Quest Files**: Edit quest configurations with type-aware objectives, add/remove controls for optional slots, and binary-safe padding preservation

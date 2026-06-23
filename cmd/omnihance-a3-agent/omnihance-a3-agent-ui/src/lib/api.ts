@@ -21,6 +21,15 @@ export const API_ROUTES = {
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
+  FILE_UPLOADS: '/api/file-tree/uploads',
+  FILE_UPLOAD_CHUNK: (uploadId: string, fileId: string, chunkIndex: number) =>
+    `/api/file-tree/uploads/${encodeURIComponent(uploadId)}/files/${encodeURIComponent(fileId)}/chunks/${chunkIndex}`,
+  FILE_UPLOAD_COMPLETE: (uploadId: string, fileId: string) =>
+    `/api/file-tree/uploads/${encodeURIComponent(uploadId)}/files/${encodeURIComponent(fileId)}/complete`,
+  FILE_UPLOAD_HEARTBEAT: (uploadId: string) =>
+    `/api/file-tree/uploads/${encodeURIComponent(uploadId)}/heartbeat`,
+  FILE_UPLOAD_CANCEL: (uploadId: string) =>
+    `/api/file-tree/uploads/${encodeURIComponent(uploadId)}`,
   FILE_DOWNLOAD_LINK: '/api/file-tree/download-link',
   DIRECTORY_DOWNLOAD_LINK: '/api/file-tree/directory-download-link',
   DIRECTORY_DOWNLOAD_STATUS: (runId: number) =>
@@ -373,6 +382,79 @@ const DuplicateFileResponseSchema = z.object({
 });
 
 export type DuplicateFileResponse = z.infer<typeof DuplicateFileResponseSchema>;
+
+const CreateFileUploadRequestFileSchema = z.object({
+  client_file_id: z.string().min(1),
+  relative_path: z.string().min(1),
+  size: z.number().int().nonnegative(),
+});
+
+const CreateFileUploadRequestSchema = z.object({
+  destination_path: z.string().min(1),
+  chunk_size: z.number().int().positive(),
+  files: z.array(CreateFileUploadRequestFileSchema).min(1),
+});
+
+export type CreateFileUploadRequest = z.infer<
+  typeof CreateFileUploadRequestSchema
+>;
+
+const CreateFileUploadResponseFileSchema = z.object({
+  client_file_id: z.string(),
+  file_id: z.string(),
+  relative_path: z.string(),
+  resolved_relative_path: z.string(),
+  target_path: z.string(),
+  size: z.number().int().nonnegative(),
+  chunk_size: z.number().int().positive(),
+  total_chunks: z.number().int().nonnegative(),
+});
+
+const CreateFileUploadResponseSchema = z.object({
+  upload_id: z.string(),
+  expires_at: z.string(),
+  files: z.array(CreateFileUploadResponseFileSchema),
+});
+
+export type CreateFileUploadResponse = z.infer<
+  typeof CreateFileUploadResponseSchema
+>;
+
+const FileUploadChunkResponseSchema = z.object({
+  message: z.string(),
+  received_chunks: z.number().int().nonnegative(),
+  total_chunks: z.number().int().nonnegative(),
+});
+
+export type FileUploadChunkResponse = z.infer<
+  typeof FileUploadChunkResponseSchema
+>;
+
+const CompleteFileUploadRequestSchema = z.object({
+  sha256: z.string().length(64),
+});
+
+const CompleteFileUploadResponseSchema = z.object({
+  message: z.string(),
+  file_id: z.string(),
+  relative_path: z.string(),
+  resolved_relative_path: z.string(),
+  final_path: z.string(),
+  sha256: z.string(),
+});
+
+export type CompleteFileUploadResponse = z.infer<
+  typeof CompleteFileUploadResponseSchema
+>;
+
+const FileUploadHeartbeatResponseSchema = z.object({
+  upload_id: z.string(),
+  expires_at: z.string(),
+});
+
+export type FileUploadHeartbeatResponse = z.infer<
+  typeof FileUploadHeartbeatResponseSchema
+>;
 
 const DownloadLinkResponseSchema = z.object({
   download_url: z.string(),
@@ -1158,6 +1240,80 @@ export async function duplicateFile(
     response.data,
     API_ROUTES.DUPLICATE_FILE,
   );
+}
+
+export async function createFileUpload(
+  data: CreateFileUploadRequest,
+): Promise<CreateFileUploadResponse> {
+  const response = await axiosInstance.post<unknown>(
+    API_ROUTES.FILE_UPLOADS,
+    CreateFileUploadRequestSchema.parse(data),
+  );
+  return validateResponse(
+    CreateFileUploadResponseSchema,
+    response.data,
+    API_ROUTES.FILE_UPLOADS,
+  );
+}
+
+export async function uploadFileChunk(params: {
+  uploadId: string;
+  fileId: string;
+  chunkIndex: number;
+  chunk: Blob;
+  signal?: AbortSignal;
+  onUploadProgress?: (loaded: number, total: number) => void;
+}): Promise<FileUploadChunkResponse> {
+  const route = API_ROUTES.FILE_UPLOAD_CHUNK(
+    params.uploadId,
+    params.fileId,
+    params.chunkIndex,
+  );
+  const response = await axiosInstance.put<unknown>(route, params.chunk, {
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    signal: params.signal,
+    onUploadProgress: (event) => {
+      params.onUploadProgress?.(event.loaded, event.total || params.chunk.size);
+    },
+  });
+  return validateResponse(FileUploadChunkResponseSchema, response.data, route);
+}
+
+export async function completeFileUpload(params: {
+  uploadId: string;
+  fileId: string;
+  sha256: string;
+  signal?: AbortSignal;
+}): Promise<CompleteFileUploadResponse> {
+  const route = API_ROUTES.FILE_UPLOAD_COMPLETE(params.uploadId, params.fileId);
+  const response = await axiosInstance.post<unknown>(
+    route,
+    CompleteFileUploadRequestSchema.parse({ sha256: params.sha256 }),
+    { signal: params.signal },
+  );
+  return validateResponse(
+    CompleteFileUploadResponseSchema,
+    response.data,
+    route,
+  );
+}
+
+export async function heartbeatFileUpload(
+  uploadId: string,
+): Promise<FileUploadHeartbeatResponse> {
+  const route = API_ROUTES.FILE_UPLOAD_HEARTBEAT(uploadId);
+  const response = await axiosInstance.post<unknown>(route);
+  return validateResponse(
+    FileUploadHeartbeatResponseSchema,
+    response.data,
+    route,
+  );
+}
+
+export async function cancelFileUpload(uploadId: string): Promise<void> {
+  await axiosInstance.delete(API_ROUTES.FILE_UPLOAD_CANCEL(uploadId));
 }
 
 export async function createFileDownloadLink(params: {

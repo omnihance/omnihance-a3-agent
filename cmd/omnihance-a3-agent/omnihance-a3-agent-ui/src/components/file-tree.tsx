@@ -17,6 +17,7 @@ import {
   Eye,
   Pin,
   Download,
+  Upload as UploadIcon,
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -69,6 +70,7 @@ import { formatBytes, formatDate, cn } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useFileBrowserUploader } from '@/components/file-browser-uploader';
 
 interface FileTreeProps {
   initialPath?: string;
@@ -146,6 +148,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const { hasPermission } = usePermissions();
   const canManageServer = hasPermission('manage_server');
   const canDownloadFiles = hasPermission('download_files');
+  const canEditFiles = hasPermission('edit_files');
   const [internalPath, setInternalPath] = useState<string | null>(null);
   const [showDotfiles, setShowDotfiles] = useState(false);
   const contextMenuFileRef = useRef<FileNode | null>(null);
@@ -640,10 +643,14 @@ export function FileTree({ initialPath }: FileTreeProps) {
       return;
     }
 
-    handleDirectoryDownloadResponse(
-      directoryDownloadStatus,
-      directoryDownloadRun.path,
-    );
+    const timeoutId = window.setTimeout(() => {
+      handleDirectoryDownloadResponse(
+        directoryDownloadStatus,
+        directoryDownloadRun.path,
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [
     directoryDownloadStatus,
     directoryDownloadRun,
@@ -655,17 +662,21 @@ export function FileTree({ initialPath }: FileTreeProps) {
       return;
     }
 
-    clearDirectoryDownloadToast();
-    setDirectoryDownloadRun(null);
+    const timeoutId = window.setTimeout(() => {
+      clearDirectoryDownloadToast();
+      setDirectoryDownloadRun(null);
 
-    const errorMessage =
-      directoryDownloadError instanceof APIError
-        ? directoryDownloadError.getErrorMessage()
-        : directoryDownloadError instanceof Error
-          ? directoryDownloadError.message
-          : 'Failed to get directory download status';
+      const errorMessage =
+        directoryDownloadError instanceof APIError
+          ? directoryDownloadError.getErrorMessage()
+          : directoryDownloadError instanceof Error
+            ? directoryDownloadError.message
+            : 'Failed to get directory download status';
 
-    toast.error(errorMessage);
+      toast.error(errorMessage);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [
     clearDirectoryDownloadToast,
     directoryDownloadError,
@@ -806,6 +817,16 @@ export function FileTree({ initialPath }: FileTreeProps) {
     return true;
   };
 
+  const handleUploadComplete = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.fileTree() });
+  }, [queryClient]);
+
+  const uploader = useFileBrowserUploader({
+    destinationPath: currentPath,
+    canUpload: canEditFiles && Boolean(currentPath),
+    onUploaded: handleUploadComplete,
+  });
+
   if (error) {
     const errorMessage =
       error instanceof APIError
@@ -822,7 +843,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className="relative flex h-full min-h-0 flex-col"
+      {...uploader.dropHandlers}
+    >
+      {uploader.isDragging && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-background/80">
+          <div className="flex flex-col items-center gap-2 text-primary">
+            <UploadIcon className="h-8 w-8" />
+            <span className="text-sm font-medium">Drop to upload</span>
+          </div>
+        </div>
+      )}
       {/* Breadcrumb Navigation and Show Dotfiles Checkbox */}
       <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
         <Breadcrumb>
@@ -875,6 +907,18 @@ export function FileTree({ initialPath }: FileTreeProps) {
           >
             Show dotfiles
           </Label>
+          {uploader.canUpload && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={uploader.openUploadDialog}
+              className="gap-2"
+              aria-label="Upload files"
+              title="Upload files"
+            >
+              <UploadIcon className="h-4 w-4" />
+            </Button>
+          )}
           {canPinCurrentPath() && (
             <Button
               variant="ghost"
@@ -1217,6 +1261,8 @@ export function FileTree({ initialPath }: FileTreeProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {uploader.dialog}
+      {uploader.progressPanel}
     </div>
   );
 }

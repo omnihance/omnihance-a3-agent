@@ -61,6 +61,11 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Post("/revert-file", s.handleRevertFile)
 		r.Post("/duplicate-file", s.handleDuplicateFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
+		r.Post("/uploads", s.handleCreateFileUpload)
+		r.Put("/uploads/{upload_id}/files/{file_id}/chunks/{chunk_index}", s.handleUploadFileChunk)
+		r.Post("/uploads/{upload_id}/files/{file_id}/complete", s.handleCompleteUploadedFile)
+		r.Post("/uploads/{upload_id}/heartbeat", s.handleFileUploadHeartbeat)
+		r.Delete("/uploads/{upload_id}", s.handleCancelFileUpload)
 		r.Post("/download-link", s.handleCreateFileDownloadLink)
 		r.Post("/directory-download-link", s.handleCreateDirectoryDownloadLink)
 		r.Get("/directory-downloads/{run_id}", s.handleGetDirectoryDownloadStatus)
@@ -147,6 +152,10 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 		}
 
 		for _, entry := range entries {
+			if entry.Name() == fileUploadTempDirName {
+				continue
+			}
+
 			if !showDotfiles && len(entry.Name()) > 0 && entry.Name()[0] == '.' {
 				continue
 			}
@@ -186,6 +195,10 @@ func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, er
 		entries, err := s.fileEditor.ReadDir(path)
 		if err == nil {
 			for _, entry := range entries {
+				if entry.Name() == fileUploadTempDirName {
+					continue
+				}
+
 				if !showDotfiles && len(entry.Name()) > 0 && entry.Name()[0] == '.' {
 					continue
 				}

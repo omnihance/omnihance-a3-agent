@@ -1362,6 +1362,331 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/uploads:
+    post:
+      tags:
+        - file-system
+      summary: Start file-browser upload batch
+      description: Creates a chunked upload session for a non-root destination directory. Requires edit file permission. The server reserves final target names with the existing copy-name pattern so concurrent uploads cannot overwrite each other.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFileUploadRequest'
+      responses:
+        '201':
+          description: Upload session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateFileUploadResponse'
+        '400':
+          description: Bad Request - Invalid destination path, upload file path, file size, duplicate relative path, or chunk size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Missing edit file permission or filesystem permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Destination path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '507':
+          description: Insufficient storage while creating upload temp storage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/uploads/{upload_id}/files/{file_id}/chunks/{chunk_index}:
+    put:
+      tags:
+        - file-system
+      summary: Upload one file chunk
+      description: Writes one binary chunk into hidden upload temp storage. Chunk uploads refresh the session activity timestamp and may be retried by the client for network or transient server failures.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          schema:
+            type: string
+          description: Upload session ID returned by the batch creation endpoint.
+        - in: path
+          name: file_id
+          required: true
+          schema:
+            type: string
+          description: Server file ID returned for the file in the upload batch.
+        - in: path
+          name: chunk_index
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+          description: Zero-based chunk index.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Chunk uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadChunkResponse'
+        '400':
+          description: Bad Request - Invalid chunk index, unexpected chunk size, or chunk out of range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Missing edit file permission or filesystem permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session or file not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '507':
+          description: Insufficient storage while writing upload chunk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/uploads/{upload_id}/files/{file_id}/complete:
+    post:
+      tags:
+        - file-system
+      summary: Complete uploaded file
+      description: Verifies that all chunks are present, checks the uploaded file SHA-256 against the client hash, resolves any final external path conflict without overwriting, then moves the hidden temp file into place.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          schema:
+            type: string
+          description: Upload session ID returned by the batch creation endpoint.
+        - in: path
+          name: file_id
+          required: true
+          schema:
+            type: string
+          description: Server file ID returned for the file in the upload batch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteFileUploadRequest'
+      responses:
+        '200':
+          description: File verified and finalized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompleteFileUploadResponse'
+        '400':
+          description: Bad Request - Invalid SHA-256 value or missing chunks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Missing edit file permission or filesystem permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session or file not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Uploaded file failed integrity check
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '507':
+          description: Insufficient storage while finalizing uploaded file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/uploads/{upload_id}/heartbeat:
+    post:
+      tags:
+        - file-system
+      summary: Refresh upload session heartbeat
+      description: Refreshes the activity timestamp for an active upload session so hidden temp data is not treated as abandoned while the browser tab is still uploading.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          schema:
+            type: string
+          description: Upload session ID returned by the batch creation endpoint.
+      responses:
+        '200':
+          description: Upload heartbeat accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadHeartbeatResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Missing edit file permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Upload session expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/file-tree/uploads/{upload_id}:
+    delete:
+      tags:
+        - file-system
+      summary: Cancel upload session
+      description: Cancels an active upload session, removes hidden temp upload data, and releases any reserved final paths for files that have not completed.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: path
+          name: upload_id
+          required: true
+          schema:
+            type: string
+          description: Upload session ID returned by the batch creation endpoint.
+      responses:
+        '200':
+          description: Upload cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Upload cancelled'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Missing edit file permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/file-tree/revision-summary:
     get:
       tags:
@@ -4831,6 +5156,163 @@ components:
           type: string
           description: Full path of the newly created duplicate file
           example: "C:\\A3Server\\configs\\server (copy).ini"
+    CreateFileUploadRequest:
+      type: object
+      required:
+        - destination_path
+        - chunk_size
+        - files
+      properties:
+        destination_path:
+          type: string
+          description: Destination directory path. Upload creation is rejected for the root drive-listing page.
+          example: "C:\\A3Server"
+        chunk_size:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Chunk size in bytes that the client will use for each uploaded file.
+          example: 4194304
+        files:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateFileUploadRequestFile'
+    CreateFileUploadRequestFile:
+      type: object
+      required:
+        - client_file_id
+        - relative_path
+        - size
+      properties:
+        client_file_id:
+          type: string
+          description: Client-generated ID used to map the response file reservation back to the selected browser file.
+          example: 'task-1-file-0'
+        relative_path:
+          type: string
+          description: Slash-separated upload path relative to the selected upload item. Folder uploads preserve nested paths here.
+          example: 'ZoneData/map/0.n_ndt'
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+          description: File size in bytes.
+          example: 7340032
+    CreateFileUploadResponse:
+      type: object
+      properties:
+        upload_id:
+          type: string
+          description: Server upload session ID.
+          example: '01HZXY2M3A4B5C6D7E8F9G0H1J'
+        expires_at:
+          type: string
+          format: date-time
+          description: Session expiration timestamp if no heartbeat or chunk activity is received.
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateFileUploadResponseFile'
+    CreateFileUploadResponseFile:
+      type: object
+      properties:
+        client_file_id:
+          type: string
+          description: Client file ID from the creation request.
+          example: 'task-1-file-0'
+        file_id:
+          type: string
+          description: Server-generated file ID used for chunk upload and completion calls.
+          example: '01HZXY2M3A4B5C6D7E8F9G0H1K'
+        relative_path:
+          type: string
+          description: Original normalized upload relative path.
+          example: 'ZoneData/map/0.n_ndt'
+        resolved_relative_path:
+          type: string
+          description: Conflict-safe relative path reserved by the server.
+          example: 'ZoneData/map/0 (copy).n_ndt'
+        target_path:
+          type: string
+          description: Full reserved destination path for the uploaded file.
+          example: "C:\\A3Server\\ZoneData\\map\\0 (copy).n_ndt"
+        size:
+          type: integer
+          format: int64
+          description: File size in bytes.
+          example: 7340032
+        chunk_size:
+          type: integer
+          format: int64
+          description: Chunk size in bytes for this file.
+          example: 4194304
+        total_chunks:
+          type: integer
+          description: Number of chunks expected for this file.
+          example: 2
+    FileUploadChunkResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Chunk uploaded successfully'
+        received_chunks:
+          type: integer
+          description: Number of chunks received for the file so far.
+          example: 1
+        total_chunks:
+          type: integer
+          description: Number of chunks required for the file.
+          example: 2
+    CompleteFileUploadRequest:
+      type: object
+      required:
+        - sha256
+      properties:
+        sha256:
+          type: string
+          minLength: 64
+          maxLength: 64
+          description: Lowercase hexadecimal SHA-256 hash of the original browser file.
+          example: '6d37795021e544d53d2569bb6139720ee0869d1111d924aed610ea148a84efcf'
+    CompleteFileUploadResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'File uploaded successfully'
+        file_id:
+          type: string
+          description: Server file ID that was completed.
+          example: '01HZXY2M3A4B5C6D7E8F9G0H1K'
+        relative_path:
+          type: string
+          description: Original normalized upload relative path.
+          example: 'ZoneData/map/0.n_ndt'
+        resolved_relative_path:
+          type: string
+          description: Final relative path used after reservation and final conflict checks.
+          example: 'ZoneData/map/0 (copy).n_ndt'
+        final_path:
+          type: string
+          description: Full destination path where the uploaded file was finalized.
+          example: "C:\\A3Server\\ZoneData\\map\\0 (copy).n_ndt"
+        sha256:
+          type: string
+          description: Server-calculated SHA-256 hash of the finalized upload.
+          example: '6d37795021e544d53d2569bb6139720ee0869d1111d924aed610ea148a84efcf'
+    FileUploadHeartbeatResponse:
+      type: object
+      properties:
+        upload_id:
+          type: string
+          description: Upload session ID.
+          example: '01HZXY2M3A4B5C6D7E8F9G0H1J'
+        expires_at:
+          type: string
+          format: date-time
+          description: Updated session expiration timestamp.
     SpawnFileAPIData:
       type: object
       description: Parsed binary data from a spawn file (API request/response format). All fields are required when used as a request body.
