@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -158,55 +159,8 @@ func (s *Server) handleUploadMONFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxUploadSize := int64(s.cfg.MaxFileUploadSizeMb) * 1024 * 1024
-
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"Failed to parse multipart form: " + err.Error()},
-		})
-		return
-	}
-
-	file, fileHeader, err := r.FormFile("file")
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"Failed to get file from form: " + err.Error()},
-		})
-		return
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	if fileHeader.Size > maxUploadSize {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
-		return
-	}
-
-	fileData, err := io.ReadAll(file)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "game-data",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
-
-	if len(fileData) > int(maxUploadSize) {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
+	fileData, ok := s.readGameClientUploadFile(w, r)
+	if !ok {
 		return
 	}
 
@@ -270,56 +224,8 @@ func (s *Server) handleUploadMCFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxUploadSize := int64(s.cfg.MaxFileUploadSizeMb) * 1024 * 1024
-
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"Failed to parse multipart form: " + err.Error()},
-		})
-		return
-	}
-
-	file, fileHeader, err := r.FormFile("file")
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"Failed to get file from form: " + err.Error()},
-		})
-		return
-	}
-
-	defer func() {
-		_ = file.Close()
-	}()
-
-	if fileHeader.Size > maxUploadSize {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
-		return
-	}
-
-	fileData, err := io.ReadAll(file)
-	if err != nil {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
-			"errorCode": constants.ErrorCodeInternalServerError,
-			"context":   "game-data",
-			"errors":    []string{"Failed to read file: " + err.Error()},
-		})
-		return
-	}
-
-	if len(fileData) > int(maxUploadSize) {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
+	fileData, ok := s.readGameClientUploadFile(w, r)
+	if !ok {
 		return
 	}
 
@@ -456,9 +362,16 @@ func (s *Server) handleUploadITFile(
 }
 
 func (s *Server) readGameClientUploadFile(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
-	maxUploadSize := int64(s.cfg.MaxFileUploadSizeMb) * 1024 * 1024
+	maxUploadSize := s.cfg.MaxFileUploadSizeBytes()
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize+gameClientMultipartOverhead)
 
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+	if err := r.ParseMultipartForm(gameClientMultipartMemoryBytes(maxUploadSize)); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeGameDataUploadTooLargeError(w, "", maxUploadSize)
+			return nil, false
+		}
+
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
 			"errorCode": constants.ErrorCodeBadRequest,
 			"context":   "game-data",
@@ -481,15 +394,11 @@ func (s *Server) readGameClientUploadFile(w http.ResponseWriter, r *http.Request
 	}()
 
 	if fileHeader.Size > maxUploadSize {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
+		writeGameDataUploadTooLargeError(w, fileHeader.Filename, maxUploadSize)
 		return nil, false
 	}
 
-	fileData, err := io.ReadAll(file)
+	fileData, err := io.ReadAll(io.LimitReader(file, maxUploadSize+1))
 	if err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusInternalServerError, map[string]interface{}{
 			"errorCode": constants.ErrorCodeInternalServerError,
@@ -499,12 +408,8 @@ func (s *Server) readGameClientUploadFile(w http.ResponseWriter, r *http.Request
 		return nil, false
 	}
 
-	if len(fileData) > int(maxUploadSize) {
-		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
-			"errorCode": constants.ErrorCodeBadRequest,
-			"context":   "game-data",
-			"errors":    []string{"File size exceeds maximum allowed size"},
-		})
+	if int64(len(fileData)) > maxUploadSize {
+		writeGameDataUploadTooLargeError(w, fileHeader.Filename, maxUploadSize)
 		return nil, false
 	}
 

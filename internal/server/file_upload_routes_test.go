@@ -67,6 +67,43 @@ func TestCreateFileUploadRejectsOversizedChunkSize(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, uploadErr.status)
 }
 
+func TestCreateFileUploadRejectsOversizedFile(t *testing.T) {
+	manager := newFileUploadTestManagerWithLimit(t, 4)
+	destination := t.TempDir()
+
+	_, err := manager.CreateSession(CreateFileUploadRequest{
+		DestinationPath: destination,
+		ChunkSize:       4,
+		Files: []CreateFileUploadRequestFile{
+			{ClientFileID: "file-1", RelativePath: "server.txt", Size: 5},
+		},
+	})
+
+	require.Error(t, err)
+	var uploadErr *fileUploadHTTPError
+	require.ErrorAs(t, err, &uploadErr)
+	require.Equal(t, http.StatusRequestEntityTooLarge, uploadErr.status)
+	require.Equal(t, constants.ErrorCodeFileTooLarge, uploadErr.errorCode)
+	require.Contains(t, uploadErr.message, "server.txt exceeds the maximum upload size of 4 Bytes.")
+}
+
+func TestCreateFileUploadAllowsFilesAtLimitAndDoesNotUseAggregateLimit(t *testing.T) {
+	manager := newFileUploadTestManagerWithLimit(t, 4)
+	destination := t.TempDir()
+
+	response, err := manager.CreateSession(CreateFileUploadRequest{
+		DestinationPath: destination,
+		ChunkSize:       4,
+		Files: []CreateFileUploadRequestFile{
+			{ClientFileID: "file-1", RelativePath: "server-1.txt", Size: 4},
+			{ClientFileID: "file-2", RelativePath: "server-2.txt", Size: 4},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, response.Files, 2)
+}
+
 func TestFileUploadManagerStartStopCanRestart(t *testing.T) {
 	manager := newFileUploadTestManager(t)
 
@@ -248,7 +285,13 @@ func newFileUploadTestServer(t *testing.T) *Server {
 func newFileUploadTestManager(t *testing.T) *fileUploadManager {
 	t.Helper()
 
-	return newFileUploadManager(t.TempDir(), services.NewFileEditorService(nil), nil)
+	return newFileUploadTestManagerWithLimit(t, (&config.EnvVars{}).MaxFileUploadSizeBytes())
+}
+
+func newFileUploadTestManagerWithLimit(t *testing.T, maxFileSize int64) *fileUploadManager {
+	t.Helper()
+
+	return newFileUploadManager(t.TempDir(), services.NewFileEditorService(nil), nil, maxFileSize)
 }
 
 func fileUploadRequest(t *testing.T, method string, target string, body any, role string) *http.Request {

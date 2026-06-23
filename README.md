@@ -525,7 +525,7 @@ The application uses environment variables for configuration. A `.env` file is a
 | `REVISIONS_DIRECTORY`                 | `.revisions`                                       | Directory for file revision backups                          |
 | `BACKUPS_DIRECTORY`                   | `.backups`                                         | Directory for internal backup lock files                     |
 | `DIRECTORY_DOWNLOADS_DIRECTORY`       | `.directory-download`                              | Directory for generated directory-download ZIP archives      |
-| `MAX_FILE_UPLOAD_SIZE_MB`             | `2`                                                | Maximum multipart upload size in MB                          |
+| `MAX_FILE_UPLOAD_SIZE_MB`             | `1024`                                             | Maximum per-file upload size in MB for file browser and game client uploads |
 | `DIRECTORY_SHORTCUTS_LIMIT`           | `5`                                                | Maximum pinned directories per user (`0` disables the limit) |
 | `RUNNING_IN_DOCKER`                   | `false`                                            | Disable host metrics collection when running in Docker       |
 | `SESSION_TIMEOUT_SECONDS`             | `2592000`                                          | Session timeout (30 days)                                    |
@@ -584,7 +584,7 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 - `PUT /api/file-tree/item-combination-data` - Update A3 item combination data
 - `POST /api/file-tree/revert-file` - Revert file to previous revision
 - `POST /api/file-tree/duplicate-file` - Duplicate a file in the same directory
-- `POST /api/file-tree/uploads` - Start a file-browser upload batch for a non-root destination directory and reserve conflict-safe target names
+- `POST /api/file-tree/uploads` - Start a file-browser upload batch for a non-root destination directory, enforce the configured per-file upload size limit, and reserve conflict-safe target names
 - `PUT /api/file-tree/uploads/{upload_id}/files/{file_id}/chunks/{chunk_index}` - Upload one binary file chunk with retry support
 - `POST /api/file-tree/uploads/{upload_id}/files/{file_id}/complete` - Verify SHA-256 and finalize one uploaded file
 - `POST /api/file-tree/uploads/{upload_id}/heartbeat` - Keep an active upload session alive while the browser tab is open
@@ -605,14 +605,14 @@ Only stable GitHub releases are considered because GitHub's latest release endpo
 
 - `GET /api/game-client-data/counts` - Get imported record counts for monsters, maps, and item file types
 - `GET /api/game-client-data/monsters` - Get monster client data (supports optional `s` query parameter for search)
-- `POST /api/game-client-data/upload-mon-file` - Upload MON.ull file to populate monster database
+- `POST /api/game-client-data/upload-mon-file` - Upload MON.ull file to populate monster database, enforcing the configured per-file upload size limit
 - `GET /api/game-client-data/maps` - Get map client data (supports optional `s` query parameter for search)
-- `POST /api/game-client-data/upload-mc-file` - Upload MC.ull file to populate map database
+- `POST /api/game-client-data/upload-mc-file` - Upload MC.ull file to populate map database, enforcing the configured per-file upload size limit
 - `GET /api/game-client-data/items` - Get item client data (supports optional `s` query parameter for search)
-- `POST /api/game-client-data/upload-it0-file` - Upload IT0.ull file to populate item data
-- `POST /api/game-client-data/upload-it1-file` - Upload IT1.ull file to populate item data
-- `POST /api/game-client-data/upload-it2-file` - Upload IT2.ull file to populate item data
-- `POST /api/game-client-data/upload-it3-file` - Upload IT3.ull file to populate item data
+- `POST /api/game-client-data/upload-it0-file` - Upload IT0.ull file to populate item data, enforcing the configured per-file upload size limit
+- `POST /api/game-client-data/upload-it1-file` - Upload IT1.ull file to populate item data, enforcing the configured per-file upload size limit
+- `POST /api/game-client-data/upload-it2-file` - Upload IT2.ull file to populate item data, enforcing the configured per-file upload size limit
+- `POST /api/game-client-data/upload-it3-file` - Upload IT3.ull file to populate item data, enforcing the configured per-file upload size limit
 
 ### Directory Shortcuts
 

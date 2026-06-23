@@ -57,7 +57,7 @@ func NewServer(
 		serverViewService:    serverViewService,
 	}
 
-	newServer.uploadManager = newFileUploadManager(cfg.RevisionsDirectory, fileEditor, log)
+	newServer.uploadManager = newFileUploadManager(cfg.RevisionsDirectory, fileEditor, log, cfg.MaxFileUploadSizeBytes())
 	if err := newServer.uploadManager.Start(); err != nil && log != nil {
 		log.Error("Could not start file upload manager", logger.Field{Key: "error", Value: err})
 	}

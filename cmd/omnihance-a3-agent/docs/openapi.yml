@@ -227,7 +227,7 @@ paths:
       tags:
         - status
       summary: Get server status
-      description: Returns the current server status including name, version, setup status, and new version availability.
+      description: Returns the current server status including name, version, setup status, configured upload size limit, and new version availability.
       responses:
         '200':
           description: Server status retrieved successfully
@@ -1367,7 +1367,7 @@ paths:
       tags:
         - file-system
       summary: Start file-browser upload batch
-      description: Creates a chunked upload session for a non-root destination directory. Requires edit file permission. The server reserves final target names with the existing copy-name pattern so concurrent uploads cannot overwrite each other.
+      description: Creates a chunked upload session for a non-root destination directory. Requires edit file permission. Each file must not exceed the server's configured per-file upload size limit. The server reserves final target names with the existing copy-name pattern so concurrent uploads cannot overwrite each other.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -1403,6 +1403,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Destination path not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - One or more files exceed the configured per-file upload size limit
           content:
             application/json:
               schema:
@@ -1997,7 +2003,7 @@ paths:
       tags:
         - game-data
       summary: Upload monster list client data file
-      description: Uploads and processes a monster list client data file (MON.ull). The file is decoded using ULL decryption, parsed into structured monster data, and bulk replaces all existing monster client data in the database. The file size must not exceed the maximum upload size configured in the server. All uploaded monsters are associated with the current user as both creator and updater.
+      description: Uploads and processes a monster list client data file (MON.ull). The file is decoded using ULL decryption, parsed into structured monster data, and bulk replaces all existing monster client data in the database. The file size must not exceed the maximum per-file upload size configured in the server. All uploaded monsters are associated with the current user as both creator and updater.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2030,13 +2036,19 @@ paths:
                     description: The number of monster records that were uploaded
                     example: 150
         '400':
-          description: Bad Request - File size exceeds maximum allowed size, failed to parse multipart form, file not found in form, or failed to parse monster file
+          description: Bad Request - Failed to parse multipart form, file not found in form, or failed to parse monster file
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized - User ID not found in context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
           content:
             application/json:
               schema:
@@ -2052,7 +2064,7 @@ paths:
       tags:
         - game-data
       summary: Upload map list client data file
-      description: Uploads and processes a map list client data file (MC.ull). The file is decoded using ULL decryption, parsed into structured map data, and bulk replaces all existing map client data in the database. The file size must not exceed the maximum upload size configured in the server. All uploaded maps are associated with the current user as both creator and updater.
+      description: Uploads and processes a map list client data file (MC.ull). The file is decoded using ULL decryption, parsed into structured map data, and bulk replaces all existing map client data in the database. The file size must not exceed the maximum per-file upload size configured in the server. All uploaded maps are associated with the current user as both creator and updater.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2085,13 +2097,19 @@ paths:
                     description: The number of map list records that were uploaded
                     example: 50
         '400':
-          description: Bad Request - File size exceeds maximum allowed size, failed to parse multipart form, file not found in form, or failed to parse map file
+          description: Bad Request - Failed to parse multipart form, file not found in form, or failed to parse map file
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized - User ID not found in context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
           content:
             application/json:
               schema:
@@ -2191,7 +2209,7 @@ paths:
       tags:
         - game-data
       summary: Upload IT0 item client data file
-      description: Uploads and processes an IT0.ull item client data file. The file is decoded using ULL decryption, parsed with agonyl-utils-go itemfile helpers, and replaces existing IT0 item client data only.
+      description: Uploads and processes an IT0.ull item client data file. The file must not exceed the maximum per-file upload size configured in the server. The file is decoded using ULL decryption, parsed with agonyl-utils-go itemfile helpers, and replaces existing IT0 item client data only.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2226,6 +2244,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error - Failed to read file or save item data
           content:
@@ -2237,7 +2261,7 @@ paths:
       tags:
         - game-data
       summary: Upload IT1 item client data file
-      description: Uploads and processes an IT1.ull item client data file and replaces existing IT1 item client data only.
+      description: Uploads and processes an IT1.ull item client data file. The file must not exceed the maximum per-file upload size configured in the server and replaces existing IT1 item client data only.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2272,6 +2296,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error - Failed to read file or save item data
           content:
@@ -2283,7 +2313,7 @@ paths:
       tags:
         - game-data
       summary: Upload IT2 item client data file
-      description: Uploads and processes an IT2.ull item client data file and replaces existing IT2 item client data only.
+      description: Uploads and processes an IT2.ull item client data file. The file must not exceed the maximum per-file upload size configured in the server and replaces existing IT2 item client data only.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2318,6 +2348,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal server error - Failed to read file or save item data
           content:
@@ -2329,7 +2365,7 @@ paths:
       tags:
         - game-data
       summary: Upload IT3 item client data file
-      description: Uploads and processes an IT3.ull item client data file and replaces existing IT3 item client data only.
+      description: Uploads and processes an IT3.ull item client data file. The file must not exceed the maximum per-file upload size configured in the server and replaces existing IT3 item client data only.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -2360,6 +2396,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request Entity Too Large - File exceeds the configured per-file upload size limit
           content:
             application/json:
               schema:
@@ -4843,6 +4885,11 @@ components:
           type: boolean
           description: Whether metrics collection is enabled
           example: true
+        max_file_upload_size_bytes:
+          type: integer
+          format: int64
+          description: Configured maximum upload size per file in bytes
+          example: 1073741824
     ErrorResponse:
       type: object
       properties:
@@ -5198,7 +5245,7 @@ components:
           type: integer
           format: int64
           minimum: 0
-          description: File size in bytes.
+          description: File size in bytes. Must not exceed the server's configured per-file upload size limit.
           example: 7340032
     CreateFileUploadResponse:
       type: object

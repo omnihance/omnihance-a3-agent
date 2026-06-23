@@ -18,6 +18,7 @@ import {
   type CreateFileUploadResponse,
 } from '@/lib/api';
 import { formatBytes, cn } from '@/lib/util';
+import { getUploadSizeError } from '@/lib/upload-validation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +62,7 @@ type UploadTask = {
 type UseFileBrowserUploaderParams = {
   destinationPath: string;
   canUpload: boolean;
+  maxFileUploadSizeBytes?: number;
   onUploaded: () => void;
 };
 
@@ -84,6 +86,7 @@ type DataTransferItemWithEntry = DataTransferItem & {
 export function useFileBrowserUploader({
   destinationPath,
   canUpload,
+  maxFileUploadSizeBytes,
   onUploaded,
 }: UseFileBrowserUploaderParams) {
   const [tasks, setTasks] = useState<UploadTask[]>([]);
@@ -114,6 +117,15 @@ export function useFileBrowserUploader({
         return;
       }
 
+      const oversizedSource = findOversizedUploadSource(
+        uniqueSources,
+        maxFileUploadSizeBytes,
+      );
+      if (oversizedSource) {
+        toast.error(oversizedSource);
+        return;
+      }
+
       const task: UploadTask = {
         id: crypto.randomUUID(),
         destinationPath,
@@ -137,7 +149,7 @@ export function useFileBrowserUploader({
           : `Queued ${uniqueSources.length} files`,
       );
     },
-    [canUpload, destinationPath],
+    [canUpload, destinationPath, maxFileUploadSizeBytes],
   );
 
   const cancelTask = useCallback((taskId: string) => {
@@ -835,6 +847,24 @@ function dedupeUploadSources(sources: UploadSource[]) {
   }
 
   return result;
+}
+
+function findOversizedUploadSource(
+  sources: UploadSource[],
+  maxFileUploadSizeBytes?: number,
+) {
+  for (const source of sources) {
+    const error = getUploadSizeError(
+      source.relativePath || source.file.name,
+      source.file.size,
+      maxFileUploadSizeBytes,
+    );
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
 }
 
 function normalizeRelativeUploadPath(path: string) {

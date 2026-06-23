@@ -70,6 +70,7 @@ import { formatBytes, formatDate, cn } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { toast } from 'sonner';
 import { usePermissions } from '@/hooks/use-permissions';
+import { useStatus } from '@/hooks/use-status';
 import { useFileBrowserUploader } from '@/components/file-browser-uploader';
 
 interface FileTreeProps {
@@ -146,6 +147,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
+  const { status } = useStatus();
   const canManageServer = hasPermission('manage_server');
   const canDownloadFiles = hasPermission('download_files');
   const canEditFiles = hasPermission('edit_files');
@@ -824,6 +826,7 @@ export function FileTree({ initialPath }: FileTreeProps) {
   const uploader = useFileBrowserUploader({
     destinationPath: currentPath,
     canUpload: canEditFiles && Boolean(currentPath),
+    maxFileUploadSizeBytes: status?.max_file_upload_size_bytes,
     onUploaded: handleUploadComplete,
   });
 

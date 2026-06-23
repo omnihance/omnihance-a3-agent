@@ -143,6 +143,54 @@ func TestHandleUploadIT1FileParseError(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rr.Code)
 }
 
+func TestHandleUploadIT1FileRejectsOversizedFile(t *testing.T) {
+	internalDB := newTestInternalDB(t)
+	server := &Server{
+		cfg:        &config.EnvVars{MaxFileUploadSizeMb: 1},
+		internalDB: internalDB,
+		fileEditor: services.NewFileEditorService(nil),
+	}
+
+	oversizedFile := bytes.Repeat([]byte{1}, 1024*1024+1)
+	req := newGameClientDataUploadRequest(t, "/api/game-client-data/upload-it1-file", "IT1.ull", oversizedFile)
+	req = req.WithContext(gameClientDataUploadContext(req.Context()))
+	rr := httptest.NewRecorder()
+
+	server.handleUploadIT1File(rr, req)
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, rr.Code)
+	var response map[string]interface{}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &response))
+	require.Equal(t, constants.ErrorCodeFileTooLarge, response["errorCode"])
+	responseErrors, ok := response["errors"].([]interface{})
+	require.True(t, ok)
+	require.Contains(t, responseErrors[0].(string), "IT1.ull exceeds the maximum upload size of 1 MB.")
+}
+
+func TestHandleUploadMONFileRejectsOversizedFile(t *testing.T) {
+	internalDB := newTestInternalDB(t)
+	server := &Server{
+		cfg:        &config.EnvVars{MaxFileUploadSizeMb: 1},
+		internalDB: internalDB,
+		fileEditor: services.NewFileEditorService(nil),
+	}
+
+	oversizedFile := bytes.Repeat([]byte{1}, 1024*1024+1)
+	req := newGameClientDataUploadRequest(t, "/api/game-client-data/upload-mon-file", "MON.ull", oversizedFile)
+	req = req.WithContext(gameClientDataUploadContext(req.Context()))
+	rr := httptest.NewRecorder()
+
+	server.handleUploadMONFile(rr, req)
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, rr.Code)
+	var response map[string]interface{}
+	require.NoError(t, json.Unmarshal(rr.Body.Bytes(), &response))
+	require.Equal(t, constants.ErrorCodeFileTooLarge, response["errorCode"])
+	responseErrors, ok := response["errors"].([]interface{})
+	require.True(t, ok)
+	require.Contains(t, responseErrors[0].(string), "MON.ull exceeds the maximum upload size of 1 MB.")
+}
+
 func newTestInternalDB(t *testing.T) db.InternalDB {
 	t.Helper()
 

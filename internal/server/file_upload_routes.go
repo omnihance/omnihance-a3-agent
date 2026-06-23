@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
+	"github.com/omnihance/omnihance-a3-agent/internal/config"
 	"github.com/omnihance/omnihance-a3-agent/internal/constants"
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
 	"github.com/omnihance/omnihance-a3-agent/internal/permissions"
@@ -41,6 +42,7 @@ type fileUploadManager struct {
 	fileEditor   services.FileEditorService
 	log          logger.Logger
 	registryPath string
+	maxFileSize  int64
 
 	registryMu   sync.Mutex
 	mu           sync.Mutex
@@ -79,15 +81,20 @@ type fileUploadFile struct {
 	FinalPath            string
 }
 
-func newFileUploadManager(registryDir string, fileEditor services.FileEditorService, log logger.Logger) *fileUploadManager {
+func newFileUploadManager(registryDir string, fileEditor services.FileEditorService, log logger.Logger, maxFileSize int64) *fileUploadManager {
 	if registryDir == "" {
 		registryDir = fileUploadDefaultRegistryDirName
+	}
+
+	if maxFileSize <= 0 {
+		maxFileSize = (&config.EnvVars{}).MaxFileUploadSizeBytes()
 	}
 
 	return &fileUploadManager{
 		fileEditor:   fileEditor,
 		log:          log,
 		registryPath: filepath.Join(registryDir, fileUploadRegistryFileName),
+		maxFileSize:  maxFileSize,
 		sessions:     make(map[string]*fileUploadSession),
 		reservations: make(map[string]string),
 	}
@@ -167,7 +174,12 @@ func (s *Server) ensureUploadManager() *fileUploadManager {
 		registryDir = s.cfg.RevisionsDirectory
 	}
 
-	s.uploadManager = newFileUploadManager(registryDir, s.fileEditor, s.log)
+	maxFileSize := (&config.EnvVars{}).MaxFileUploadSizeBytes()
+	if s.cfg != nil {
+		maxFileSize = s.cfg.MaxFileUploadSizeBytes()
+	}
+
+	s.uploadManager = newFileUploadManager(registryDir, s.fileEditor, s.log, maxFileSize)
 	if err := s.uploadManager.Start(); err != nil && s.log != nil {
 		s.log.Error("Could not start file upload manager", logger.Field{Key: "error", Value: err})
 	}
@@ -308,7 +320,7 @@ func (m *fileUploadManager) CreateSession(req CreateFileUploadRequest) (*CreateF
 		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Destination path must be a directory")
 	}
 
-	cleanFiles, err := cleanUploadFiles(req)
+	cleanFiles, err := cleanUploadFiles(req, m.maxFileSize)
 	if err != nil {
 		return nil, err
 	}
@@ -880,7 +892,7 @@ func (m *fileUploadManager) writeRegisteredTempRoots(tempRoots []string) error {
 	return os.WriteFile(m.registryPath, content, 0600)
 }
 
-func cleanUploadFiles(req CreateFileUploadRequest) ([]cleanUploadFile, error) {
+func cleanUploadFiles(req CreateFileUploadRequest, maxFileSize int64) ([]cleanUploadFile, error) {
 	if len(req.Files) == 0 {
 		return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "At least one file is required")
 	}
@@ -908,6 +920,10 @@ func cleanUploadFiles(req CreateFileUploadRequest) ([]cleanUploadFile, error) {
 
 		if file.Size < 0 {
 			return nil, newFileUploadHTTPError(http.StatusBadRequest, constants.ErrorCodeBadRequest, "Upload file size cannot be negative")
+		}
+
+		if maxFileSize > 0 && file.Size > maxFileSize {
+			return nil, newFileUploadHTTPError(http.StatusRequestEntityTooLarge, constants.ErrorCodeFileTooLarge, uploadFileTooLargeMessage(cleanRelativePath, maxFileSize))
 		}
 
 		clientFileID := strings.TrimSpace(file.ClientFileID)

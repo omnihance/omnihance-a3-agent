@@ -19,7 +19,7 @@ func TestStatusHandlerReturnsCachedVersionCheckStatus(t *testing.T) {
 	latestReleaseURL := "https://github.com/omnihance/omnihance-a3-agent/releases/tag/v1.1.0"
 	checkedAt := time.Date(2026, 5, 14, 10, 0, 0, 0, time.UTC)
 	server := &Server{
-		cfg:        &config.EnvVars{MetricsEnabled: true},
+		cfg:        &config.EnvVars{MetricsEnabled: true, MaxFileUploadSizeMb: 512},
 		version:    "1.0.0",
 		internalDB: internalDB,
 		versionChecker: fakeVersionCheckerService{
@@ -51,6 +51,7 @@ func TestStatusHandlerReturnsCachedVersionCheckStatus(t *testing.T) {
 	require.NotNil(t, response.VersionCheckedAt)
 	require.Equal(t, checkedAt, *response.VersionCheckedAt)
 	require.True(t, response.MetricsEnabled)
+	require.Equal(t, int64(512*1024*1024), response.MaxFileUploadSizeBytes)
 }
 
 type fakeVersionCheckerService struct {

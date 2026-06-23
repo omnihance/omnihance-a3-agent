@@ -33,6 +33,8 @@ type EnvVars struct {
 	VersionCheckIntervalSeconds      int
 }
 
+const DefaultMaxFileUploadSizeMb = 1024
+
 var defaultEnvVars = map[string]string{
 	"PORT":                                "8080",
 	"LOG_LEVEL":                           "info",
@@ -48,6 +50,7 @@ var defaultEnvVars = map[string]string{
 	"SESSION_TIMEOUT_SECONDS":             fmt.Sprintf("%d", 60*60*24*30),
 	"COOKIE_SECRET":                       externalUtils.GenerateRandomString(32),
 	"COOKIE_SECURE":                       "false",
+	"MAX_FILE_UPLOAD_SIZE_MB":             fmt.Sprintf("%d", DefaultMaxFileUploadSizeMb),
 	"DIRECTORY_SHORTCUTS_LIMIT":           "5",
 	"VERSION_CHECK_INTERVAL_SECONDS":      "3600",
 }
@@ -111,10 +114,9 @@ func New() *EnvVars {
 		cookieSecure = false
 	}
 
-	maxFileUploadSizeMb, err := strconv.Atoi(os.Getenv("MAX_FILE_UPLOAD_SIZE_MB"))
+	maxFileUploadSizeMb, err := parseMaxFileUploadSizeMb(os.Getenv("MAX_FILE_UPLOAD_SIZE_MB"))
 	if err != nil {
 		slog.Warn("Could not get max file upload size: " + err.Error())
-		maxFileUploadSizeMb = 2
 	}
 
 	directoryShortcutsLimit, err := strconv.Atoi(os.Getenv("DIRECTORY_SHORTCUTS_LIMIT"))
@@ -184,6 +186,28 @@ func (e *EnvVars) GetLogLevel() zerolog.Level {
 	default:
 		return zerolog.InfoLevel
 	}
+}
+
+func (e *EnvVars) MaxFileUploadSizeBytes() int64 {
+	maxFileUploadSizeMb := DefaultMaxFileUploadSizeMb
+	if e != nil && e.MaxFileUploadSizeMb > 0 {
+		maxFileUploadSizeMb = e.MaxFileUploadSizeMb
+	}
+
+	return int64(maxFileUploadSizeMb) * 1024 * 1024
+}
+
+func parseMaxFileUploadSizeMb(value string) (int, error) {
+	maxFileUploadSizeMb, err := strconv.Atoi(value)
+	if err != nil {
+		return DefaultMaxFileUploadSizeMb, err
+	}
+
+	if maxFileUploadSizeMb <= 0 {
+		return DefaultMaxFileUploadSizeMb, fmt.Errorf("MAX_FILE_UPLOAD_SIZE_MB must be greater than zero")
+	}
+
+	return maxFileUploadSizeMb, nil
 }
 
 func writeEnvFile(path string, envVars map[string]string) error {

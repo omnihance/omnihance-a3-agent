@@ -210,6 +210,7 @@ const StatusResponseSchema = z.object({
   latest_release_url: z.string().nullable(),
   version_checked_at: z.string().nullable(),
   metrics_enabled: z.boolean(),
+  max_file_upload_size_bytes: z.number().int().nonnegative(),
 });
 
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;

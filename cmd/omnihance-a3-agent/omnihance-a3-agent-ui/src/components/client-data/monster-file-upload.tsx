@@ -11,23 +11,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { uploadMonFile, APIError } from '@/lib/api';
-import { cn } from '@/lib/util';
+import { cn, formatBytes } from '@/lib/util';
 import { queryKeys } from '@/constants';
 import { ClientDataCountBadge } from '@/components/client-data/client-data-count-badge';
+import { validateGameClientUploadFile } from '@/components/client-data/upload-validation';
 
 type MonsterFileUploadProps = {
   existingCount?: number;
   countLoading: boolean;
   countError: boolean;
+  maxFileUploadSizeBytes?: number;
 };
 
 export function MonsterFileUpload({
   existingCount,
   countLoading,
   countError,
+  maxFileUploadSizeBytes,
 }: MonsterFileUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -35,6 +39,7 @@ export function MonsterFileUpload({
     mutationFn: uploadMonFile,
     onSuccess: () => {
       setFile(null);
+      setValidationError(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -65,16 +70,36 @@ export function MonsterFileUpload({
     setIsDragging(false);
 
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.name.toLowerCase().endsWith('.ull')) {
-      setFile(droppedFile);
+    if (droppedFile) {
+      selectFile(droppedFile);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile && selectedFile.name.toLowerCase().endsWith('.ull')) {
-      setFile(selectedFile);
+    if (selectedFile) {
+      selectFile(selectedFile);
     }
+  };
+
+  const selectFile = (selectedFile: File) => {
+    uploadMutation.reset();
+    const errorMessage = validateGameClientUploadFile(
+      selectedFile,
+      'MON',
+      maxFileUploadSizeBytes,
+    );
+    if (errorMessage) {
+      setFile(null);
+      setValidationError(errorMessage);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setValidationError(null);
+    setFile(selectedFile);
   };
 
   const handleUpload = () => {
@@ -167,7 +192,7 @@ export function MonsterFileUpload({
               <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">{file.name}</span>
               <span className="text-xs text-muted-foreground">
-                ({(file.size / 1024).toFixed(2)} KB)
+                ({formatBytes(file.size)})
               </span>
             </div>
             <Button
@@ -175,6 +200,8 @@ export function MonsterFileUpload({
               size="sm"
               onClick={() => {
                 setFile(null);
+                setValidationError(null);
+                uploadMutation.reset();
                 if (fileInputRef.current) {
                   fileInputRef.current.value = '';
                 }
@@ -188,10 +215,10 @@ export function MonsterFileUpload({
           </div>
         )}
 
-        {error && (
+        {(validationError || error) && (
           <Alert variant="destructive">
             <XCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{validationError || error}</AlertDescription>
           </Alert>
         )}
 
