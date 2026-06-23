@@ -2592,16 +2592,16 @@ func (_c *MockFileEditorService_WriteSpawnFileData_Call) RunAndReturn(run func(p
 }
 
 // WriteTextFileData provides a mock function for the type MockFileEditorService
-func (_mock *MockFileEditorService) WriteTextFileData(path string, content string) error {
-	ret := _mock.Called(path, content)
+func (_mock *MockFileEditorService) WriteTextFileData(path string, content string, perm fs.FileMode) error {
+	ret := _mock.Called(path, content, perm)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WriteTextFileData")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(string, string) error); ok {
-		r0 = returnFunc(path, content)
+	if returnFunc, ok := ret.Get(0).(func(string, string, fs.FileMode) error); ok {
+		r0 = returnFunc(path, content, perm)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2616,11 +2616,12 @@ type MockFileEditorService_WriteTextFileData_Call struct {
 // WriteTextFileData is a helper method to define mock.On call
 //   - path string
 //   - content string
-func (_e *MockFileEditorService_Expecter) WriteTextFileData(path interface{}, content interface{}) *MockFileEditorService_WriteTextFileData_Call {
-	return &MockFileEditorService_WriteTextFileData_Call{Call: _e.mock.On("WriteTextFileData", path, content)}
+//   - perm fs.FileMode
+func (_e *MockFileEditorService_Expecter) WriteTextFileData(path interface{}, content interface{}, perm interface{}) *MockFileEditorService_WriteTextFileData_Call {
+	return &MockFileEditorService_WriteTextFileData_Call{Call: _e.mock.On("WriteTextFileData", path, content, perm)}
 }
 
-func (_c *MockFileEditorService_WriteTextFileData_Call) Run(run func(path string, content string)) *MockFileEditorService_WriteTextFileData_Call {
+func (_c *MockFileEditorService_WriteTextFileData_Call) Run(run func(path string, content string, perm fs.FileMode)) *MockFileEditorService_WriteTextFileData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
@@ -2630,9 +2631,14 @@ func (_c *MockFileEditorService_WriteTextFileData_Call) Run(run func(path string
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 fs.FileMode
+		if args[2] != nil {
+			arg2 = args[2].(fs.FileMode)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -2643,7 +2649,7 @@ func (_c *MockFileEditorService_WriteTextFileData_Call) Return(err error) *MockF
 	return _c
 }
 
-func (_c *MockFileEditorService_WriteTextFileData_Call) RunAndReturn(run func(path string, content string) error) *MockFileEditorService_WriteTextFileData_Call {
+func (_c *MockFileEditorService_WriteTextFileData_Call) RunAndReturn(run func(path string, content string, perm fs.FileMode) error) *MockFileEditorService_WriteTextFileData_Call {
 	_c.Call.Return(run)
 	return _c
 }

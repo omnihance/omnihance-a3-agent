@@ -981,7 +981,7 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req TextFileAPIData
+	var req TextFileUpdateAPIData
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
 			"errorCode": constants.ErrorCodeBadRequest,
@@ -1005,11 +1005,11 @@ func (s *Server) handleUpdateTextFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentData := []byte(req.Content)
+	currentData := []byte(*req.Content)
 
 	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
 		return currentData, func() error {
-			return s.fileEditor.WriteTextFileData(ctx.cleanPath, req.Content)
+			return s.fileEditor.WriteTextFileData(ctx.cleanPath, *req.Content, ctx.info.Mode())
 		}, true
 	})
 	if !ok {
@@ -3686,6 +3686,10 @@ type NPCFileAPIData struct {
 
 type TextFileAPIData struct {
 	Content string `json:"content" validate:"required"`
+}
+
+type TextFileUpdateAPIData struct {
+	Content *string `json:"content" validate:"required"`
 }
 
 type SpawnFileAPIData struct {

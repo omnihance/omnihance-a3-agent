@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/logger"
@@ -179,6 +180,61 @@ func TestGetFileTypeINIFile(t *testing.T) {
 	require.True(t, service.IsFileViewable(path, info))
 	require.True(t, service.IsFileEditable(path, info))
 	require.Equal(t, "/file-tree/text-file", service.GetFileAPIEndpoint(path, info))
+}
+
+func TestGetFileTypeEnvFiles(t *testing.T) {
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	dir := t.TempDir()
+
+	for _, name := range []string{".env", ".env.local", ".env.production.local"} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(dir, name)
+			require.NoError(t, os.WriteFile(path, []byte("PORT=8080\n"), 0644))
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+
+			require.Equal(t, FileTypeText, service.GetFileType(path, info))
+			require.True(t, service.IsFileViewable(path, info))
+			require.True(t, service.IsFileEditable(path, info))
+			require.Equal(t, "/file-tree/text-file", service.GetFileAPIEndpoint(path, info))
+		})
+	}
+}
+
+func TestIsEnvFileName(t *testing.T) {
+	tests := []struct {
+		name  string
+		match bool
+	}{
+		{name: ".env", match: true},
+		{name: ".env.local", match: true},
+		{name: ".env.production.local", match: true},
+		{name: ".envrc", match: false},
+		{name: "server.env", match: false},
+		{name: "my.env.local", match: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			require.Equal(t, test.match, isEnvFileName(test.name))
+		})
+	}
+}
+
+func TestWriteTextFileDataUsesProvidedPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not expose POSIX file mode bits consistently")
+	}
+
+	log := logger.NewZerologLogger(zerolog.Nop(), "test", zerolog.Disabled)
+	service := NewFileEditorService(log)
+	path := filepath.Join(t.TempDir(), ".env")
+
+	require.NoError(t, service.WriteTextFileData(path, "PORT=8080\n", 0600))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	require.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
 
 func TestRawItemFileDataRoundTrip(t *testing.T) {
