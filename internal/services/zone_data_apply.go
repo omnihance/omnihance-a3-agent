@@ -43,6 +43,10 @@ func (s *zoneDataService) Apply(original []byte, format ZoneDataFormat, operatio
 		ZoneDataFormatShueCombination, ZoneDataFormatLottery, ZoneDataFormatDerbyGift,
 		ZoneDataFormatEventItemReward, ZoneDataFormatA3Present:
 		encoded, err = applyEconomyZoneData(original, format, operations, allowed)
+	case ZoneDataFormatMessage, ZoneDataFormatQuestEx, ZoneDataFormatSQuestQuiz, ZoneDataFormatTowerTreasure,
+		ZoneDataFormatOXQuiz, ZoneDataFormatTyrBase, ZoneDataFormatTyrPortal, ZoneDataFormatTyrUpgrade,
+		ZoneDataFormatTyrStartPoint, ZoneDataFormatTyrGift, ZoneDataFormatTyrNPCRegen, ZoneDataFormatTyrSkillLayer:
+		encoded, err = applyRemainingZoneData(original, format, operations, allowed)
 	default:
 		err = fmt.Errorf("unsupported ZoneData format %q", format)
 	}

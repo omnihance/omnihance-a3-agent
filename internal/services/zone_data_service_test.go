@@ -9,6 +9,7 @@ import (
 
 	"github.com/project-agonyl/agonyl-utils-go/lotteryfile"
 	"github.com/project-agonyl/agonyl-utils-go/npcskillfile"
+	"github.com/project-agonyl/agonyl-utils-go/questexfile"
 	"github.com/stretchr/testify/require"
 )
 
@@ -108,6 +109,48 @@ func TestZoneDataApplyPreservesLotterySiblingMessages(t *testing.T) {
 	offset := 4 + 2*lotteryfile.MessageSize
 	require.Equal(t, original[:offset], updated[:offset])
 	require.Equal(t, original[offset+lotteryfile.MessageSize:], updated[offset+lotteryfile.MessageSize:])
+}
+
+func TestZoneDataDetectsV07BinaryFormats(t *testing.T) {
+	root := t.TempDir()
+	tests := []struct {
+		format ZoneDataFormat
+		parts  []string
+	}{
+		{ZoneDataFormatMessage, []string{"A3Msg_Zone_Tw.dat"}},
+		{ZoneDataFormatQuestEx, []string{"ZoneData", "quest", "0042.dat"}},
+		{ZoneDataFormatSQuestQuiz, []string{"ZoneData", "SQuest", "QuizTable.dat"}},
+		{ZoneDataFormatTowerTreasure, []string{"Tower", "6.itm"}},
+		{ZoneDataFormatOXQuiz, []string{"OXQuiz", "OXQuizTable.dat"}},
+		{ZoneDataFormatTyrBase, []string{"ZoneData", "tyr", "BaseInfo.tyr"}},
+		{ZoneDataFormatTyrPortal, []string{"ZoneData", "tyr", "WarpPortal.tyr"}},
+		{ZoneDataFormatTyrUpgrade, []string{"ZoneData", "tyr", "Upgrade.tyr"}},
+		{ZoneDataFormatTyrStartPoint, []string{"ZoneData", "tyr", "StartPoint.tyr"}},
+		{ZoneDataFormatTyrGift, []string{"ZoneData", "tyr", "TyrGift.dat"}},
+		{ZoneDataFormatTyrNPCRegen, []string{"ZoneData", "tyr", "NPCRegen.tyr"}},
+		{ZoneDataFormatTyrSkillLayer, []string{"ZoneData", "tyr", "SkillLayer.tyr"}},
+	}
+	service := &zoneDataService{}
+	for _, test := range tests {
+		path := writeZoneDataTestFile(t, root, test.parts...)
+		format, ok := service.Detect(root, path)
+		require.True(t, ok, path)
+		require.Equal(t, test.format, format, path)
+	}
+}
+
+func TestZoneDataApplyPreservesQuestExOpaqueBytes(t *testing.T) {
+	var data questexfile.Data
+	require.NoError(t, data.SetInt32(0, 42))
+	require.NoError(t, data.SetInt32(4, 1000))
+	var original bytes.Buffer
+	require.NoError(t, questexfile.Write(&original, data))
+	operation := ZoneDataOperation{Scope: "row", Row: 0, Field: "start_npc", Value: json.RawMessage("2000")}
+
+	updated, err := (&zoneDataService{}).Apply(original.Bytes(), ZoneDataFormatQuestEx, []ZoneDataOperation{operation})
+	require.NoError(t, err)
+	require.Equal(t, original.Bytes()[:4], updated[:4])
+	require.Equal(t, original.Bytes()[8:], updated[8:])
 }
 
 func writeZoneDataTestFile(t *testing.T, root string, parts ...string) string {

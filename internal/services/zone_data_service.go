@@ -36,6 +36,18 @@ const (
 	ZoneDataFormatDerbyGift         ZoneDataFormat = "derby_gift"
 	ZoneDataFormatEventItemReward   ZoneDataFormat = "event_item_reward"
 	ZoneDataFormatA3Present         ZoneDataFormat = "a3_present"
+	ZoneDataFormatMessage           ZoneDataFormat = "message"
+	ZoneDataFormatQuestEx           ZoneDataFormat = "quest_ex"
+	ZoneDataFormatSQuestQuiz        ZoneDataFormat = "squest_quiz"
+	ZoneDataFormatTowerTreasure     ZoneDataFormat = "tower_treasure"
+	ZoneDataFormatOXQuiz            ZoneDataFormat = "ox_quiz"
+	ZoneDataFormatTyrBase           ZoneDataFormat = "tyr_base"
+	ZoneDataFormatTyrPortal         ZoneDataFormat = "tyr_portal"
+	ZoneDataFormatTyrUpgrade        ZoneDataFormat = "tyr_upgrade"
+	ZoneDataFormatTyrStartPoint     ZoneDataFormat = "tyr_start_point"
+	ZoneDataFormatTyrGift           ZoneDataFormat = "tyr_gift"
+	ZoneDataFormatTyrNPCRegen       ZoneDataFormat = "tyr_npc_regen"
+	ZoneDataFormatTyrSkillLayer     ZoneDataFormat = "tyr_skill_layer"
 )
 
 var ErrZoneDataStale = errors.New("zone data source hash is stale")
@@ -134,6 +146,9 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 	}
 
 	parts := strings.Split(strings.ToLower(filepath.ToSlash(relative)), "/")
+	if len(parts) == 1 && parts[0] == "a3msg_zone_tw.dat" {
+		return ZoneDataFormatMessage, true
+	}
 	if len(parts) == 1 && (numberedDataFile(parts[0], "present_") || numberedDataFile(parts[0], "reload_present_")) {
 		return ZoneDataFormatA3Present, true
 	}
@@ -145,6 +160,36 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 
 		if strings.HasPrefix(parts[1], "eventitem") && strings.HasSuffix(parts[1], ".dat") {
 			return ZoneDataFormatEventItemReward, true
+		}
+	}
+	if len(parts) == 2 && parts[0] == "tower" && numberedExtensionFile(parts[1], ".itm", 6) {
+		return ZoneDataFormatTowerTreasure, true
+	}
+	if len(parts) == 2 && parts[0] == "oxquiz" && parts[1] == "oxquiztable.dat" {
+		return ZoneDataFormatOXQuiz, true
+	}
+	if len(parts) == 3 && parts[0] == "zonedata" && parts[1] == "quest" && fixedDigitDataFile(parts[2], 4) {
+		return ZoneDataFormatQuestEx, true
+	}
+	if len(parts) == 3 && parts[0] == "zonedata" && parts[1] == "squest" && parts[2] == "quiztable.dat" {
+		return ZoneDataFormatSQuestQuiz, true
+	}
+	if len(parts) == 3 && parts[0] == "zonedata" && parts[1] == "tyr" {
+		switch parts[2] {
+		case "baseinfo.tyr":
+			return ZoneDataFormatTyrBase, true
+		case "warpportal.tyr":
+			return ZoneDataFormatTyrPortal, true
+		case "upgrade.tyr":
+			return ZoneDataFormatTyrUpgrade, true
+		case "startpoint.tyr":
+			return ZoneDataFormatTyrStartPoint, true
+		case "tyrgift.dat":
+			return ZoneDataFormatTyrGift, true
+		case "npcregen.tyr":
+			return ZoneDataFormatTyrNPCRegen, true
+		case "skilllayer.tyr":
+			return ZoneDataFormatTyrSkillLayer, true
 		}
 	}
 
@@ -229,6 +274,24 @@ func numberedDataFile(value string, prefix string) bool {
 	return err == nil
 }
 
+func fixedDigitDataFile(value string, digits int) bool {
+	if len(value) != digits+4 || !strings.HasSuffix(value, ".dat") {
+		return false
+	}
+
+	_, err := strconv.ParseUint(value[:digits], 10, 32)
+	return err == nil
+}
+
+func numberedExtensionFile(value string, extension string, max uint64) bool {
+	if !strings.HasSuffix(value, extension) {
+		return false
+	}
+
+	parsed, err := strconv.ParseUint(strings.TrimSuffix(value, extension), 10, 32)
+	return err == nil && parsed <= max
+}
+
 func decodeZoneData(data []byte, format ZoneDataFormat) (ZoneDataFile, error) {
 	result := ZoneDataFile{
 		Format:       format,
@@ -265,6 +328,10 @@ func decodeZoneData(data []byte, format ZoneDataFormat) (ZoneDataFile, error) {
 		ZoneDataFormatShueCombination, ZoneDataFormatLottery, ZoneDataFormatDerbyGift,
 		ZoneDataFormatEventItemReward, ZoneDataFormatA3Present:
 		result.Schema, result.Rows, err = decodeEconomyZoneData(data, format)
+	case ZoneDataFormatMessage, ZoneDataFormatQuestEx, ZoneDataFormatSQuestQuiz, ZoneDataFormatTowerTreasure,
+		ZoneDataFormatOXQuiz, ZoneDataFormatTyrBase, ZoneDataFormatTyrPortal, ZoneDataFormatTyrUpgrade,
+		ZoneDataFormatTyrStartPoint, ZoneDataFormatTyrGift, ZoneDataFormatTyrNPCRegen, ZoneDataFormatTyrSkillLayer:
+		result.Schema, result.Rows, err = decodeRemainingZoneData(data, format)
 	default:
 		err = fmt.Errorf("unsupported ZoneData format %q", format)
 	}
