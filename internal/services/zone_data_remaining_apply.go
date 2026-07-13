@@ -199,16 +199,17 @@ func applyTowerTreasure(original []byte, operations []ZoneDataOperation, allowed
 			return nil, err
 		}
 		offset := op.Row * towertreasurefile.RecordSize
-		if op.Field == "item_code" {
+		switch op.Field {
+		case "item_code":
 			if v > 65535 {
 				return nil, fmt.Errorf("item code exceeds 65535")
 			}
 			data.Records[op.Row].SetItemCode(uint16(v))
 			allowBytes(allowed, offset, 2)
-		} else if op.Field == "weight" {
+		case "weight":
 			data.Records[op.Row].SetWeight(uint32(v))
 			allowBytes(allowed, offset+2, 4)
-		} else {
+		default:
 			return nil, fmt.Errorf("unknown Tower treasure field %q", op.Field)
 		}
 	}
