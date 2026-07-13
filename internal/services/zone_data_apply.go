@@ -39,6 +39,10 @@ func (s *zoneDataService) Apply(original []byte, format ZoneDataFormat, operatio
 		encoded, err = applyPassiveSkill(original, operations, allowed)
 	case ZoneDataFormatHiredSoldierSkill:
 		encoded, err = applyHiredSoldierSkill(original, operations, allowed)
+	case ZoneDataFormatCashItem, ZoneDataFormatSetItem, ZoneDataFormatPresentItemSet, ZoneDataFormatPet,
+		ZoneDataFormatShueCombination, ZoneDataFormatLottery, ZoneDataFormatDerbyGift,
+		ZoneDataFormatEventItemReward, ZoneDataFormatA3Present:
+		encoded, err = applyEconomyZoneData(original, format, operations, allowed)
 	default:
 		err = fmt.Errorf("unsupported ZoneData format %q", format)
 	}

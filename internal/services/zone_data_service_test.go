@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/project-agonyl/agonyl-utils-go/lotteryfile"
 	"github.com/project-agonyl/agonyl-utils-go/npcskillfile"
 	"github.com/stretchr/testify/require"
 )
@@ -68,6 +69,45 @@ func TestZoneDataApplyRejectsUnregisteredField(t *testing.T) {
 
 	_, err := service.Apply(original, ZoneDataFormatNPCSkill, []ZoneDataOperation{operation})
 	require.Error(t, err)
+}
+
+func TestZoneDataDetectsV06FormatsInsideServerRoot(t *testing.T) {
+	root := t.TempDir()
+	tests := []struct {
+		format ZoneDataFormat
+		parts  []string
+	}{
+		{ZoneDataFormatCashItem, []string{"ZoneData", "shop", "CashItemTbl.dat"}},
+		{ZoneDataFormatSetItem, []string{"ZoneData", "item", "SIT2"}},
+		{ZoneDataFormatPresentItemSet, []string{"ZoneData", "item", "PresentItemSet.dat"}},
+		{ZoneDataFormatPet, []string{"ZoneData", "item", "pet"}},
+		{ZoneDataFormatShueCombination, []string{"ZoneData", "item", "ShueCombinationData"}},
+		{ZoneDataFormatDerbyGift, []string{"ZoneData", "npc", "DerbyGift.dat"}},
+		{ZoneDataFormatLottery, []string{"Event", "LotteryItem.dat"}},
+		{ZoneDataFormatEventItemReward, []string{"Event", "EventItem2.dat"}},
+		{ZoneDataFormatA3Present, []string{"Present_3.dat"}},
+	}
+	service := &zoneDataService{}
+	for _, test := range tests {
+		path := writeZoneDataTestFile(t, root, test.parts...)
+		format, ok := service.Detect(root, path)
+		require.True(t, ok, path)
+		require.Equal(t, test.format, format, path)
+	}
+}
+
+func TestZoneDataApplyPreservesLotterySiblingMessages(t *testing.T) {
+	original := make([]byte, lotteryfile.RecordSize)
+	for index := range original {
+		original[index] = byte(index)
+	}
+	operation := ZoneDataOperation{Scope: "row", Row: 0, Field: "message_2", Value: json.RawMessage(`"winner"`)}
+
+	updated, err := (&zoneDataService{}).Apply(original, ZoneDataFormatLottery, []ZoneDataOperation{operation})
+	require.NoError(t, err)
+	offset := 4 + 2*lotteryfile.MessageSize
+	require.Equal(t, original[:offset], updated[:offset])
+	require.Equal(t, original[offset+lotteryfile.MessageSize:], updated[offset+lotteryfile.MessageSize:])
 }
 
 func writeZoneDataTestFile(t *testing.T, root string, parts ...string) string {

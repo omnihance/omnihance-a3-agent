@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/microsoft/go-mssqldb v1.10.0
-	github.com/project-agonyl/agonyl-utils-go v0.5.0
+	github.com/project-agonyl/agonyl-utils-go v0.6.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil/v3 v3.24.5

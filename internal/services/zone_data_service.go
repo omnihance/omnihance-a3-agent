@@ -27,6 +27,15 @@ const (
 	ZoneDataFormatSkillDelay        ZoneDataFormat = "skill_delay"
 	ZoneDataFormatPassiveSkill      ZoneDataFormat = "passive_skill"
 	ZoneDataFormatHiredSoldierSkill ZoneDataFormat = "hired_soldier_skill"
+	ZoneDataFormatCashItem          ZoneDataFormat = "cash_item"
+	ZoneDataFormatSetItem           ZoneDataFormat = "set_item"
+	ZoneDataFormatPresentItemSet    ZoneDataFormat = "present_item_set"
+	ZoneDataFormatPet               ZoneDataFormat = "pet"
+	ZoneDataFormatShueCombination   ZoneDataFormat = "shue_combination"
+	ZoneDataFormatLottery           ZoneDataFormat = "lottery"
+	ZoneDataFormatDerbyGift         ZoneDataFormat = "derby_gift"
+	ZoneDataFormatEventItemReward   ZoneDataFormat = "event_item_reward"
+	ZoneDataFormatA3Present         ZoneDataFormat = "a3_present"
 )
 
 var ErrZoneDataStale = errors.New("zone data source hash is stale")
@@ -125,6 +134,20 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 	}
 
 	parts := strings.Split(strings.ToLower(filepath.ToSlash(relative)), "/")
+	if len(parts) == 1 && (numberedDataFile(parts[0], "present_") || numberedDataFile(parts[0], "reload_present_")) {
+		return ZoneDataFormatA3Present, true
+	}
+
+	if len(parts) == 2 && parts[0] == "event" {
+		if parts[1] == "lotteryitem.dat" {
+			return ZoneDataFormatLottery, true
+		}
+
+		if strings.HasPrefix(parts[1], "eventitem") && strings.HasSuffix(parts[1], ".dat") {
+			return ZoneDataFormatEventItemReward, true
+		}
+	}
+
 	if len(parts) == 3 && parts[0] == "zonedata" {
 		switch parts[1] {
 		case "map":
@@ -137,6 +160,23 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 				return ZoneDataFormatNPCSkill, true
 			case "favindex.dat":
 				return ZoneDataFormatNPCFavor, true
+			case "derbygift.dat":
+				return ZoneDataFormatDerbyGift, true
+			}
+		case "shop":
+			if parts[2] == "cashitemtbl.dat" {
+				return ZoneDataFormatCashItem, true
+			}
+		case "item":
+			switch parts[2] {
+			case "sit0", "sit1", "sit2", "sit3":
+				return ZoneDataFormatSetItem, true
+			case "presentitemset.dat":
+				return ZoneDataFormatPresentItemSet, true
+			case "pet":
+				return ZoneDataFormatPet, true
+			case "shuecombinationdata":
+				return ZoneDataFormatShueCombination, true
 			}
 		case "pc":
 			if isClassFile(parts[2]) {
@@ -179,6 +219,16 @@ func isClassFile(value string) bool {
 	return value == "0" || value == "1" || value == "2" || value == "3"
 }
 
+func numberedDataFile(value string, prefix string) bool {
+	if !strings.HasPrefix(value, prefix) || !strings.HasSuffix(value, ".dat") {
+		return false
+	}
+
+	number := strings.TrimSuffix(strings.TrimPrefix(value, prefix), ".dat")
+	_, err := strconv.ParseUint(number, 10, 32)
+	return err == nil
+}
+
 func decodeZoneData(data []byte, format ZoneDataFormat) (ZoneDataFile, error) {
 	result := ZoneDataFile{
 		Format:       format,
@@ -211,6 +261,10 @@ func decodeZoneData(data []byte, format ZoneDataFormat) (ZoneDataFile, error) {
 	case ZoneDataFormatHiredSoldierSkill:
 		result.Schema = hiredSoldierSkillSchema()
 		result.Rows, err = decodeHiredSoldierSkill(data)
+	case ZoneDataFormatCashItem, ZoneDataFormatSetItem, ZoneDataFormatPresentItemSet, ZoneDataFormatPet,
+		ZoneDataFormatShueCombination, ZoneDataFormatLottery, ZoneDataFormatDerbyGift,
+		ZoneDataFormatEventItemReward, ZoneDataFormatA3Present:
+		result.Schema, result.Rows, err = decodeEconomyZoneData(data, format)
 	default:
 		err = fmt.Errorf("unsupported ZoneData format %q", format)
 	}
