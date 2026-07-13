@@ -22,6 +22,11 @@ func TestZoneDataDetectRequiresConfiguredRootContainment(t *testing.T) {
 	format, ok := service.Detect(root, inside)
 	require.True(t, ok)
 	require.Equal(t, ZoneDataFormatPCData, format)
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	format, ok = service.DetectResolved(resolvedRoot, inside)
+	require.True(t, ok)
+	require.Equal(t, ZoneDataFormatPCData, format)
 
 	_, ok = service.Detect(root, outside)
 	require.False(t, ok)
@@ -42,6 +47,21 @@ func TestZoneDataDetectUsesRelativePathPrecedence(t *testing.T) {
 	require.Equal(t, ZoneDataFormatSkillData, format)
 	_, ok = service.Detect(root, item)
 	require.False(t, ok)
+}
+
+func TestIsZoneDataCandidatePath(t *testing.T) {
+	tests := map[string]bool{
+		filepath.Join("ZoneData", "map", "1.map"):               true,
+		filepath.Join("ZoneData", "npc", "NPCSkill"):            true,
+		filepath.Join("ZoneData", "pc", "0"):                    true,
+		filepath.Join("ZoneData", "item", "PresentItemSet.dat"): true,
+		filepath.Join("ZoneData", "readme.txt"):                 false,
+		filepath.Join("logs", "zone.log"):                       false,
+	}
+
+	for path, expected := range tests {
+		require.Equal(t, expected, IsZoneDataCandidatePath(path), path)
+	}
 }
 
 func TestZoneDataApplyPreservesOpaqueNPCSkillBytes(t *testing.T) {

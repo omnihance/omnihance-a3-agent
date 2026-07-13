@@ -253,8 +253,8 @@ func (s *Server) createNodeFromEntry(parentPath string, entry fs.DirEntry, depth
 }
 
 func (s *Server) applyFileNodeMetadata(node *FileNode, path string, info fs.FileInfo, zoneRoot string) {
-	if zoneRoot != "" {
-		if _, ok := s.zoneDataService.Detect(zoneRoot, path); ok {
+	if zoneRoot != "" && services.IsZoneDataCandidatePath(path) {
+		if _, ok := s.zoneDataService.DetectResolved(zoneRoot, path); ok {
 			node.FileType = services.FileTypeZoneData
 			node.IsEditable = true
 			node.IsViewable = true
@@ -398,7 +398,7 @@ func (s *Server) validateZoneDataPath(w http.ResponseWriter, r *http.Request) (s
 		return "", nil, "", false
 	}
 
-	format, detected := s.zoneDataService.Detect(root, cleanPath)
+	format, detected := s.zoneDataService.DetectResolved(root, cleanPath)
 	if !detected {
 		writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodeFileNotViewable, "File is not a supported ZoneData file")
 		return "", nil, "", false

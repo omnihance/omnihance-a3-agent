@@ -481,6 +481,7 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
               {zoneDataFileData && !zoneDataFileError && (
                 <ZoneDataFileEdit
+                  key={filePath}
                   filePath={filePath}
                   defaultData={zoneDataFileData}
                 />

@@ -368,38 +368,45 @@ function ZoneMapEdit({
                 key={warp.index}
                 className="grid grid-cols-3 gap-2 rounded-md border p-3"
               >
-                {fieldsForScope(data, 'warp').map((field) => (
-                  <div key={field.key}>
-                    <Label
-                      htmlFor={`warp-${warp.index}-${field.key}`}
-                      className="text-xs"
-                    >
-                      {field.label}
-                    </Label>
-                    <Input
-                      id={`warp-${warp.index}-${field.key}`}
-                      type="number"
-                      min={field.min}
-                      max={field.max}
-                      value={Number(
-                        valueFor(
-                          'warp',
-                          warp.index,
-                          field.key,
-                          warp.values[field.key] ?? 0,
-                        ),
-                      )}
-                      onChange={(event) =>
-                        setValue(
-                          'warp',
-                          warp.index,
-                          field.key,
-                          Number(event.target.value),
-                        )
-                      }
-                    />
-                  </div>
-                ))}
+                {fieldsForScope(data, 'warp').map((field) => {
+                  const value = parseNumberInput(
+                    String(
+                      valueFor(
+                        'warp',
+                        warp.index,
+                        field.key,
+                        warp.values[field.key] ?? 0,
+                      ),
+                    ),
+                    0,
+                  );
+
+                  return (
+                    <div key={field.key}>
+                      <Label
+                        htmlFor={`warp-${warp.index}-${field.key}`}
+                        className="text-xs"
+                      >
+                        {field.label}
+                      </Label>
+                      <Input
+                        id={`warp-${warp.index}-${field.key}`}
+                        type="number"
+                        min={field.min}
+                        max={field.max}
+                        value={value}
+                        onChange={(event) =>
+                          setValue(
+                            'warp',
+                            warp.index,
+                            field.key,
+                            parseNumberInput(event.target.value, value),
+                          )
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </CardContent>
@@ -438,7 +445,7 @@ function FieldInput({
       onChange={(event) =>
         onChange(
           field.type === 'integer'
-            ? Number(event.target.value)
+            ? parseNumberInput(event.target.value, Number(value))
             : event.target.value,
         )
       }
@@ -463,11 +470,24 @@ function LabeledNumber({
         value={value}
         min={min}
         max={max}
-        onChange={(event) => onChange(Number(event.target.value))}
+        onChange={(event) =>
+          onChange(parseNumberInput(event.target.value, value))
+        }
         className="mt-2"
       />
     </div>
   );
+}
+
+function parseNumberInput(value: string, fallback: number) {
+  const safeFallback = Number.isFinite(fallback) ? fallback : 0;
+
+  if (value.trim() === '') {
+    return safeFallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : safeFallback;
 }
 
 type SetValue = (

@@ -102,6 +102,7 @@ type ZoneDataOperation struct {
 type ZoneDataService interface {
 	ResolveRoot() (string, error)
 	Detect(root string, path string) (ZoneDataFormat, bool)
+	DetectResolved(root string, path string) (ZoneDataFormat, bool)
 	Read(path string, format ZoneDataFormat) (ZoneDataFile, error)
 	Apply(original []byte, format ZoneDataFormat, operations []ZoneDataOperation) ([]byte, error)
 }
@@ -126,7 +127,12 @@ func (s *zoneDataService) ResolveRoot() (string, error) {
 		return "", fmt.Errorf("zone server path is not configured")
 	}
 
-	return filepath.Abs(root)
+	rootPath, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.EvalSymlinks(filepath.Clean(rootPath))
 }
 
 func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool) {
@@ -135,6 +141,15 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 		return "", false
 	}
 
+	return s.DetectResolved(rootPath, path)
+}
+
+func (s *zoneDataService) DetectResolved(root string, path string) (ZoneDataFormat, bool) {
+	if !IsZoneDataCandidatePath(path) {
+		return "", false
+	}
+
+	rootPath := filepath.Clean(root)
 	filePath, err := filepath.EvalSymlinks(filepath.Clean(path))
 	if err != nil {
 		return "", false
@@ -243,6 +258,23 @@ func (s *zoneDataService) Detect(root string, path string) (ZoneDataFormat, bool
 	}
 
 	return "", false
+}
+
+func IsZoneDataCandidatePath(path string) bool {
+	extension := strings.ToLower(filepath.Ext(path))
+	switch extension {
+	case ".dat", ".itm", ".map", ".tyr":
+		return true
+	case "":
+		name := strings.ToLower(filepath.Base(path))
+		switch name {
+		case "0", "1", "2", "3", "npcskill", "pet", "shuecombinationdata",
+			"sit0", "sit1", "sit2", "sit3", "hsst0", "hsst1", "hsst2", "hsst3":
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *zoneDataService) Read(path string, format ZoneDataFormat) (ZoneDataFile, error) {
