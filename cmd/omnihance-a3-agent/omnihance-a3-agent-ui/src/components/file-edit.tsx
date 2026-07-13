@@ -25,6 +25,7 @@ import {
   getItemFile,
   getItemCombinationDataFile,
   getQuestFile,
+  getZoneDataFile,
   getMaps,
   type ItemFileNameEncoding,
 } from '@/lib/api';
@@ -36,6 +37,7 @@ import { DropFileEdit } from './drop-file-edit';
 import { ItemFileEdit } from './item-file-edit';
 import { ItemCombinationDataFileEdit } from './item-combination-data-file-edit';
 import { QuestFileEdit } from './quest-file-edit';
+import { ZoneDataFileEdit } from './zone-data-file-edit';
 import { queryKeys } from '@/constants';
 
 interface FileEditProps {
@@ -119,6 +121,16 @@ export function FileEdit({ filePath }: FileEditProps) {
       return getQuestFile({ path: filePath });
     },
     enabled: !!filePath && fileType === 'a3_quest_file' && canEditFiles,
+  });
+
+  const {
+    data: zoneDataFileData,
+    isLoading: zoneDataFileLoading,
+    error: zoneDataFileError,
+  } = useQuery({
+    queryKey: queryKeys.zoneDataFile(filePath),
+    queryFn: () => getZoneDataFile({ path: filePath }),
+    enabled: !!filePath && fileType === 'a3_zone_data_file' && canEditFiles,
   });
 
   const {
@@ -230,6 +242,7 @@ export function FileEdit({ filePath }: FileEditProps) {
     itemFileError,
     itemCombinationDataFileError,
     questFileError,
+    zoneDataFileError,
   ]);
 
   return (
@@ -278,7 +291,8 @@ export function FileEdit({ filePath }: FileEditProps) {
         dropFileError ||
         itemFileError ||
         itemCombinationDataFileError ||
-        questFileError) && (
+        questFileError ||
+        zoneDataFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
         </Alert>
@@ -458,6 +472,21 @@ export function FileEdit({ filePath }: FileEditProps) {
               )}
             </>
           )}
+          {fileType === 'a3_zone_data_file' && (
+            <>
+              {zoneDataFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {zoneDataFileData && !zoneDataFileError && (
+                <ZoneDataFileEdit
+                  filePath={filePath}
+                  defaultData={zoneDataFileData}
+                />
+              )}
+            </>
+          )}
           {fileType &&
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
@@ -465,7 +494,8 @@ export function FileEdit({ filePath }: FileEditProps) {
             fileType !== 'a3_drop_file' &&
             !isItemFileType(fileType) &&
             fileType !== 'a3_item_combination_data_file' &&
-            fileType !== 'a3_quest_file' && (
+            fileType !== 'a3_quest_file' &&
+            fileType !== 'a3_zone_data_file' && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   File type "{fileType}" is not yet supported for editing.

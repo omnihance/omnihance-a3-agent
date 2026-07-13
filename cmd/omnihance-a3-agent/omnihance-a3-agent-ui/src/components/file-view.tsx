@@ -39,6 +39,7 @@ import {
   getItemFile,
   getItemCombinationDataFile,
   getQuestFile,
+  getZoneDataFile,
   getRevisionSummary,
   createFileDownloadLink,
   revertFile,
@@ -53,6 +54,7 @@ import { DropFileView } from '@/components/drop-file-view';
 import { ItemFileView } from '@/components/item-file-view';
 import { ItemCombinationDataFileView } from '@/components/item-combination-data-file-view';
 import { QuestFileView } from '@/components/quest-file-view';
+import { ZoneDataFileView } from '@/components/zone-data-file-view';
 import { toast } from 'sonner';
 import { queryKeys } from '@/constants';
 
@@ -139,6 +141,16 @@ export function FileView({ filePath }: FileViewProps) {
       return getQuestFile({ path: filePath });
     },
     enabled: !!filePath && fileType === 'a3_quest_file',
+  });
+
+  const {
+    data: zoneDataFileData,
+    isLoading: zoneDataFileLoading,
+    error: zoneDataFileError,
+  } = useQuery({
+    queryKey: queryKeys.zoneDataFile(filePath),
+    queryFn: () => getZoneDataFile({ path: filePath }),
+    enabled: !!filePath && fileType === 'a3_zone_data_file',
   });
 
   const {
@@ -245,6 +257,9 @@ export function FileView({ filePath }: FileViewProps) {
         queryKey: queryKeys.questFile(filePath),
       });
       queryClient.invalidateQueries({
+        queryKey: queryKeys.zoneDataFile(filePath),
+      });
+      queryClient.invalidateQueries({
         queryKey: queryKeys.fileTree(filePath),
       });
       queryClient.invalidateQueries({
@@ -319,6 +334,7 @@ export function FileView({ filePath }: FileViewProps) {
     itemFileError,
     itemCombinationDataFileError,
     questFileError,
+    zoneDataFileError,
   ]);
 
   const getDirectoryPath = (filePath: string): string => {
@@ -427,7 +443,8 @@ export function FileView({ filePath }: FileViewProps) {
         dropFileError ||
         itemFileError ||
         itemCombinationDataFileError ||
-        questFileError) && (
+        questFileError ||
+        zoneDataFileError) && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{fileContentErrorMessage}</AlertDescription>
@@ -668,6 +685,19 @@ export function FileView({ filePath }: FileViewProps) {
             </>
           )}
 
+          {fileType === 'a3_zone_data_file' && (
+            <>
+              {zoneDataFileLoading && (
+                <div className="flex h-96 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {zoneDataFileData && !zoneDataFileError && (
+                <ZoneDataFileView data={zoneDataFileData} />
+              )}
+            </>
+          )}
+
           {fileType &&
             fileType !== 'text_file' &&
             fileType !== 'a3_npc_file' &&
@@ -676,13 +706,15 @@ export function FileView({ filePath }: FileViewProps) {
             !isItemFileType(fileType) &&
             fileType !== 'a3_item_combination_data_file' &&
             fileType !== 'a3_quest_file' &&
+            fileType !== 'a3_zone_data_file' &&
             !textFileLoading &&
             !npcFileLoading &&
             !spawnFileLoading &&
             !dropFileLoading &&
             !itemFileLoading &&
             !itemCombinationDataFileLoading &&
-            !questFileLoading && (
+            !questFileLoading &&
+            !zoneDataFileLoading && (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
                   File type &quot;{fileType}&quot; is not yet supported for

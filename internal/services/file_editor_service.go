@@ -29,6 +29,7 @@ const (
 	FileTypeIT3Item             FileType = "a3_it3_item_file"
 	FileTypeItemCombinationData FileType = "a3_item_combination_data_file"
 	FileTypeMap                 FileType = "a3_map_file"
+	FileTypeZoneData            FileType = "a3_zone_data_file"
 	FileTypeUnknown             FileType = "a3_unknown_file"
 	FileTypeSpawn               FileType = "a3_spawn_file"
 	FileTypeQuest               FileType = "a3_quest_file"
