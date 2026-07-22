@@ -20,6 +20,7 @@ export const API_ROUTES = {
   ITEM_FILE: '/api/file-tree/item-file',
   ITEM_COMBINATION_DATA_FILE: '/api/file-tree/item-combination-data',
   QUEST_FILE: '/api/file-tree/quest-file',
+  ZONE_DATA_FILE: '/api/file-tree/zone-data-file',
   REVERT_FILE: '/api/file-tree/revert-file',
   DUPLICATE_FILE: '/api/file-tree/duplicate-file',
   REVISION_COUNT: '/api/file-tree/revision-summary',
@@ -268,6 +269,7 @@ type FileNode = {
     | 'a3_it3_item_file'
     | 'a3_item_combination_data_file'
     | 'a3_map_file'
+    | 'a3_zone_data_file'
     | 'a3_spawn_file'
     | 'a3_unknown_file'
     | 'text_file'
@@ -300,6 +302,7 @@ const FileNodeSchema: z.ZodType<FileNode> = z.lazy(() =>
         'a3_it3_item_file',
         'a3_item_combination_data_file',
         'a3_map_file',
+        'a3_zone_data_file',
         'a3_spawn_file',
         'a3_quest_file',
         'a3_unknown_file',
@@ -356,12 +359,102 @@ export interface GetQuestFileParams {
   path: string;
 }
 
+export interface GetZoneDataFileParams {
+  path: string;
+}
+
 const UpdateFileResponseSchema = z.object({
   message: z.string(),
   revision_id: z.number().int(),
 });
 
 export type UpdateFileResponse = z.infer<typeof UpdateFileResponseSchema>;
+
+const ZoneDataFieldSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  type: z.enum(['integer', 'boolean', 'string']),
+  scope: z.enum(['row', 'map', 'warp', 'cell']),
+  editable: z.boolean(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+});
+
+const ZoneDataValueSchema = z.union([z.number(), z.string(), z.boolean()]);
+
+const ZoneDataRowSchema = z.object({
+  index: z.number().int().nonnegative(),
+  values: z.record(z.string(), ZoneDataValueSchema),
+  opaque_bytes: z.string(),
+});
+
+const ZoneDataMapSchema = z.object({
+  name: z.string(),
+  warps: z.array(ZoneDataRowSchema),
+  cells: z.array(z.number().int().nonnegative()),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  trailing_opaque_bytes: z.string(),
+});
+
+const ZoneDataFileSchema = z.object({
+  format: z.enum([
+    'zone_map',
+    'npc_skill',
+    'npc_favor',
+    'pc_data',
+    'skill_data',
+    'skill_delay',
+    'passive_skill',
+    'hired_soldier_skill',
+    'cash_item',
+    'set_item',
+    'present_item_set',
+    'pet',
+    'shue_combination',
+    'lottery',
+    'derby_gift',
+    'event_item_reward',
+    'a3_present',
+    'message',
+    'quest_ex',
+    'squest_quiz',
+    'tower_treasure',
+    'ox_quiz',
+    'tyr_base',
+    'tyr_portal',
+    'tyr_upgrade',
+    'tyr_start_point',
+    'tyr_gift',
+    'tyr_npc_regen',
+    'tyr_skill_layer',
+  ]),
+  source_hash: z.string(),
+  schema: z.array(ZoneDataFieldSchema),
+  rows: z.array(ZoneDataRowSchema).optional(),
+  map: ZoneDataMapSchema.optional(),
+  capabilities: z.object({
+    update_fields: z.boolean(),
+    insert_rows: z.boolean(),
+    delete_rows: z.boolean(),
+  }),
+});
+
+export type ZoneDataField = z.infer<typeof ZoneDataFieldSchema>;
+export type ZoneDataRow = z.infer<typeof ZoneDataRowSchema>;
+export type ZoneDataFile = z.infer<typeof ZoneDataFileSchema>;
+
+export interface ZoneDataOperation {
+  scope: ZoneDataField['scope'];
+  row: number;
+  field: string;
+  value: number | string | boolean;
+}
+
+export interface ZoneDataUpdateRequest {
+  source_hash: string;
+  operations: ZoneDataOperation[];
+}
 
 const RevisionSummaryResponseSchema = z.object({
   count: z.number().int().nonnegative(),
@@ -1198,6 +1291,35 @@ export async function updateQuestFile(
     UpdateFileResponseSchema,
     response.data,
     API_ROUTES.QUEST_FILE,
+  );
+}
+
+export async function getZoneDataFile(
+  params: GetZoneDataFileParams,
+): Promise<ZoneDataFile> {
+  const response = await axiosInstance.get<unknown>(API_ROUTES.ZONE_DATA_FILE, {
+    params,
+  });
+  return validateResponse(
+    ZoneDataFileSchema,
+    response.data,
+    API_ROUTES.ZONE_DATA_FILE,
+  );
+}
+
+export async function updateZoneDataFile(
+  params: GetZoneDataFileParams,
+  data: ZoneDataUpdateRequest,
+): Promise<UpdateFileResponse> {
+  const response = await axiosInstance.put<unknown>(
+    API_ROUTES.ZONE_DATA_FILE,
+    data,
+    { params },
+  );
+  return validateResponse(
+    UpdateFileResponseSchema,
+    response.data,
+    API_ROUTES.ZONE_DATA_FILE,
   );
 }
 

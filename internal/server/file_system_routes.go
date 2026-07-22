@@ -58,6 +58,8 @@ func (s *Server) InitializeFileSystemRoutes(r *chi.Mux) {
 		r.Put("/item-combination-data", s.handleUpdateItemCombinationDataFile)
 		r.Get("/quest-file", s.handleQuestFileData)
 		r.Put("/quest-file", s.handleUpdateQuestFile)
+		r.Get("/zone-data-file", s.handleZoneDataFile)
+		r.Put("/zone-data-file", s.handleUpdateZoneDataFile)
 		r.Post("/revert-file", s.handleRevertFile)
 		r.Post("/duplicate-file", s.handleDuplicateFile)
 		r.Get("/revision-summary", s.handleRevisionSummary)
@@ -79,12 +81,13 @@ func (s *Server) handleFileTree(w http.ResponseWriter, r *http.Request) {
 
 	var rootNode *FileNode
 	var err error
+	zoneRoot, _ := s.zoneDataService.ResolveRoot()
 
 	if pathParam == "" {
-		rootNode, err = s.getSystemRoots(showDotfiles)
+		rootNode, err = s.getSystemRoots(showDotfiles, zoneRoot)
 	} else {
 		cleanPath := filepath.Clean(pathParam)
-		rootNode, err = s.getDirectoryNode(cleanPath, showDotfiles)
+		rootNode, err = s.getDirectoryNode(cleanPath, showDotfiles, zoneRoot)
 	}
 
 	if err != nil {
@@ -113,7 +116,7 @@ func (s *Server) handleFileTree(w http.ResponseWriter, r *http.Request) {
 	_ = utils.WriteJSONResponse(w, response)
 }
 
-func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
+func (s *Server) getSystemRoots(showDotfiles bool, zoneRoot string) (*FileNode, error) {
 	hostname, _ := s.fileEditor.Hostname()
 	if hostname == "" {
 		hostname = "A3 Online Server"
@@ -160,7 +163,7 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 				continue
 			}
 
-			node := s.createNodeFromEntry(rootPath, entry, 1)
+			node := s.createNodeFromEntry(rootPath, entry, 1, zoneRoot)
 			root.Children = append(root.Children, node)
 		}
 	}
@@ -168,7 +171,7 @@ func (s *Server) getSystemRoots(showDotfiles bool) (*FileNode, error) {
 	return root, nil
 }
 
-func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, error) {
+func (s *Server) getDirectoryNode(path string, showDotfiles bool, zoneRoot string) (*FileNode, error) {
 	info, err := s.fileEditor.Stat(path)
 	if err != nil {
 		return nil, err
@@ -203,7 +206,7 @@ func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, er
 					continue
 				}
 
-				child := s.createNodeFromEntry(path, entry, 1)
+				child := s.createNodeFromEntry(path, entry, 1, zoneRoot)
 				node.Children = append(node.Children, child)
 			}
 		}
@@ -211,16 +214,13 @@ func (s *Server) getDirectoryNode(path string, showDotfiles bool) (*FileNode, er
 		node.FileSize = info.Size()
 		node.FileExtension = filepath.Ext(name)
 		node.MimeType = mime.TypeByExtension(node.FileExtension)
-		node.FileType = s.fileEditor.GetFileType(path, info)
-		node.IsEditable = s.fileEditor.IsFileEditable(path, info)
-		node.IsViewable = s.fileEditor.IsFileViewable(path, info)
-		node.APIEndpoint = s.fileEditor.GetFileAPIEndpoint(path, info)
+		s.applyFileNodeMetadata(node, path, info, zoneRoot)
 	}
 
 	return node, nil
 }
 
-func (s *Server) createNodeFromEntry(parentPath string, entry fs.DirEntry, depth int) *FileNode {
+func (s *Server) createNodeFromEntry(parentPath string, entry fs.DirEntry, depth int, zoneRoot string) *FileNode {
 	kind := "file"
 	if entry.IsDir() {
 		kind = "directory"
@@ -245,14 +245,174 @@ func (s *Server) createNodeFromEntry(parentPath string, entry fs.DirEntry, depth
 			node.FileSize = info.Size()
 			node.FileExtension = filepath.Ext(entry.Name())
 			node.MimeType = mime.TypeByExtension(node.FileExtension)
-			node.FileType = s.fileEditor.GetFileType(fullPath, info)
-			node.IsEditable = s.fileEditor.IsFileEditable(fullPath, info)
-			node.IsViewable = s.fileEditor.IsFileViewable(fullPath, info)
-			node.APIEndpoint = s.fileEditor.GetFileAPIEndpoint(fullPath, info)
+			s.applyFileNodeMetadata(node, fullPath, info, zoneRoot)
 		}
 	}
 
 	return node
+}
+
+func (s *Server) applyFileNodeMetadata(node *FileNode, path string, info fs.FileInfo, zoneRoot string) {
+	if zoneRoot != "" && services.IsZoneDataCandidatePath(path) {
+		if _, ok := s.zoneDataService.DetectResolved(zoneRoot, path); ok {
+			node.FileType = services.FileTypeZoneData
+			node.IsEditable = true
+			node.IsViewable = true
+			node.APIEndpoint = "/file-tree/zone-data-file"
+			return
+		}
+	}
+
+	node.FileType = s.fileEditor.GetFileType(path, info)
+	node.IsEditable = s.fileEditor.IsFileEditable(path, info)
+	node.IsViewable = s.fileEditor.IsFileViewable(path, info)
+	node.APIEndpoint = s.fileEditor.GetFileAPIEndpoint(path, info)
+}
+
+func (s *Server) handleZoneDataFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionViewFiles) {
+		return
+	}
+
+	cleanPath, _, format, ok := s.validateZoneDataPath(w, r)
+	if !ok {
+		return
+	}
+
+	data, err := s.zoneDataService.Read(cleanPath, format)
+	if err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeFileReadError,
+			"context":   "file-system",
+			"errors":    []string{"Failed to decode ZoneData file: " + err.Error()},
+		})
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, data)
+}
+
+func (s *Server) handleUpdateZoneDataFile(w http.ResponseWriter, r *http.Request) {
+	if !s.requireUserPermission(w, r, permissions.ActionEditFiles) {
+		return
+	}
+
+	userID, ok := utils.GetUserIdFromContext(r.Context())
+	if !ok {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusUnauthorized, map[string]interface{}{
+			"errorCode": constants.ErrorCodeUnauthorized,
+			"context":   "file-system",
+			"errors":    []string{"User ID not found in context"},
+		})
+		return
+	}
+
+	cleanPath, info, format, ok := s.validateZoneDataPath(w, r)
+	if !ok {
+		return
+	}
+
+	var request ZoneDataUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"Invalid request body: " + err.Error()},
+		})
+		return
+	}
+
+	if request.SourceHash == "" || len(request.Operations) == 0 {
+		_ = utils.WriteJSONResponseWithStatus(w, http.StatusBadRequest, map[string]interface{}{
+			"errorCode": constants.ErrorCodeBadRequest,
+			"context":   "file-system",
+			"errors":    []string{"source_hash and at least one operation are required"},
+		})
+		return
+	}
+
+	ctx := &fileUpdateContext{userID: userID, cleanPath: cleanPath, info: info, fileID: utils.GenerateMD5Hash(cleanPath)}
+	revisionID, ok := s.updateFileWithRevision(w, ctx, func() ([]byte, func() error, bool) {
+		original, err := s.fileEditor.ReadFile(cleanPath)
+		if err != nil {
+			writeZoneDataError(w, http.StatusInternalServerError, constants.ErrorCodeFileReadError, "Failed to re-read ZoneData file: "+err.Error())
+			return nil, nil, false
+		}
+
+		if utils.CalculateFileHash(original) != request.SourceHash {
+			writeZoneDataError(w, http.StatusConflict, constants.ErrorCodeBadRequest, services.ErrZoneDataStale.Error())
+			return nil, nil, false
+		}
+
+		updated, err := s.zoneDataService.Apply(original, format, request.Operations)
+		if err != nil {
+			writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, err.Error())
+			return nil, nil, false
+		}
+
+		return updated, func() error {
+			return s.fileEditor.WriteFile(cleanPath, updated, info.Mode())
+		}, true
+	})
+	if !ok {
+		return
+	}
+
+	_ = utils.WriteJSONResponse(w, map[string]interface{}{
+		"message":     "File updated successfully",
+		"revision_id": revisionID,
+	})
+}
+
+func (s *Server) validateZoneDataPath(w http.ResponseWriter, r *http.Request) (string, fs.FileInfo, services.ZoneDataFormat, bool) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, "Path parameter is required")
+		return "", nil, "", false
+	}
+
+	cleanPath := filepath.Clean(pathParam)
+	info, err := s.fileEditor.Stat(cleanPath)
+	if err != nil {
+		status := http.StatusInternalServerError
+		errorCode := constants.ErrorCodeFileReadError
+		message := "Cannot read file: " + err.Error()
+		if s.fileEditor.IsNotExist(err) {
+			status = http.StatusNotFound
+			errorCode = constants.ErrorCodeNotFound
+			message = "Path not found"
+		}
+
+		writeZoneDataError(w, status, errorCode, message)
+		return "", nil, "", false
+	}
+
+	if info.IsDir() {
+		writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodePathIsDirectory, "Path is a directory, not a file")
+		return "", nil, "", false
+	}
+
+	root, err := s.zoneDataService.ResolveRoot()
+	if err != nil {
+		writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodeBadRequest, "Zone Server path is not configured")
+		return "", nil, "", false
+	}
+
+	format, detected := s.zoneDataService.DetectResolved(root, cleanPath)
+	if !detected {
+		writeZoneDataError(w, http.StatusBadRequest, constants.ErrorCodeFileNotViewable, "File is not a supported ZoneData file")
+		return "", nil, "", false
+	}
+
+	return cleanPath, info, format, true
+}
+
+func writeZoneDataError(w http.ResponseWriter, status int, errorCode string, message string) {
+	_ = utils.WriteJSONResponseWithStatus(w, status, map[string]interface{}{
+		"errorCode": errorCode,
+		"context":   "file-system",
+		"errors":    []string{message},
+	})
 }
 
 func (s *Server) handleNPCFileData(w http.ResponseWriter, r *http.Request) {
@@ -3673,6 +3833,11 @@ type FileNode struct {
 type FileTreeResponse struct {
 	OS       string    `json:"os"`
 	FileTree *FileNode `json:"file_tree"`
+}
+
+type ZoneDataUpdateRequest struct {
+	SourceHash string                       `json:"source_hash"`
+	Operations []services.ZoneDataOperation `json:"operations"`
 }
 
 type NPCFileAPIData struct {

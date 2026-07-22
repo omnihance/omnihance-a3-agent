@@ -42,6 +42,7 @@ export const queryKeys = {
   itemCombinationDataFile: (path: string) =>
     ['item-combination-data-file', path] as const,
   questFile: (path: string) => ['quest-file', path] as const,
+  zoneDataFile: (path: string) => ['zone-data-file', path] as const,
   revisionSummary: (path: string) => ['revision-summary', path] as const,
   users: (page: number, pageSize: number, search?: string) => {
     if (search !== undefined && search !== '') {

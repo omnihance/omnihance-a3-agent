@@ -25,6 +25,7 @@ type Server struct {
 	versionChecker       services.VersionCheckerService
 	backupService        services.BackupService
 	serverViewService    services.ServerViewService
+	zoneDataService      services.ZoneDataService
 	uploadManager        *fileUploadManager
 }
 
@@ -55,6 +56,7 @@ func NewServer(
 		versionChecker:       versionChecker,
 		backupService:        backupService,
 		serverViewService:    serverViewService,
+		zoneDataService:      services.NewZoneDataService(internalDB, fileEditor),
 	}
 
 	newServer.uploadManager = newFileUploadManager(cfg.RevisionsDirectory, fileEditor, log, cfg.MaxFileUploadSizeBytes())
