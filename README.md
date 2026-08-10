@@ -489,6 +489,55 @@ scripts/run.sh
 
 The application will start on `http://localhost:8080` by default.
 
+### Docker
+
+Release builds are published to GitHub Container Registry as multi-arch (`linux/amd64`, `linux/arm64`) images:
+
+```bash
+docker run -d \
+  --name omnihance-a3-agent \
+  -p 8080:8080 \
+  -v omnihance-a3-agent-data:/data \
+  ghcr.io/omnihance/omnihance-a3-agent:latest
+```
+
+Available tags: `latest`, `X.Y.Z`, `X.Y`, and `X`. Prereleases only publish the exact `X.Y.Z-prerelease` tag.
+
+Or build the image locally:
+
+```bash
+docker build --build-arg VERSION=dev -t omnihance-a3-agent .
+```
+
+#### Docker Compose
+
+A [`docker-compose.yml`](docker-compose.yml) is included. Adjust the ports, environment variables and mounted game server directories in it, then run:
+
+```bash
+docker compose up -d
+```
+
+Uncomment the `build` block in `docker-compose.yml` to build from this repository instead of pulling the published image, and run `docker compose up -d --build`.
+
+#### Container details
+
+- Runs as non-root user `omnihance` (UID/GID `1000`).
+- All state (SQLite database, `.env`, logs, revisions, backups, generated ZIP archives) lives in the `/data` volume.
+- `RUNNING_IN_DOCKER` is set to `true`, which disables host metrics collection since container metrics do not reflect the host.
+- A `HEALTHCHECK` polls `/health` on `$PORT`.
+
+Mount the game server directories you want to manage, and make sure they are readable/writable by UID `1000` (or start the container with `--user root`):
+
+```bash
+docker run -d \
+  --name omnihance-a3-agent \
+  -p 8080:8080 \
+  -v omnihance-a3-agent-data:/data \
+  -v /srv/a3-server:/srv/a3-server \
+  -e COOKIE_SECURE=true \
+  ghcr.io/omnihance/omnihance-a3-agent:latest
+```
+
 ### Development
 
 #### Backend Development

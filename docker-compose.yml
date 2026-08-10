@@ -1,0 +1,24 @@
+services:
+  omnihance-a3-agent:
+    image: ghcr.io/omnihance/omnihance-a3-agent:latest
+    # Uncomment to build the image from this repository instead of pulling it.
+    # build:
+    #   context: .
+    #   args:
+    #     VERSION: dev
+    container_name: omnihance-a3-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Set to true when serving the agent behind HTTPS.
+      COOKIE_SECURE: "false"
+    volumes:
+      - omnihance-a3-agent-data:/data
+      # Mount the game server directories you want to manage. They must be
+      # readable/writable by UID 1000, or override the container user below.
+      # - /srv/a3-server:/srv/a3-server
+    # user: root
+
+volumes:
+  omnihance-a3-agent-data:
