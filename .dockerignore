@@ -1,0 +1,41 @@
+# For more help, visit the .dockerignore file reference guide at
+# https://docs.docker.com/go/build-context-dockerignore/
+
+# Version control
+**/.git
+**/.gitignore
+
+# Docker
+**/.dockerignore
+**/Dockerfile*
+**/docker-compose*
+**/compose.y*ml
+
+# Dependencies and build output
+**/node_modules
+cmd/omnihance-a3-agent/omnihance-a3-agent-ui/dist
+bin
+
+# Editors and tooling
+**/.vscode
+**/.idea
+**/.cursor
+**/.agents
+**/.codegraph
+**/.mockery.yml
+.github
+
+# Runtime state and secrets
+**/.env
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.revisions
+.backups
+logs
+scripts
+
+# Test and coverage artifacts
+**/coverage.*
+**/*.out
+**/*.test
