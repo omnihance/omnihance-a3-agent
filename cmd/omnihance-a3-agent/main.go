@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/omnihance/omnihance-a3-agent/internal/config"
 	"github.com/omnihance/omnihance-a3-agent/internal/db"
@@ -22,38 +25,68 @@ var docsFiles embed.FS
 
 var version = "dev"
 
+const shutdownTimeout = 30 * time.Second
+
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	context.AfterFunc(ctx, stop)
+	code := run(ctx)
+	stop()
+	os.Exit(code)
+}
+
+func run(ctx context.Context) int {
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	cfg := config.New()
 	log := logger.NewZerologFileLogger("omnihance-a3-agent", cfg.LogDir, cfg.GetLogLevel())
 	defer func() {
 		_ = log.Close()
 	}()
 
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	internalDB := db.NewSQLiteDB(cfg.DatabaseURL, log)
 	if err := internalDB.Connect(); err != nil {
 		log.Error("Could not connect to internal database", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
+		return 1
 	}
 
 	defer func() {
 		_ = internalDB.Close()
 	}()
 
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	if err := internalDB.MigrateUp(); err != nil {
 		log.Error("Could not migrate internal database", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
+		return 1
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	if cfg.MetricsEnabled {
 		metricsCollector := services.NewMetricsCollectorService(cfg, log, internalDB)
 		if err := metricsCollector.Start(); err != nil {
 			log.Error("Could not start metrics collector service", logger.Field{Key: "error", Value: err})
-			os.Exit(1)
+			return 1
 		}
 
 		defer func() {
 			_ = metricsCollector.Stop()
 		}()
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	log.Info(
@@ -69,28 +102,40 @@ func main() {
 	backupService := services.NewBackupService(cfg, log, internalDB, fileEditor)
 	if err := backupService.Start(); err != nil {
 		log.Error("Could not start backup service", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
+		return 1
 	}
 
 	defer func() {
 		_ = backupService.Stop()
 	}()
 
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	serverViewService := services.NewServerViewService(log, internalDB, fileEditor)
 	if err := serverViewService.Start(); err != nil {
 		log.Error("Could not start server view service", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
+		return 1
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	versionChecker := services.NewVersionCheckerService(cfg, log, version)
 	if err := versionChecker.Start(); err != nil {
 		log.Error("Could not start version checker service", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
+		return 1
 	}
 
 	defer func() {
 		_ = versionChecker.Stop()
 	}()
+
+	if ctx.Err() != nil {
+		return 0
+	}
 
 	server := server.NewServer(
 		cfg, log,
@@ -105,18 +150,34 @@ func main() {
 		backupService,
 		serverViewService,
 	)
-	if err := server.ListenAndServe(); err != nil {
-		log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})
-		os.Exit(1)
-	}
-
 	defer func() {
-		_ = server.Shutdown(context.Background())
+		_ = server.Close()
 	}()
 
-	interruptChan := make(chan os.Signal, 1)
-	signal.Notify(interruptChan, os.Interrupt, syscall.SIGTERM)
-	<-interruptChan
+	serveErr := make(chan error, 1)
+	if ctx.Err() == nil {
+		go func() {
+			serveErr <- server.ListenAndServe()
+		}()
+	}
+
+	select {
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			log.Error("Could not start Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})
+			return 1
+		}
+	case <-ctx.Done():
+	}
 
 	log.Info("Omnihance A3 Agent shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error("Could not shut down Omnihance A3 Agent server", logger.Field{Key: "error", Value: err})
+		return 1
+	}
+
+	return 0
 }

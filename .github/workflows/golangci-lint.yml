@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: stable
+      - name: Test
+        run: go test -race ./...
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
