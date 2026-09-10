@@ -28,18 +28,27 @@ var version = "dev"
 const shutdownTimeout = 30 * time.Second
 
 func main() {
-	os.Exit(run())
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	context.AfterFunc(ctx, stop)
+	code := run(ctx)
+	stop()
+	os.Exit(code)
 }
 
-func run() int {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+func run(ctx context.Context) int {
+	if ctx.Err() != nil {
+		return 0
+	}
 
 	cfg := config.New()
 	log := logger.NewZerologFileLogger("omnihance-a3-agent", cfg.LogDir, cfg.GetLogLevel())
 	defer func() {
 		_ = log.Close()
 	}()
+
+	if ctx.Err() != nil {
+		return 0
+	}
 
 	internalDB := db.NewSQLiteDB(cfg.DatabaseURL, log)
 	if err := internalDB.Connect(); err != nil {
@@ -51,9 +60,17 @@ func run() int {
 		_ = internalDB.Close()
 	}()
 
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	if err := internalDB.MigrateUp(); err != nil {
 		log.Error("Could not migrate internal database", logger.Field{Key: "error", Value: err})
 		return 1
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	if cfg.MetricsEnabled {
@@ -66,6 +83,10 @@ func run() int {
 		defer func() {
 			_ = metricsCollector.Stop()
 		}()
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	log.Info(
@@ -88,10 +109,18 @@ func run() int {
 		_ = backupService.Stop()
 	}()
 
+	if ctx.Err() != nil {
+		return 0
+	}
+
 	serverViewService := services.NewServerViewService(log, internalDB, fileEditor)
 	if err := serverViewService.Start(); err != nil {
 		log.Error("Could not start server view service", logger.Field{Key: "error", Value: err})
 		return 1
+	}
+
+	if ctx.Err() != nil {
+		return 0
 	}
 
 	versionChecker := services.NewVersionCheckerService(cfg, log, version)
@@ -103,6 +132,10 @@ func run() int {
 	defer func() {
 		_ = versionChecker.Stop()
 	}()
+
+	if ctx.Err() != nil {
+		return 0
+	}
 
 	server := server.NewServer(
 		cfg, log,
@@ -122,9 +155,11 @@ func run() int {
 	}()
 
 	serveErr := make(chan error, 1)
-	go func() {
-		serveErr <- server.ListenAndServe()
-	}()
+	if ctx.Err() == nil {
+		go func() {
+			serveErr <- server.ListenAndServe()
+		}()
+	}
 
 	select {
 	case err := <-serveErr:
@@ -135,7 +170,6 @@ func run() int {
 	case <-ctx.Done():
 	}
 
-	stop()
 	log.Info("Omnihance A3 Agent shutting down...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

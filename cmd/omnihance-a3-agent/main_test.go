@@ -16,17 +16,28 @@ import (
 
 func TestAgentProcess(t *testing.T) {
 	if os.Getenv("OMNIHANCE_TEST_PROCESS") == "1" {
+		if os.Getenv("OMNIHANCE_TEST_CANCEL_STARTUP") == "1" {
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			os.Exit(run(ctx))
+		}
+
 		main()
 		return
 	}
 
-	for _, sig := range []os.Signal{nil, syscall.SIGTERM, os.Interrupt} {
-		name := "listen failure"
-		if sig != nil {
-			name = sig.String()
-		}
-
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		signal        os.Signal
+		cancelStartup bool
+	}{
+		{name: "listen failure"},
+		{name: "SIGTERM", signal: syscall.SIGTERM},
+		{name: "SIGINT", signal: os.Interrupt},
+		{name: "canceled startup", cancelStartup: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sig, cancelStartup := tc.signal, tc.cancelStartup
 			if sig != nil && runtime.GOOS == "windows" {
 				t.Skip("Windows does not support sending Unix signals to a child process")
 			}
@@ -47,6 +58,11 @@ func TestAgentProcess(t *testing.T) {
 			}
 
 			t.Setenv("OMNIHANCE_TEST_PROCESS", "1")
+			t.Setenv("OMNIHANCE_TEST_CANCEL_STARTUP", "0")
+			if cancelStartup {
+				t.Setenv("OMNIHANCE_TEST_CANCEL_STARTUP", "1")
+			}
+
 			t.Setenv("PORT", port)
 			t.Setenv("METRICS_ENABLED", "false")
 			t.Setenv("DATABASE_URL", "file:agent.db?mode=rwc")
@@ -92,6 +108,14 @@ func TestAgentProcess(t *testing.T) {
 			}
 
 			err = cmd.Wait()
+			if cancelStartup {
+				if err != nil || strings.Contains(output.String(), "Starting Omnihance") {
+					t.Fatalf("canceled startup initialized services: %v\n%s", err, output.String())
+				}
+
+				return
+			}
+
 			if ctx.Err() != nil || (sig == nil && cmd.ProcessState.ExitCode() != 1) || (sig != nil && err != nil) {
 				t.Fatalf("unexpected exit: %v (context: %v)\n%s", err, ctx.Err(), output.String())
 			}

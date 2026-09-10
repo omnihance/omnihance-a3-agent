@@ -495,13 +495,21 @@ SIGTERM (including `docker stop`) and Ctrl+C stop HTTP acceptance and allow
 active requests up to 30 seconds to finish before deferred background-service,
 SQLite and log cleanup. A clean shutdown exits 0; listener or shutdown errors
 exit 1. Signal handling is installed before startup so it remains active while
-the HTTP server is serving.
+the HTTP server is serving. Cancellation between startup steps skips the remaining
+components and runs cleanup for those already started. An in-progress synchronous
+startup call must return before that check can run; a second signal can terminate
+the process immediately.
+
+Use a 60-second container stop timeout, as configured below, to leave time for
+the 30-second HTTP drain and subsequent cleanup. Increase it if background jobs
+need longer to stop; Docker forcibly kills the process when its grace period ends.
 
 Release builds are published to GitHub Container Registry as multi-arch (`linux/amd64`, `linux/arm64`) images:
 
 ```bash
 docker run -d \
   --name omnihance-a3-agent \
+  --stop-timeout 60 \
   -p 8080:8080 \
   -v omnihance-a3-agent-data:/data \
   ghcr.io/omnihance/omnihance-a3-agent:latest
@@ -517,7 +525,10 @@ docker build --build-arg VERSION=dev -t omnihance-a3-agent .
 
 #### Docker Compose
 
-A [`docker-compose.yml`](docker-compose.yml) is included. Adjust the ports, environment variables and mounted game server directories in it, then run:
+A [`docker-compose.yml`](docker-compose.yml) is included. The agent service sets
+`stop_grace_period: 60s`, matching the `docker run`
+examples. Keep that setting when copying the service into another Compose stack.
+Adjust the ports, environment variables and mounted game server directories, then run:
 
 ```bash
 docker compose up -d
@@ -537,6 +548,7 @@ Mount the game server directories you want to manage, and make sure they are rea
 ```bash
 docker run -d \
   --name omnihance-a3-agent \
+  --stop-timeout 60 \
   -p 8080:8080 \
   -v omnihance-a3-agent-data:/data \
   -v /srv/a3-server:/srv/a3-server \
