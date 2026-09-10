@@ -491,6 +491,12 @@ The application will start on `http://localhost:8080` by default.
 
 ### Docker
 
+SIGTERM (including `docker stop`) and Ctrl+C stop HTTP acceptance and allow
+active requests up to 30 seconds to finish before deferred background-service,
+SQLite and log cleanup. A clean shutdown exits 0; listener or shutdown errors
+exit 1. Signal handling is installed before startup so it remains active while
+the HTTP server is serving.
+
 Release builds are published to GitHub Container Registry as multi-arch (`linux/amd64`, `linux/arm64`) images:
 
 ```bash
